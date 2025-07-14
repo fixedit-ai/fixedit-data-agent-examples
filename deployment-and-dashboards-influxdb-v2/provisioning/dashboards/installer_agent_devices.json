@@ -1,0 +1,226 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 30,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Device"
+              },
+              "properties": [
+                {
+                  "id": "links",
+                  "value": [
+                    {
+                      "targetBlank": true,
+                      "title": "Device detail link",
+                      "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                    }
+                  ]
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "blue",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 18,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "fields": "",
+            "reducer": ["sum"],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "12.0.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "${datasource}"
+            },
+            "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  |> filter(fn: (r) =>\n      r._measurement == \"messages\" and\n      r.category     == \"task\" and\n      r.source_app   == \"InstallerAgent\" and\n      r.success      == \"true\" and\n      r._field       == \"user_data\" and\n      r.name         == \"sync_no_diff\"\n    )\n\n  |> group(columns: [\"${unique_identifier}\"])\n  |> last(column: \"_value\")\n\n  // Rename fields for clarity\n  |> map(fn: (r) => ({\n      device:        r[\"${unique_identifier}\"],\n      version:     r._value,\n      _time:       r._time\n  }))\n\n  // Optional filter on version string\n  |> filter(fn: (r) => r.version =~ /${version:regex}/)\n\n  |> group()\n\n  |> yield(name: \"host_versions\")\n",
+            "refId": "A"
+          }
+        ],
+        "title": "Deployments in use",
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "_time": false
+              },
+              "includeByName": {},
+              "indexByName": {
+                "_time": 2,
+                "device": 0,
+                "version": 1
+              },
+              "renameByName": {
+                "_time": "Updated",
+                "device": "Device",
+                "version": "Deployment Version"
+              }
+            }
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "preload": false,
+    "schemaVersion": 41,
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "allValue": ".*",
+          "allowCustomValue": false,
+          "current": {
+            "text": "All",
+            "value": ["$__all"]
+          },
+          "definition": "from(bucket: \"${bucket}\")\n  |> range(start: -360d)\n  |> filter(fn: (r) =>\n      r._measurement == \"messages\" and\n      r.category     == \"task\" and\n      r.source_app   == \"InstallerAgent\" and\n      r.success      == \"true\" and\n      r._field       == \"user_data\" and\n      r.name         == \"sync_no_diff\"\n    )\n  |> group(columns: [\"${unique_identifier}\"])\n  |> last(column: \"_value\")\n  |> keep(columns: [\"_value\"])\n  |> distinct(column: \"_value\")",
+          "includeAll": true,
+          "label": "Deployment Version",
+          "multi": true,
+          "name": "version",
+          "options": [],
+          "query": {
+            "query": "from(bucket: \"${bucket}\")\n  |> range(start: -360d)\n  |> filter(fn: (r) =>\n      r._measurement == \"messages\" and\n      r.category     == \"task\" and\n      r.source_app   == \"InstallerAgent\" and\n      r.success      == \"true\" and\n      r._field       == \"user_data\" and\n      r.name         == \"sync_no_diff\"\n    )\n  |> group(columns: [\"${unique_identifier}\"])\n  |> last(column: \"_value\")\n  |> keep(columns: [\"_value\"])\n  |> distinct(column: \"_value\")"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "host",
+            "value": "host"
+          },
+          "description": "",
+          "hide": 2,
+          "name": "unique_identifier",
+          "query": "host",
+          "skipUrlSync": true,
+          "type": "constant"
+        },
+        {
+          "current": {
+            "text": "Cameras",
+            "value": "Cameras"
+          },
+          "definition": "buckets()",
+          "hide": 2,
+          "name": "bucket",
+          "options": [],
+          "query": {
+            "query": "buckets()"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "bekds38txl1j4c",
+            "value": "bekds38txl1j4c"
+          },
+          "description": "UID of the device details dashboard",
+          "hide": 2,
+          "name": "device_details_uid",
+          "query": "bekds38txl1j4c",
+          "skipUrlSync": true,
+          "type": "constant"
+        },
+        {
+          "allowCustomValue": false,
+          "current": {
+            "text": "InfluxDB",
+            "value": "InfluxDB"
+          },
+          "hide": 2,
+          "name": "datasource",
+          "options": [],
+          "query": "influxdb",
+          "refresh": 1,
+          "regex": "",
+          "type": "datasource"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Installer Agent Devices",
+    "uid": "62c209c8-23f0-42dc-b4b7-a4000a162ae2",
+    "version": 4
+  }

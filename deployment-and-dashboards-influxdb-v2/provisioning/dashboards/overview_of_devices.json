@@ -1,0 +1,1194 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 5,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 15,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "internet latency"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Product Name"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 305
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 184
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AXIS OS"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 124
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "External IP"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 155
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Local IPs"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 477
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 20,
+        "x": 0,
+        "y": 1
+      },
+      "id": 17,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "hide": false,
+          "query": "// Get cameras with reported data in the selected interval\r\nfrom(bucket: \"${bucket}\")\r\n  // Filter on time\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  // Filter using variable selectors (supports All and multi-select)\r\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\r\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\r\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\r\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\r\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\r\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\r\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\r\n  // We cant flatten if the values are of different types, so we just\r\n  // filter for an arbitrary value that we know exists...\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"cpu\" and\r\n    r[\"cpu\"] == \"cpu-total\" and\r\n    r[\"_field\"] == \"usage_idle\"\r\n  )\r\n  // Group by device to merge to one time series per device\r\n  |> group(columns: [\"${unique_identifier}\"])\r\n  // Get the last data point for each device\r\n  |> last()\r\n  // Ungroup to prepare a flat output\r\n  |> group()\r\n  // Keep only timestamp and device identifier\r\n  |> keep(columns: [\"_time\", \"${unique_identifier}\"])\r\n  // Rename _time to seen\r\n  |> rename(columns: {_time: \"seen\"})",
+          "refId": "Get last time stamp"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "// Get latest external IP per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on external IP measurement\n  |> filter(fn: (r) => r[\"_measurement\"] == \"external_ip\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported external IP\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"external ip\"})\n  |> keep(columns: [\"${unique_identifier}\", \"external ip\"])\n",
+          "refId": "Get external IPs"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "// Get latest local IP per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on local IP measurement\n  |> filter(fn: (r) => r[\"_measurement\"] == \"local_ip_addresses\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported local IP\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"local ip\"})\n  |> keep(columns: [\"${unique_identifier}\", \"local ip\"])\n",
+          "refId": "Get internal IPs"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "// Get latest internet latency per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on internet connectivity measurement and field\n  |> filter(fn: (r) => r[\"_measurement\"] == \"internet_connectivity\")\n  |> filter(fn: (r) => r[\"_field\"] == \"response_time\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported response time\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"internet latency\"})\n  |> keep(columns: [\"${unique_identifier}\", \"internet latency\"])\n",
+          "refId": "Internet response time"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "// Get latest local IP per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on a single meaurement to make the schema aligned\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last report\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Keep only host and device model\n  |> keep(columns: [\"${unique_identifier}\", \"product_full_name\"])\n  |> rename(columns: {\n    product_full_name: \"product full name\"\n  })",
+          "refId": "Get camera model name"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> group(columns: [\"${unique_identifier}\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"${unique_identifier}\", \"firmware_version\"])\n  |> rename(columns: {\n    \"${unique_identifier}\": \"host\",\n    firmware_version: \"firmware version\"\n  })\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Report",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "host",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {
+              "external ip": 3,
+              "firmware version": 2,
+              "host": 0,
+              "local ip": 4,
+              "product full name": 1,
+              "seen": 5
+            },
+            "renameByName": {
+              "external ip": "External IP",
+              "firmware version": "AXIS OS",
+              "host": "Device",
+              "local ip": "Local IPs",
+              "product full name": "Product Name",
+              "seen": "Last Seen"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "AXIS OS Changes",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 70,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineWidth": 0,
+            "spanNulls": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 20,
+        "x": 0,
+        "y": 10
+      },
+      "id": 18,
+      "options": {
+        "alignValue": "left",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // Generic measurement just to access the tags. To reduce number of points,\n  // we also filter to one single core and field.\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"cpu\" and\n    r[\"cpu\"] == \"cpu-total\" and\n    r[\"_field\"] == \"usage_idle\" and\n\n    // Only show the ones that are reporting firmware_version\n    exists r[\"firmware_version\"] and\n\n    // Applied filters\n    (r[\"area\"] =~ /${area:regex}/) and\n    (r[\"geography\"] =~ /${geography:regex}/) and\n    (r[\"region\"] =~ /${region:regex}/) and\n    (r[\"site\"] =~ /${site:regex}/) and\n    (r[\"type\"] =~ /${type:regex}/) and\n    (r[\"${unique_identifier}\"] =~ /${device:regex}/) and\n    (r[\"product_full_name\"] =~ /${model:regex}/)\n  )\n\n  // Aggregate into time series windows to reduce number of returned data points\n  |> aggregateWindow(every: 1h, fn: last, createEmpty: false)\n\n  // Keep timestamp, device and firmware_version\n  |> keep(columns: [\"_time\", \"${unique_identifier}\", \"firmware_version\"])\n\n  // Rename and remap to Grafana-friendly _time, _field, _value,\n  // that gets rid of the \"firmware_version <host>\" prefix in the visualization.\n  |> map(fn: (r) => ({\n    _time: r._time,\n    _field: r[\"${unique_identifier}\"],\n    _value: r[\"firmware_version\"]\n  }))\n\n  // Group per device (now in _field)\n  |> group(columns: [\"_field\"])\n\n  // Sort by time\n  |> sort(columns: [\"_time\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "AXIS OS Changes",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cpu"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "region 2"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "site 2"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 192
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 20,
+        "x": 0,
+        "y": 19
+      },
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 13,
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Trend #cpu"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  // Selected time span\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter based on drop-downs\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter out the fields we are interested in\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> filter(fn: (r) => r[\"_field\"] == \"usage_idle\")\n  // One time series for each device\n  |> group(columns: [\"${unique_identifier}\"])\n  // Invert to CPU load instead of idle\n  |> map(fn: (r) => ({ r with _value: 100.0 - r._value }))\n  // Aggregate in blocks to reduce number of data points\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "refId": "cpu"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  // Selected time span\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter based on drop-downs\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter out the fields we are interested in\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mem\")\n  |> filter(fn: (r) => r[\"_field\"] == \"used_percent\")\n  // One time series for each device\n  |> group(columns: [\"${unique_identifier}\"])\n  // Aggregate in blocks to reduce number of data points\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "refId": "ram"
+        }
+      ],
+      "title": "CPU and RAM trends",
+      "transformations": [
+        {
+          "id": "timeSeriesTable",
+          "options": {
+            "cpu": {
+              "timeField": "Time"
+            },
+            "ram": {
+              "timeField": "Time"
+            }
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Trend #cpu": "CPU Usage",
+              "Trend #ram": "RAM Usage",
+              "host": "Device"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 3,
+      "panels": [],
+      "repeat": "device",
+      "title": "${device}",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red"
+              },
+              {
+                "color": "dark-green",
+                "value": 604800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 0,
+        "y": 29
+      },
+      "id": 5,
+      "maxDataPoints": 100,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["$__interval"],
+              "type": "time"
+            },
+            {
+              "params": ["null"],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter on the right device. Since this visual will be repeated, the\n  // device variable will always contain the right value and only one,\n  // so we do not need to do regexp here..\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] == \"${device}\")\n  // Filter on the field we want\n  |> filter(fn: (r) => r[\"_measurement\"] == \"system\")\n  |> filter(fn: (r) => r[\"_field\"] == \"uptime\")\n  // Group by device to merge multiple tagsets\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last sample\n  |> last()",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["value"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "title": "Uptime",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "#EAB839",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 3,
+        "y": 29
+      },
+      "id": 1,
+      "maxPerRow": 12,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["last"],
+          "fields": "",
+          "limit": 1,
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {},
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter on the right device. Since this visual will be repeated,\n  // the device variable will always contain the right value and only one,\n  // so we do not need to do regexp here..\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] == \"${device}\")\n  // Filter on the measurement and field we want\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> filter(fn: (r) => r[\"_field\"] == \"usage_active\")\n  // Group by device to merge multiple tagsets\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last sample\n  |> last()\n",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"system\")\n  |> filter(fn: (r) => r[\"_field\"] == \"n_cpus\")\n  |> filter(fn: (r) => r[\"host\"] == \"${device}\")\n|> last()",
+          "refId": "B"
+        }
+      ],
+      "title": "CPU",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "yellow"
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 6,
+        "y": 29
+      },
+      "id": 2,
+      "maxPerRow": 12,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 25,
+        "minVizHeight": 12,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "limit": 1,
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter on the right device. Since this visual will be repeated,\n  // the device variable will always contain the right value and only one,\n  // so we do not need to do regexp here..\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] == \"${device}\")\n  // Filter on the measurement and field we want\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mem\")\n  |> filter(fn: (r) => r[\"_field\"] == \"used_percent\")\n  // Group by device to merge multiple tagsets\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last sample\n  |> last()\n",
+          "refId": "A"
+        }
+      ],
+      "title": "RAM",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "blue"
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 9,
+        "y": 29
+      },
+      "id": 6,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 25,
+        "minVizHeight": 12,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "limit": 1,
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 1
+        },
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter on the right device. Since this visual will be repeated,\n  // the device variable will always contain the right value and only one,\n  // so we do not need to do regexp here..\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] == \"${device}\")\n  // Filter on the measurement, field, and specific path we want\n  |> filter(fn: (r) => r[\"_measurement\"] == \"disk\")\n  |> filter(fn: (r) => r[\"_field\"] == \"used_percent\")\n  |> filter(fn: (r) => r[\"path\"] == \"/usr/local\")\n  // Group by device to merge multiple tagsets\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last sample\n  |> last()\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Storage",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "fieldMinMax": false,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "blue"
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 12,
+        "y": 29
+      },
+      "id": 7,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 25,
+        "minVizHeight": 12,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "limit": 1,
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 1
+        },
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter on the right device. Since this visual will be repeated,\n  // the device variable will always contain the right value and only one,\n  // so we do not need to do regexp here..\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] == \"${device}\")\n  // Filter on the measurement, field, and specific path we want\n  |> filter(fn: (r) => r[\"_measurement\"] == \"disk\")\n  |> filter(fn: (r) => r[\"_field\"] == \"used_percent\")\n  |> filter(fn: (r) => r[\"path\"] == \"/var/spool/storage/SD_DISK\")\n  // Group by device to merge multiple tagsets\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last sample\n  |> last()\n",
+          "refId": "A"
+        }
+      ],
+      "title": "SD Card",
+      "type": "bargauge"
+    }
+  ],
+  "preload": false,
+  "refresh": "15m",
+  "schemaVersion": 41,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "InfluxDB",
+          "value": "InfluxDB"
+        },
+        "description": "",
+        "hide": 2,
+        "label": "Data Source",
+        "name": "datasource",
+        "options": [],
+        "query": "influxdb",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "buckets()",
+        "hide": 2,
+        "label": "Database",
+        "name": "bucket",
+        "options": [],
+        "query": {
+          "query": "buckets()"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")",
+        "description": "All devices that are known in the schema",
+        "includeAll": true,
+        "label": "Device",
+        "multi": true,
+        "name": "device",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")",
+        "includeAll": true,
+        "label": "Geography",
+        "multi": true,
+        "name": "geography",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Region",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Area",
+        "multi": true,
+        "name": "area",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Site",
+        "multi": true,
+        "name": "site",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")",
+        "includeAll": true,
+        "label": "Type",
+        "multi": true,
+        "name": "type",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "host",
+          "value": "host"
+        },
+        "description": "The name of the field for the unique identifier like the serial number",
+        "hide": 2,
+        "name": "unique_identifier",
+        "query": "host",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")",
+        "description": "Model of the camera",
+        "includeAll": true,
+        "label": "Model Name",
+        "multi": true,
+        "name": "model",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "bekds38txl1j4c",
+          "value": "bekds38txl1j4c"
+        },
+        "description": "UID of the device details dashboard",
+        "hide": 2,
+        "name": "device_details_uid",
+        "query": "bekds38txl1j4c",
+        "skipUrlSync": true,
+        "type": "constant"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Overview of Devices",
+  "uid": "ceh7yyrnarj7kd",
+  "version": 29
+}

@@ -1,0 +1,47 @@
+# This is a simple example of a stack with InfluxDB and Grafana.
+# It is not intended for production use.
+# For production use, see an example in docker-compose.prod.yml.
+
+version: "3.8"
+
+x-common-vars: &common-vars
+  INFLUXDB_ORG: &org Whisperer
+  INFLUXDB_BUCKET: &bucket Cameras
+
+services:
+  influxdb:
+    image: influxdb:2
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: test
+      DOCKER_INFLUXDB_INIT_PASSWORD: testtest
+      DOCKER_INFLUXDB_INIT_ORG: *org
+      DOCKER_INFLUXDB_INIT_BUCKET: *bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: KLoG_Z0NsDIbVzS7zVn_VwhgxUgvwaGWE1wwO9SsGfNEeMaopLMsAA2aAGbCshpetVdu86Ig3-WTKugv6Srg6w==
+    volumes:
+      - ./influxdb-data:/var/lib/influxdb2
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    # To avoid permission issues to the mounted dir we run as root...
+    # Should be changed. See:
+    # https://grafana.com/docs/grafana/latest/setup-grafana/installation/run-grafana-docker-image/#migrate-to-v51-or-later
+    user: "0"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: test
+      INFLUXDB_TOKEN: KLoG_Z0NsDIbVzS7zVn_VwhgxUgvwaGWE1wwO9SsGfNEeMaopLMsAA2aAGbCshpetVdu86Ig3-WTKugv6Srg6w==
+      INFLUXDB_ORG: *org
+      INFLUXDB_BUCKET: *bucket
+    volumes:
+      - ./grafana-data:/var/lib/grafana
+      # The provisioning folder contains the data source info.
+      # This automatically sets up InfluxDB as a data source.
+      - ./provisioning:/etc/grafana/provisioning
+    depends_on:
+      - influxdb

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'Camera monitoring dashboards'
+    folder: 'Cameras'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      # Look for dashboards in this folder (json files)
+      path: /etc/grafana/provisioning/dashboards

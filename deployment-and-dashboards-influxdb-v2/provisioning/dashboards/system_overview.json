@@ -1,0 +1,1150 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 7,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n  |> count(column: \"_value\")\n  |> rename(columns: {_value: \"total\"})\n  |> yield(name: \"all\")\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n  |> count(column: \"_value\")\n  |> rename(columns: {_value: \"selected\"})\n  |> yield(name: \"filtered\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Device Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "Known devices that does not have any data during this time span.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "seen"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "known"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in_interval"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "seen_earlier"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dummy"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}&from=now-90d"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 4,
+        "y": 0
+      },
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 1,
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Trend #cpu"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "import \"array\"\n\n// Get cameras with reported data in the selected interval\nreal_data = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"cpu\" and\n    r[\"cpu\"] == \"cpu-total\" and\n    r[\"_field\"] == \"usage_idle\" and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"type\"] =~ /${type:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/\n  )\n  |> group(columns: [\"host\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"_time\", \"host\"])\n  |> rename(columns: {_time: \"seen\"})\n  |> map(fn: (r) => ({ r with in_interval: true })) // Add extra field for easier identification\n\n// Dummy fallback row (ensures structure exists even if real data is empty)\nfake_row = array.from(rows: [\n  {\n    host: \"dummy_device\",\n    seen: time(v: 0),\n    in_interval: true,\n    dummy: 1\n  }\n])\n\n// Combine real data with dummy row\nunion(tables: [real_data, fake_row])",
+          "refId": "in-interval"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "import \"influxdata/influxdb/schema\"\n\n// Step 1: Get all known hosts\nhosts = schema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"host\"\n)\n  |> rename(columns: {_value: \"host\"})\n  |> map(fn: (r) => ({ r with known: true }))\n\n// Step 2: Get real data to apply tag-based filters\nfiltered_hosts = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"cpu\" and\n    r[\"cpu\"] == \"cpu-total\" and\n    r[\"_field\"] == \"usage_idle\" and\n    (exists r[\"area\"] and r[\"area\"] =~ /${area:regex}/) and\n    (exists r[\"geography\"] and r[\"geography\"] =~ /${geography:regex}/) and\n    (exists r[\"region\"] and r[\"region\"] =~ /${region:regex}/) and\n    (exists r[\"site\"] and r[\"site\"] =~ /${site:regex}/) and\n    (exists r[\"type\"] and r[\"type\"] =~ /${type:regex}/) and\n    (exists r[\"${unique_identifier}\"] and r[\"${unique_identifier}\"] =~ /${device:regex}/) and\n    (exists r[\"product_full_name\"] and r[\"product_full_name\"] =~ /${model:regex}/)\n  )\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n\n// Step 3: Join to retain only filtered hosts from schema list\njoin(\n  tables: {all: hosts, filtered: filtered_hosts},\n  on: [\"host\"]\n)\n",
+          "refId": "all_devices"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "// Get last timestamp from a host (check the last 3 months back)\nfrom(bucket: \"${bucket}\")\n  |> range(start: -90d)\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"cpu\" and\n    r[\"cpu\"] == \"cpu-total\" and\n    r[\"_field\"] == \"usage_idle\" and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"type\"] =~ /${type:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/\n  )\n  |> group(columns: [\"host\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"_time\", \"host\"])\n  |> rename(columns: {_time: \"last seen\"})\n  |> map(fn: (r) => ({ r with seen_earlier: true })) // Add extra field for easier identification",
+          "refId": "last-seen"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": true,
+          "query": "// NOTE: This does not work as expected...\nfrom(bucket: \"${bucket}\")\n  |> range(start: -90d)\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"cpu\" and\n    r[\"cpu\"] == \"cpu-total\" and\n    r[\"_field\"] == \"usage_idle\"\n  )\n  |> group(columns: [\"host\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"host\", \"area\", \"geography\", \"region\", \"site\", \"type\", \"${unique_identifier}\", \"product_full_name\"])\n  |> map(fn: (r) => ({\n    host: r.host,\n    filter_applies:\n      (\n        (r[\"area\"] =~ /${area:regex}/) and\n        (r[\"geography\"] =~ /${geography:regex}/) and\n        (r[\"region\"] =~ /${region:regex}/) and\n        (r[\"site\"] =~ /${site:regex}/) and\n        (r[\"type\"] =~ /${type:regex}/) and\n        (r[\"${unique_identifier}\"] =~ /${device:regex}/) and\n        (r[\"product_full_name\"] =~ /${model:regex}/)\n      )\n  }))\n",
+          "refId": "filter applies"
+        }
+      ],
+      "title": "Missing Devices",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "host",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                },
+                "fieldName": "in_interval"
+              }
+            ],
+            "match": "any",
+            "type": "include"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": "dummy_device"
+                  }
+                },
+                "fieldName": "host"
+              },
+              {
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                },
+                "fieldName": "filter_applies"
+              }
+            ],
+            "match": "any",
+            "type": "exclude"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "host": "Device",
+              "last seen": "Last Seen"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "New devices that did not exist before the start of the selected time span.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "seen"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "known"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in_interval"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "seen_earlier"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dummy"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device details link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 12,
+        "y": 0
+      },
+      "id": 17,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 1,
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Trend #cpu"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "// Get cameras with reported data in the selected interval\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => (\n    r[\"_measurement\"] == \"cpu\" and r[\"cpu\"] == \"cpu-total\" and r[\"_field\"] == \"usage_idle\"\n  ))\n  |> group(columns: [\"host\"])\n  |> first()\n  |> group()\n  |> keep(columns: [\"_time\", \"host\"])\n  |> rename(columns: {_time: \"first seen\"})\n  |> map(fn: (r) => ({ r with in_interval: true })) // Add extra field for easier identification",
+          "refId": "in-interval"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "import \"array\"\nimport \"experimental\"\n\n// Make a query the last year before the selected interval starts,\n// that way we can find devices that was now known before the start of this\n// interval.\nbefore_data = from(bucket: \"${bucket}\")\n  |> range(start: experimental.subDuration(from: v.timeRangeStart, d: 365d), stop: v.timeRangeStart) // Before the interval starts\n  |> filter(fn: (r) => (\n    r[\"_measurement\"] == \"cpu\" and r[\"cpu\"] == \"cpu-total\" and r[\"_field\"] == \"usage_idle\"\n  ))\n  |> group(columns: [\"host\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"_time\", \"host\"])\n  |> map(fn: (r) => ({ r with seen_earlier: true })) // Add extra field for easier identification\n\n// Dummy fallback row to ensure structure\nbefore_dummy =\n  array.from(rows: [{\n    host: \"dummy_device\",\n    _time: time(v: 0),\n    seen_earlier: true,\n    dummy: 1\n  }])\n\n// Combine real before data with fallback\nunion(tables: [before_data, before_dummy])",
+          "refId": "before-interval"
+        }
+      ],
+      "title": "New Devices",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "host",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                },
+                "fieldName": "seen_earlier"
+              }
+            ],
+            "match": "any",
+            "type": "include"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "first seen": "First Seen",
+              "host": "Device"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "Top k:\n* Highest load1\n* Highest load15\n* Shortest uptime\n* Highest memory used\n* Most flash storage (built in) used\n* Most SD card storage used",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uptime"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "memory used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "flash used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sd card used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device Detail Link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 0,
+        "y": 11
+      },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "host"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "metric_to_use = \"load1\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Apply metadata filters first (only if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n\n  // 2. Then filter for the metric of interest\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"system\" and\n    r[\"_field\"] == metric_to_use\n  )\n\n  // 3. Aggregate, format, and limit\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n  |> sort(columns: [metric_to_use], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "refId": "load1"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "metric_to_use = \"load15\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (only if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n\n  // 2. Metric filtering\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"system\" and\n    r[\"_field\"] == metric_to_use\n  )\n\n  // 3. Aggregation and formatting\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_to_use], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "refId": "load15"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "metric_to_use = \"uptime\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (only apply if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n\n  // 2. Metric filter for uptime\n  |> filter(fn: (r) => r[\"_measurement\"] == \"system\" and r[\"_field\"] == metric_to_use)\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> last() // Last reported uptime during the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n  |> sort(columns: [metric_to_use], desc: false) // Ascending = lowest uptime\n  |> limit(n: ${outlier_count})\n",
+          "refId": "uptime"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (safe if tag missing)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n\n  // 2. Metric filter\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mem\" and r[\"_field\"] == \"used_percent\")\n\n  // 3. Aggregation and formatting\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: \"memory used\"})\n  |> keep(columns: [\"host\", \"memory used\"])\n\n  // 4. Sort by memory used (descending = highest usage)\n  |> sort(columns: [\"memory used\"], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "refId": "memory"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "metric_name = \"flash used\"\ndisk_path = \"/usr/local\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n\n  // 2. Metric and path filter\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"disk\" and\n    r[\"_field\"] == \"used_percent\" and\n    r[\"path\"] == disk_path\n  )\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> mean() // Mean over the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_name})\n  |> keep(columns: [\"host\", metric_name])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_name], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "refId": "flash"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "hide": false,
+          "query": "metric_name = \"sd card used\"\ndisk_path = \"/var/spool/storage/SD_DISK\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n\n  // 2. Metric and path filter\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"disk\" and\n    r[\"_field\"] == \"used_percent\" and\n    r[\"path\"] == disk_path\n  )\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> mean() // Mean over the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_name})\n  |> keep(columns: [\"host\", metric_name])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_name], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "refId": "SD card"
+        }
+      ],
+      "title": "Outliers",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "host",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "flash used": "Flash Used",
+              "host": "Device",
+              "load1": "Load 1 minute",
+              "load15": "Load 15 minutes",
+              "memory used": "RAM Used",
+              "sd card used": "SD Card Used",
+              "uptime": "Uptime"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 0,
+        "y": 19
+      },
+      "id": 18,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "type",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "query": "cpu = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"cpu\" and\n    r._field == \"usage_idle\" and\n    r.cpu == \"cpu-total\" and\n    exists r.type and\n    r.type =~ /${type:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/\n  )\n  |> map(fn: (r) => ({ r with _value: 100.0 - r._value }))\n  |> group(columns: [\"type\"])\n  |> mean()\n  |> map(fn: (r) => ({ r with metric: \"CPU Usage\" }))\n\nram = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"mem\" and\n    r._field == \"used_percent\" and\n    exists r.type and\n    r.type =~ /${type:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/\n  )\n  |> group(columns: [\"type\"])\n  |> mean()\n  |> map(fn: (r) => ({ r with metric: \"RAM Usage\" }))\n\ndisk_usr_local = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"disk\" and\n    r._field == \"used_percent\" and\n    r.path == \"/usr/local\" and\n    exists r.type and\n    r.type =~ /${type:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/\n  )\n  |> group(columns: [\"type\"])\n  |> mean()\n  |> map(fn: (r) => ({ r with metric: \"Disk /usr/local\" }))\n\ndisk_sd = from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"disk\" and\n    r._field == \"used_percent\" and\n    r.path == \"/var/volatile/spool/storage/SD_DISK\" and\n    exists r.type and\n    r.type =~ /${type:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/\n  )\n  |> group(columns: [\"type\"])\n  |> mean()\n  |> map(fn: (r) => ({ r with metric: \"Disk /SD_DISK\" }))\n\nunion(tables: [cpu, ram, disk_usr_local, disk_sd])\n  |> group()\n  |> pivot(rowKey: [\"type\"], columnKey: [\"metric\"], valueColumn: \"_value\")\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Average CPU / RAM / Disk Usage per Type",
+      "type": "barchart"
+    }
+  ],
+  "preload": false,
+  "refresh": "15m",
+  "schemaVersion": 41,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": "InfluxDB",
+          "value": "InfluxDB"
+        },
+        "description": "",
+        "hide": 2,
+        "label": "Data Source",
+        "name": "datasource",
+        "options": [],
+        "query": "influxdb",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "allowCustomValue": false,
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "buckets()",
+        "hide": 2,
+        "label": "Database",
+        "name": "bucket",
+        "options": [],
+        "query": {
+          "query": "buckets()"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")",
+        "includeAll": true,
+        "label": "Geography",
+        "multi": true,
+        "name": "geography",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Region",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Area",
+        "multi": true,
+        "name": "area",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Site",
+        "multi": true,
+        "name": "site",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")",
+        "includeAll": true,
+        "label": "Type",
+        "multi": true,
+        "name": "type",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Device",
+        "multi": true,
+        "name": "device",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "host",
+          "value": "host"
+        },
+        "description": "The name of the field for the unique identifier like the serial number",
+        "hide": 2,
+        "name": "unique_identifier",
+        "query": "host",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")",
+        "includeAll": true,
+        "label": "Model Name",
+        "multi": true,
+        "name": "model",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "5",
+          "value": "5"
+        },
+        "label": "K-Outliers",
+        "name": "outlier_count",
+        "options": [
+          {
+            "selected": false,
+            "text": "1",
+            "value": "1"
+          },
+          {
+            "selected": false,
+            "text": "2",
+            "value": "2"
+          },
+          {
+            "selected": false,
+            "text": "3",
+            "value": "3"
+          },
+          {
+            "selected": false,
+            "text": "4",
+            "value": "4"
+          },
+          {
+            "selected": true,
+            "text": "5",
+            "value": "5"
+          },
+          {
+            "selected": false,
+            "text": "10",
+            "value": "10"
+          },
+          {
+            "selected": false,
+            "text": "50",
+            "value": "50"
+          }
+        ],
+        "query": "1,2,3,4,5,10,50",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "bekds38txl1j4c",
+          "value": "bekds38txl1j4c"
+        },
+        "description": "UID of the device details dashboard",
+        "hide": 2,
+        "name": "device_details_uid",
+        "query": "bekds38txl1j4c",
+        "skipUrlSync": true,
+        "type": "constant"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "System Overview",
+  "uid": "dsdsadfg3t3t3",
+  "version": 27
+}

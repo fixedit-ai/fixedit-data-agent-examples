@@ -1,0 +1,2527 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Camera configuration changes and errors",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 12,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 11,
+      "panels": [],
+      "title": "Config Agent",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.5,
+            "drawStyle": "bars",
+            "fillOpacity": 57,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.* - Failed/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sync No Diff - Successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sync With Diff - Successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sync Completed - Successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 17,
+        "x": 0,
+        "y": 1
+      },
+      "id": 12,
+      "interval": "1s",
+      "maxDataPoints": 100000,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["1d"],
+              "type": "time"
+            }
+          ],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n       r._measurement == \"messages\" and\n       r.category == \"task\" and\n       r.source_app == \"ConfigAgent\" and\n       (r.name == \"sync_with_diff\" or r.name == \"sync_no_diff\" or r.name == \"sync_completed\") and\n       r[\"geography\"] =~ /${geography:regex}/ and\n       r[\"region\"] =~ /${region:regex}/ and\n       r[\"area\"] =~ /${area:regex}/ and\n       r[\"site\"] =~ /${site:regex}/ and\n       r[\"type\"] =~ /${type:regex}/ and\n       r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n       r[\"product_full_name\"] =~ /${model:regex}/\n     )\n  |> map(fn: (r) => ({\n       r with\n       result: if r.success == \"true\" then \"Successful\" else \"Failed\",\n       series: r.name + \" - \" + (if r.success == \"true\" then \"Successful\" else \"Failed\")\n     }))\n  |> group(columns: [\"series\"])\n  |> aggregateWindow(\n       every: ${sync_window_size},\n       fn: count,\n       column: \"_value\",\n       createEmpty: true\n     )\n  |> fill(column: \"_value\", value: 0)\n  |> rename(columns: {_value: \"count\"})\n  |> yield(name: \"sync_counts\")\n",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "Syncs With and Without Diff",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": ".*sync_(with_diff|no_diff|completed) - (Successful|Failed).*",
+            "renamePattern": "Sync $1 - $2"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.*)no_diff(.*)",
+            "renamePattern": "$1No Diff$2"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.*)with_diff(.*)",
+            "renamePattern": "$1With Diff$2"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.*)completed(.*)",
+            "renamePattern": "$1Completed$2"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": []
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 17,
+        "y": 1
+      },
+      "id": 3,
+      "interval": "1s",
+      "maxDataPoints": 100000,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelMaxLength": 7,
+        "xTickLabelRotation": 75,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["1d"],
+              "type": "time"
+            }
+          ],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // 1) Filter to exactly the events you want\n  |> filter(fn: (r) =>\n       r._measurement == \"messages\" and\n       r.success      == \"false\"    and\n       r.category     == \"change\" and\n       r.source_app   == \"ConfigAgent\" and\n       r[\"geography\"] =~ /${geography:regex}/ and\n       r[\"region\"] =~ /${region:regex}/ and\n       r[\"area\"] =~ /${area:regex}/ and\n       r[\"site\"] =~ /${site:regex}/ and\n       r[\"type\"] =~ /${type:regex}/ and\n       r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n       r[\"product_full_name\"] =~ /${model:regex}/\n     )\n\n  // 2) Ungroup everything so count() sees all rows as one series\n  |> group()\n\n  // 3) Roll up into 1-day buckets, counting raw rows\n  |> aggregateWindow(\n       every:       ${sync_window_size},\n       fn:          count,\n       column:      \"_value\",\n       createEmpty: true         // emit a point (with null) even if no events\n     )\n\n  // 4) Replace nulls with 0 so days without events show as zero\n  |> fill(column: \"_value\", value: 0)\n\n  // 5) (Optional) Rename for clarity\n  |> rename(columns: {_value: \"daily_count\"})\n\n  |> yield(name: \"daily_message_count\")\n",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "Failed Config Changes Count",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "color-text"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 192
+              },
+              {
+                "id": "displayName",
+                "value": "Date"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description_VideoConfig change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Change description"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_reason_VideoConfig change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error description"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "reason_VideoConfig change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reason for change"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Change description"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 212
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description_HandleACAP change"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 387
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*description_.*/"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "~^\\[FAILED\\]": {
+                        "color": "dark-red",
+                        "index": 0,
+                        "text": "Failed"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success_flag"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "FAILED": {
+                        "color": "dark-red",
+                        "index": 1
+                      },
+                      "SUCCESS": {
+                        "color": "dark-green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 104
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 172
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Change Category"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 152
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Target"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 203
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Old Value"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 155
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Description"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 272
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_reason"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "New Value"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 151
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 169
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "interval": "1m",
+      "maxDataPoints": 100000,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 1,
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"messages\" and\n    r.category == \"change\" and\n    r.source_app == \"ConfigAgent\" and\n    (\n      \"${ca_success_filter}\" == \".*\" or\n      (\"${ca_success_filter}\" == \"Successful\" and r.success == \"true\") or\n      (\"${ca_success_filter}\" == \"Failed\" and r.success == \"false\")\n    ) and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"type\"] =~ /${type:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    exists r[\"name\"] and\n    r[\"name\"] =~ /${name_filter:regex}/\n  )\n  |> map(fn: (r) => ({\n      r with\n      // success_flag is used to show the result in a nice way\n      success_flag: if r.success == \"true\" then \"SUCCESS\" else \"FAILED\",\n      // \"target\" does not exist for all change categories, so we need to\n      // set a default to prevent the query from failing\n      target: if exists r.target then r.target else \"\"\n    }))\n  |> keep(columns: [\"_time\", \"_field\", \"_value\", \"name\", \"${unique_identifier}\", \"success_flag\", \"target\"])\n  |> rename(columns: {\n    // Rename to Device since we use that to create links\n    \"${unique_identifier}\": \"Device\"\n  })\n  |> group()\n  |> pivot(\n  rowKey: [\"_time\", \"name\", \"Device\", \"success_flag\", \"target\"], \n  columnKey: [\"_field\"], \n  valueColumn: \"_value\"\n)\n\n  |> sort(columns: [\"_time\"], desc: true)\n  |> yield(name: \"all\")\n",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "List of Changes",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {
+              "Device": 1,
+              "_time": 0,
+              "description": 7,
+              "error_reason": 9,
+              "name": 2,
+              "new_value": 6,
+              "old_value": 5,
+              "reason": 8,
+              "success_flag": 3,
+              "target": 4
+            },
+            "renameByName": {
+              "description": "Description",
+              "error_reason": "Failure Reason",
+              "host": "Device",
+              "name": "Change Category",
+              "new_value": "New Value",
+              "old_value": "Old Value",
+              "reason": "Change Reason",
+              "success_flag": "Result",
+              "target": "Target"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "color-text"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 192
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 217
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Date"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description_internal_error"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Description"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity_internal_error"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Severity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Description"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 828
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 211
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 18,
+        "x": 0,
+        "y": 15
+      },
+      "id": 15,
+      "interval": "1m",
+      "maxDataPoints": 100000,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 18,
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Date"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"messages\" and\n    r.category == \"internal_error\" and\n    r.source_app == \"ConfigAgent\" and\n    // Filter on common device filters...\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"type\"] =~ /${type:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    exists r[\"name\"] and\n    r[\"name\"] =~ /${name_filter:regex}/\n  )\n  |> keep(columns: [\"_time\", \"category\", \"${unique_identifier}\", \"_field\", \"_value\"])\n  |> rename(columns: {\n    \"${unique_identifier}\": \"Device\"\n  })\n  |> group()\n  |> pivot(\n    rowKey:   [\"_time\", \"Device\"],\n    columnKey: [\"_field\", \"category\"],\n    valueColumn: \"_value\"\n  )\n  |> sort(columns: [\"_time\"], desc: true)\n  |> yield(name: \"all\")\n",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "List of Internal Errors",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 100,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 0,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 15
+      },
+      "id": 6,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 1,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelMaxLength": 7,
+        "xTickLabelRotation": 75,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["1d"],
+              "type": "time"
+            }
+          ],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1) Filter to exactly the events you want\n  |> filter(fn: (r) =>\n       r._measurement == \"messages\" and\n       r.source_app   == \"ConfigAgent\" and\n       r.category     == \"internal_error\" and\n       r[\"geography\"] =~ /${geography:regex}/ and\n       r[\"region\"] =~ /${region:regex}/ and\n       r[\"area\"] =~ /${area:regex}/ and\n       r[\"site\"] =~ /${site:regex}/ and\n       r[\"type\"] =~ /${type:regex}/ and\n       r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n       r[\"product_full_name\"] =~ /${model:regex}/\n     )\n\n  // 2) Ungroup everything so count() sees all rows as one series\n  |> group()\n\n  // 3) Roll up into 1-day buckets, counting raw rows\n  |> aggregateWindow(\n       every:       ${sync_window_size},\n       fn:          count,\n       column:      \"_value\",\n       createEmpty: true         // emit a point (with null) even if no events\n     )\n\n  // 4) Replace nulls with 0 so days without events show as zero\n  |> fill(column: \"_value\", value: 0)\n\n  // 5) (Optional) Rename for clarity\n  |> rename(columns: {_value: \"daily_count\"})\n\n  |> yield(name: \"daily_message_count\")\n",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["severity"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "internal_error"
+            }
+          ]
+        }
+      ],
+      "title": "Internal Error Count",
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 10,
+      "panels": [],
+      "title": "Installer Agent",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 22
+      },
+      "id": 8,
+      "options": {
+        "displayLabels": ["name", "value"],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": []
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1) Only the user_data values from the sync messages\n  |> filter(fn: (r) =>\n      r._measurement == \"messages\" and\n      r.category     == \"task\" and\n      r.source_app   == \"InstallerAgent\" and\n      r.success      == \"true\" and\n      r._field       == \"user_data\" and\n      r.name         == \"sync_no_diff\" and\n      r[\"geography\"] =~ /${geography:regex}/ and\n      r[\"region\"] =~ /${region:regex}/ and\n      r[\"area\"] =~ /${area:regex}/ and\n      r[\"site\"] =~ /${site:regex}/ and\n      r[\"type\"] =~ /${type:regex}/ and\n      r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n      r[\"product_full_name\"] =~ /${model:regex}/\n    )\n\n  // 2) Get the last value per host\n  |> last(column: \"_value\")\n\n  // 3) Map each to count = 1\n  |> map(fn: (r) => ({\n      user_data: r._value,\n      one:        1\n    }))\n\n  // 4) Group by user_data and sum the counts\n  |> group(columns: [\"user_data\"])\n  |> sum(column: \"one\")\n\n  // 5) Pivot so Grafana sees one row, one column per user_data\n  |> pivot(\n      rowKey:      [],\n      columnKey:   [\"user_data\"],\n      valueColumn: \"one\"\n    )\n  |> yield(name: \"pie_data\")\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Deployment File Versions In Use",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.5,
+            "drawStyle": "bars",
+            "fillOpacity": 57,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.* - Failed/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sync No Diff - Successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sync With Diff - Successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sync Completed - Successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 22
+      },
+      "id": 9,
+      "interval": "1s",
+      "maxDataPoints": 100000,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["1d"],
+              "type": "time"
+            }
+          ],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n       r._measurement == \"messages\" and\n       r.category == \"task\" and\n       r.source_app == \"InstallerAgent\" and\n       (r.name == \"sync_with_diff\" or r.name == \"sync_no_diff\" or r.name == \"sync_completed\") and\n       r[\"geography\"] =~ /${geography:regex}/ and\n       r[\"region\"] =~ /${region:regex}/ and\n       r[\"area\"] =~ /${area:regex}/ and\n       r[\"site\"] =~ /${site:regex}/ and\n       r[\"type\"] =~ /${type:regex}/ and\n       r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n       r[\"product_full_name\"] =~ /${model:regex}/\n     )\n  |> map(fn: (r) => ({\n       r with\n       result: if r.success == \"true\" then \"Successful\" else \"Failed\",\n       series: r.name + \" - \" + (if r.success == \"true\" then \"Successful\" else \"Failed\")\n     }))\n  |> group(columns: [\"series\"])\n  |> aggregateWindow(\n       every: ${sync_window_size},\n       fn: count,\n       column: \"_value\",\n       createEmpty: true\n     )\n  |> fill(column: \"_value\", value: 0)\n  |> rename(columns: {_value: \"count\"})\n  |> yield(name: \"sync_counts\")\n",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "Syncs With and Without Diff",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": ".*sync_(with_diff|no_diff|completed) - (Successful|Failed).*",
+            "renamePattern": "Sync $1 - $2"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.*)no_diff(.*)",
+            "renamePattern": "$1No Diff$2"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.*)with_diff(.*)",
+            "renamePattern": "$1With Diff$2"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(.*)completed(.*)",
+            "renamePattern": "$1Completed$2"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": []
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 22
+      },
+      "id": 13,
+      "interval": "1s",
+      "maxDataPoints": 100000,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelMaxLength": 7,
+        "xTickLabelRotation": 75,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["1d"],
+              "type": "time"
+            }
+          ],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // 1) Filter to exactly the events you want\n  |> filter(fn: (r) =>\n       r._measurement == \"messages\" and\n       r.success      == \"false\"    and\n       r.category     == \"change\" and\n       r.source_app   == \"InstallerAgent\" and\n       r[\"geography\"] =~ /${geography:regex}/ and\n       r[\"region\"] =~ /${region:regex}/ and\n       r[\"area\"] =~ /${area:regex}/ and\n       r[\"site\"] =~ /${site:regex}/ and\n       r[\"type\"] =~ /${type:regex}/ and\n       r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n       r[\"product_full_name\"] =~ /${model:regex}/\n     )\n\n  // 2) Ungroup everything so count() sees all rows as one series\n  |> group()\n\n  // 3) Roll up into 1-day buckets, counting raw rows\n  |> aggregateWindow(\n       every:       ${sync_window_size},\n       fn:          count,\n       column:      \"_value\",\n       createEmpty: true         // emit a point (with null) even if no events\n     )\n\n  // 4) Replace nulls with 0 so days without events show as zero\n  |> fill(column: \"_value\", value: 0)\n\n  // 5) (Optional) Rename for clarity\n  |> rename(columns: {_value: \"daily_count\"})\n\n  |> yield(name: \"daily_message_count\")\n",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "Failed Changes Count",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "color-text"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 192
+              },
+              {
+                "id": "displayName",
+                "value": "Date"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description_VideoConfig change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Change description"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_reason_VideoConfig change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error description"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "reason_VideoConfig change"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reason for change"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Change description"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 212
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description_HandleACAP change"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 387
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*description_.*/"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "~^\\[FAILED\\]": {
+                        "color": "dark-red",
+                        "index": 0,
+                        "text": "Failed"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success_flag"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "FAILED": {
+                        "color": "dark-red",
+                        "index": 1
+                      },
+                      "SUCCESS": {
+                        "color": "dark-green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_reason"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Change Category"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 144
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 99
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Target"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 171
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Old Value"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 174
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "New Value"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 185
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Description"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 319
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 169
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 14,
+      "interval": "1m",
+      "maxDataPoints": 100000,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 18,
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"messages\" and\n    r.category == \"change\" and\n    r.source_app == \"InstallerAgent\" and\n    (\n      \"${ca_success_filter}\" == \".*\" or\n      (\"${ca_success_filter}\" == \"Successful\" and r.success == \"true\") or\n      (\"${ca_success_filter}\" == \"Failed\" and r.success == \"false\")\n    ) and\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"type\"] =~ /${type:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    exists r[\"name\"] and\n    r[\"name\"] =~ /${name_filter:regex}/\n  )\n  |> map(fn: (r) => ({\n      r with\n      // success_flag is used to show the result in a nice way\n      success_flag: if r.success == \"true\" then \"SUCCESS\" else \"FAILED\",\n      // \"target\" does not exist for all change categories, so we need to\n      // set a default to prevent the query from failing\n      target: if exists r.target then r.target else \"\"\n    }))\n  |> keep(columns: [\"_time\", \"_field\", \"_value\", \"name\", \"${unique_identifier}\", \"success_flag\", \"target\"])\n  |> rename(columns: {\n    // Rename to Device since we use that to create links\n    \"${unique_identifier}\": \"Device\"\n  })\n  |> group()\n  |> pivot(\n  rowKey: [\"_time\", \"name\", \"Device\", \"success_flag\", \"target\"], \n  columnKey: [\"_field\"], \n  valueColumn: \"_value\"\n)\n\n  |> sort(columns: [\"_time\"], desc: true)\n  |> yield(name: \"all\")\n",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "List of Changes",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {
+              "Device": 1,
+              "_time": 0,
+              "description": 7,
+              "error_reason": 9,
+              "name": 2,
+              "new_value": 6,
+              "old_value": 5,
+              "reason": 8,
+              "success_flag": 3,
+              "target": 4
+            },
+            "renameByName": {
+              "description": "Description",
+              "error_reason": "Failure Reason",
+              "host": "Device",
+              "name": "Change Category",
+              "new_value": "New Value",
+              "old_value": "Old Value",
+              "reason": "Change Reason",
+              "success_flag": "Result",
+              "target": "Target"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "color-text"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 192
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 217
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Date"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description_internal_error"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Description"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity_internal_error"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Severity"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Description"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 828
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 211
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Device detail link",
+                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                  }
+                ]
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 18,
+        "x": 0,
+        "y": 38
+      },
+      "id": 2,
+      "interval": "1m",
+      "maxDataPoints": 100000,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "frameIndex": 18,
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Date"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"messages\" and\n    r.category == \"internal_error\" and\n    r.source_app == \"InstallerAgent\" and\n    // Filter on common device filters...\n    r[\"geography\"] =~ /${geography:regex}/ and\n    r[\"region\"] =~ /${region:regex}/ and\n    r[\"area\"] =~ /${area:regex}/ and\n    r[\"site\"] =~ /${site:regex}/ and\n    r[\"type\"] =~ /${type:regex}/ and\n    r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n    r[\"product_full_name\"] =~ /${model:regex}/ and\n    exists r[\"name\"] and\n    r[\"name\"] =~ /${name_filter:regex}/\n  )\n  |> keep(columns: [\"_time\", \"category\", \"${unique_identifier}\", \"_field\", \"_value\"])\n  |> rename(columns: {\n    \"${unique_identifier}\": \"Device\"\n  })\n  |> group()\n  |> pivot(\n    rowKey:   [\"_time\", \"Device\"],\n    columnKey: [\"_field\", \"category\"],\n    valueColumn: \"_value\"\n  )\n  |> sort(columns: [\"_time\"], desc: true)\n  |> yield(name: \"all\")\n",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["error_reason"],
+                "type": "field"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "key": "success::tag",
+              "operator": "=",
+              "value": "false"
+            },
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "change"
+            }
+          ]
+        }
+      ],
+      "title": "List of Internal Errors",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 100,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 0,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 38
+      },
+      "id": 16,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 1,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelMaxLength": 7,
+        "xTickLabelRotation": 75,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "groupBy": [
+            {
+              "params": ["1d"],
+              "type": "time"
+            }
+          ],
+          "measurement": "messages",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1) Filter to exactly the events you want\n  |> filter(fn: (r) =>\n       r._measurement == \"messages\" and\n       r.source_app   == \"InstallerAgent\" and\n       r.category     == \"internal_error\" and\n       r[\"geography\"] =~ /${geography:regex}/ and\n       r[\"region\"] =~ /${region:regex}/ and\n       r[\"area\"] =~ /${area:regex}/ and\n       r[\"site\"] =~ /${site:regex}/ and\n       r[\"type\"] =~ /${type:regex}/ and\n       r[\"${unique_identifier}\"] =~ /${device:regex}/ and\n       r[\"product_full_name\"] =~ /${model:regex}/\n     )\n\n  // 2) Ungroup everything so count() sees all rows as one series\n  |> group()\n\n  // 3) Roll up into 1-day buckets, counting raw rows\n  |> aggregateWindow(\n       every:       ${sync_window_size},\n       fn:          count,\n       column:      \"_value\",\n       createEmpty: true         // emit a point (with null) even if no events\n     )\n\n  // 4) Replace nulls with 0 so days without events show as zero\n  |> fill(column: \"_value\", value: 0)\n\n  // 5) (Optional) Rename for clarity\n  |> rename(columns: {_value: \"daily_count\"})\n\n  |> yield(name: \"daily_message_count\")\n",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": ["severity"],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": [
+            {
+              "condition": "AND",
+              "key": "category::tag",
+              "operator": "=",
+              "value": "internal_error"
+            }
+          ]
+        }
+      ],
+      "title": "Internal Error Count",
+      "type": "barchart"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "$__all",
+          "value": "$__all"
+        },
+        "description": "",
+        "includeAll": true,
+        "label": "Change Success",
+        "name": "ca_success_filter",
+        "options": [
+          {
+            "selected": false,
+            "text": "Successful",
+            "value": "Successful"
+          },
+          {
+            "selected": false,
+            "text": "Failed",
+            "value": "Failed"
+          }
+        ],
+        "query": "Successful,Failed",
+        "type": "custom"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"name\",\n  predicate: (r) => \n    r._measurement == \"messages\" and \n    r.category == \"change\",\n  start: -10y\n)\n",
+        "includeAll": true,
+        "label": "Change Category",
+        "multi": true,
+        "name": "name_filter",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"name\",\n  predicate: (r) => \n    r._measurement == \"messages\" and \n    r.category == \"change\",\n  start: -10y\n)\n"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")",
+        "includeAll": true,
+        "label": "Geography",
+        "multi": true,
+        "name": "geography",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "definition": "buckets()",
+        "hide": 2,
+        "label": "Database",
+        "name": "bucket",
+        "options": [],
+        "query": {
+          "query": "buckets()"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")",
+        "includeAll": true,
+        "label": "Region",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")",
+        "includeAll": true,
+        "label": "Area",
+        "multi": true,
+        "name": "area",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")",
+        "description": "",
+        "includeAll": true,
+        "label": "Site",
+        "multi": true,
+        "name": "site",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")",
+        "includeAll": true,
+        "label": "Type",
+        "multi": true,
+        "name": "type",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")",
+        "includeAll": true,
+        "label": "Device",
+        "multi": true,
+        "name": "device",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "host",
+          "value": "host"
+        },
+        "description": "The name of the field for the unique identifier like the serial number",
+        "hide": 2,
+        "name": "unique_identifier",
+        "query": "host",
+        "skipUrlSync": true,
+        "type": "constant"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": "InfluxDB",
+          "value": "InfluxDB"
+        },
+        "hide": 2,
+        "name": "datasource",
+        "options": [],
+        "query": "influxdb",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")",
+        "includeAll": true,
+        "label": "Model Name",
+        "multi": true,
+        "name": "model",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": "1d",
+          "value": "1d"
+        },
+        "description": "The duration to aggregate to one bucket for the sync counts",
+        "label": "Sync Bucket Size",
+        "name": "sync_window_size",
+        "options": [
+          {
+            "selected": true,
+            "text": "1d",
+            "value": "1d"
+          },
+          {
+            "selected": false,
+            "text": "1h",
+            "value": "1h"
+          },
+          {
+            "selected": false,
+            "text": "15m",
+            "value": "15m"
+          },
+          {
+            "selected": false,
+            "text": "1m",
+            "value": "1m"
+          }
+        ],
+        "query": "1d, 1h, 15m, 1m",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "bekds38txl1j4c",
+          "value": "bekds38txl1j4c"
+        },
+        "description": "UID of the device details dashboard",
+        "hide": 2,
+        "name": "device_details_uid",
+        "query": "bekds38txl1j4c",
+        "skipUrlSync": true,
+        "type": "constant"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Config Agent",
+  "uid": "uniquestringaa",
+  "version": 57
+}

@@ -1,0 +1,70 @@
+name: Prettier Format Check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  prettier:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run prettier check
+        run: |
+          # Format JSON, YAML (including workflow files), and Markdown files
+          npx prettier --check "**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" --ignore-unknown
+
+      - name: Get files that need formatting (on failure)
+        if: failure() && github.event_name == 'pull_request'
+        id: format_files
+        run: |
+          # Get list of files that need formatting
+          FILES_NEEDING_FORMAT=$(npx prettier --check "**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" --ignore-unknown --list-different 2>/dev/null || true)
+          echo "files_list<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES_NEEDING_FORMAT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR (on failure)
+        if: failure() && github.event_name == 'pull_request' && steps.format_files.outputs.files_list != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const filesList = `${{ steps.format_files.outputs.files_list }}`.trim();
+
+            if (filesList) {
+              const files = filesList.split('\n').filter(f => f.trim());
+              const comment = `## 🎨 Code Formatting Required
+
+            Some files in this PR need to be formatted with Prettier.
+
+            This includes JSON, YAML (workflow files), and Markdown files.
+
+            **Files that need formatting:**
+            ${files.map(file => `- \`${file}\``).join('\n')}
+
+            **To fix this:**
+            1. Install Prettier: \`npm install -g prettier\`
+            2. Format the files: \`npx prettier --write "**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}"\`
+            3. Commit and push the changes
+
+            The formatting check will automatically pass once these files are properly formatted.`;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }

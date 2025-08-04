@@ -11,6 +11,12 @@ permissions:
 jobs:
   prettier:
     runs-on: ubuntu-latest
+    env:
+      # List of files patterns that should be formatted by prettier. This should normally include:
+      # workflow files (yml) and any other json/yml/markdown files, including hidden config files for tools.
+      PRETTIER_FILES: '"**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" ".*.{yml,yaml}"'
+      # Pin Prettier version to ensure deterministic CI runs and avoid unpredictable failures
+      PRETTIER_VERSION: "3.6.0"
 
     steps:
       - name: Checkout code
@@ -24,14 +30,14 @@ jobs:
       - name: Run prettier check
         run: |
           # Format JSON, YAML (including workflow files), and Markdown files
-          npx prettier --check "**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" --ignore-unknown
+          npx prettier@${{ env.PRETTIER_VERSION }} --check ${{ env.PRETTIER_FILES }} --ignore-unknown
 
       - name: Get files that need formatting (on failure)
         if: failure() && github.event_name == 'pull_request'
         id: format_files
         run: |
           # Get list of files that need formatting
-          FILES_NEEDING_FORMAT=$(npx prettier --check "**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" --ignore-unknown --list-different 2>/dev/null || true)
+          FILES_NEEDING_FORMAT=$(npx prettier@${{ env.PRETTIER_VERSION }} --check ${{ env.PRETTIER_FILES }} --ignore-unknown --list-different 2>/dev/null || true)
           echo "files_list<<EOF" >> $GITHUB_OUTPUT
           echo "$FILES_NEEDING_FORMAT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -55,9 +61,8 @@ jobs:
             ${files.map(file => `- \`${file}\``).join('\n')}
 
             **To fix this:**
-            1. Install Prettier: \`npm install -g prettier\`
-            2. Format the files: \`npx prettier --write "**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}"\`
-            3. Commit and push the changes
+            1. Format the files: \`npx prettier@${{ env.PRETTIER_VERSION }} --write ${{ env.PRETTIER_FILES }} --ignore-unknown\`
+            2. Commit and push the changes
 
             The formatting check will automatically pass once these files are properly formatted.`;
 

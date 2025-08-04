@@ -2,10 +2,38 @@
 
 This project demonstrates how the [FixedIt Data Agent](https://fixedit.ai/products-data-agent/) can be deployed on an Axis strobe light to fetch GitHub API data and dynamically control the device's color based on workflow execution status. The target GitHub repository should have a configured workflow, and this project will monitor the execution status of the latest workflow run on the main branch.
 
+## How It Works
+
+The system operates in a continuous monitoring loop, automatically fetching GitHub workflow status and updating the strobe light color accordingly:
+
+```mermaid
+flowchart TD
+    A["🔍 Fetch GitHub API<br/>Get latest workflow status"] --> B["📊 Parse Response<br/>Extract conclusion field"]
+    B --> C["🎨 Map to Color<br/>success → green<br/>failure → red<br/>running → yellow"]
+    C --> D["✅ Enable Profile<br/>Start target color strobe"]
+    D --> E["❌ Disable Other Profiles<br/>Stop yellow, red, green<br/>(except active one)"]
+    E --> F["⏳ Wait<br/>Sleep for interval period<br/>(default: 5 seconds)"]
+    F --> A
+
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+    style E fill:#fce4ec
+    style F fill:#f1f8e9
+```
+
+## Table of Contents
+
 - [Strobe Color From GitHub API](#strobe-color-from-github-api)
+  - [How It Works](#how-it-works)
+  - [Table of Contents](#table-of-contents)
   - [Why Choose This Approach?](#why-choose-this-approach)
   - [Demo Video](#demo-video)
   - [Setup](#setup)
+    - [Compatibility](#compatibility)
+    - [High-level overview](#high-level-overview)
+    - [Creating the github workflow](#creating-the-github-workflow)
     - [Creating a GitHub access token](#creating-a-github-access-token)
     - [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe)
   - [Test GitHub API](#test-github-api)
@@ -32,7 +60,7 @@ This example is perfect for **system integrators and IT professionals** who want
 - Experience configuring IT services (similar to setting up monitoring tools)
 - Basic shell scripting knowledge (can be learned quickly)
 - Familiarity with REST APIs and JSON (common in modern IT environments)
-- Access to an Axis device with strobe capability (D4100-E/D4100-VE mk II, D4200-VE, or similar)
+- Access to an Axis device with strobe capability (AXIS D4100-E Network Strobe Siren, AXIS D4100-VE Mk II Network Strobe Siren, AXIS D4200-VE Network Strobe Speaker, or similar)
 
 **The result:** Custom edge intelligence that would typically require months of ACAP development can now be implemented in hours using familiar IT tools and practices.
 
@@ -51,6 +79,10 @@ Using a GitHub Actions job as an example input, we demonstrate how to:
 This effectively shows how to transform an Axis strobe to an intelligent device that can poll third party APIs and set its color based on the API return status. This can easily be adapted to use any cloud-based or locally hosted API as an input. Whether you're building smart alerts, visual indicators, or edge-based automation pipelines—this is a glimpse of what FixedIt Data Agent makes possible.
 
 ## Setup
+
+## Compatibility
+
+This project is making use of the `jq` command in the shell script. This is available in newer AXIS OS versions, but did not exist in the early versions of AXIS OS.
 
 ## High-level overview
 
@@ -107,7 +139,7 @@ jobs:
 
 ### Creating a GitHub access token
 
-1. Go to Github Setting by pressing your profile picture in the top right corner
+1. Go to Github Settings by pressing your profile picture in the top right corner and select "Settings"
 1. Click on "Developer settings"
 1. Click on "Personal access tokens"
 1. Click on "Tokens (classic)"
@@ -121,7 +153,7 @@ Copy this token and use it in the `GITHUB_TOKEN` environment variable in the Fix
 
 ### Creating the color profiles in the Axis strobe
 
-The application workflow will set the strobe light based on the name of the color profile. Before this works, you need to login to the Axis strobe and create three color profiles named `green`, `yellow`, and `red`.
+The application workflow will set the strobe light based on the name of the color profile. The script ensures exclusive operation by automatically deactivating all other color profiles when activating a new one, which means you don't need to worry about profile priorities or overlapping durations. Before this works, you need to login to the Axis strobe and create three color profiles named `green`, `yellow`, and `red`.
 
 1. Go to the Axis device web interface
 1. Click on "Profiles"
@@ -129,8 +161,8 @@ The application workflow will set the strobe light based on the name of the colo
 1. Enter a name for the profile (e.g. "green")
 1. Choose the "Pattern" and "Intensity" based on your preference
 1. Set the "Color" to "Green"
-1. Set "Duration" to "Time" and select e.g. 10 seconds (must be at least as long as the `interval` specified in the `config_agent.conf` file)
-1. Leave "Priority" as is
+1. Set "Duration" to "Time" and select a duration that is at least as long as the sync interval specified in the `config_agent.conf` file. Since the script deactivates all other color profiles when activating a new one, the duration can be set generously (e.g., 60 seconds or more) without worrying about overlapping profiles.
+1. Leave "Priority" as is - since only one profile is active at a time, priority settings don't matter
 1. Click on "Save"
 1. Repeat for the other two profiles
 

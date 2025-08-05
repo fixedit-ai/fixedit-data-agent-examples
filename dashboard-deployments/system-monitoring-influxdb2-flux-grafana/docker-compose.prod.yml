@@ -1,5 +1,5 @@
 # This override file:
-# - Adds Ouroboros for monitoring, updating, and restarting unhealthy containers
+# - Adds Ouroboros for monitoring, updating, and restarting unhealthy containers (more work needed)
 # - Adds healthchecks to InfluxDB and Grafana
 # - Configures Slack notifications for status updates
 # - Overrides production secrets for InfluxDB and Grafana

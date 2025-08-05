@@ -1,6 +1,7 @@
 # This is a simple example of a stack with InfluxDB and Grafana.
-# It is not intended for production use.
-# For production use, see an example in docker-compose.prod.yml.
+# This file hard codes credentials for simple use. It is not intended for production use.
+# For production use, use this file together with the docker-compose.prod.yml override file
+# which will add more security and robustness.
 
 version: "3.8"
 

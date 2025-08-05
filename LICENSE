@@ -1,0 +1,18 @@
+# License Information
+
+This repository contains multiple components, each with its own licensing terms. Please refer to the LICENSE file in each subdirectory for specific licensing information.
+
+## Subdirectory Licenses
+
+- **dashboard-deployments/** - Licensed under the Elastic License 2.0. See [dashboard-deployments/LICENSE](./dashboard-deployments/LICENSE) for full terms.
+- **Other components** - Each subdirectory may have its own specific license. Check individual subdirectories for their respective LICENSE files.
+
+## General Guidelines
+
+Before using any component from this repository:
+
+1. Navigate to the specific subdirectory you plan to use
+2. Read the LICENSE file in that subdirectory 
+3. Ensure compliance with the specific license terms
+
+For questions about licensing, please contact the FixedIT team.

@@ -85,15 +85,16 @@ esac
 # This function handles both starting and stopping of color profiles
 # Uses HTTP Digest authentication since the Axis devices requires that for HTTP
 control_profile() {
-    local profile=$1    # Profile name (green, yellow, red)
-    local action=$2     # Action to perform (start, stop)
+    profile=$1    # Profile name (green, yellow, red)
+    action=$2     # Action to perform (start, stop)
 
     # Make VAPIX API call to control the strobe profile
     # Endpoint: siren_and_light.cgi for controlling light patterns
     # Method: POST with JSON payload specifying action and profile
     # Auth: HTTP Digest authentication
-    curl --digest -u ${VAPIX_USERNAME}:${VAPIX_PASSWORD} "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
+    curl --fail --digest -u ${VAPIX_USERNAME}:${VAPIX_PASSWORD} "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
         -X POST \
+        -H "Content-Type: application/json" \
         -d "{\"apiVersion\":\"1.0\",\"method\":\"$action\",\"params\":{\"profile\":\"$profile\"}}"
 
     # Check if the API call was successful

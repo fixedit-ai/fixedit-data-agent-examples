@@ -38,7 +38,9 @@ INFLUXDB_ADMIN_TOKEN=$(openssl rand -hex 32)
 INFLUXDB_PORT=$((10000 + RANDOM % 10000))
 GRAFANA_PORT=$((20000 + RANDOM % 10000))
 
-# Create the env.sh file
+# Create the env.sh file with secure permissions.
+OLD_UMASK=$(umask)
+umask 077
 cat > "$ENV_FILE" << EOF
 #!/bin/bash
 # Generated environment variables for production docker-compose setup
@@ -67,9 +69,11 @@ export OUROBOROS_SLACK_HOOK_URL="https://hooks.slack.com/services/YOUR/SLACK/WEB
 
 EOF
 
-# Lock down permissions (read/write owner only)
-chmod 600 "$ENV_FILE"
+# Restore original umask. This is mostly important if someone would
+# source the script instead of running it.
+umask "$OLD_UMASK"
 
+# Print a summary of the generated values and some instructions.
 echo "✅ Environment file generated: $ENV_FILE"
 echo ""
 echo "📋 Generated values:"

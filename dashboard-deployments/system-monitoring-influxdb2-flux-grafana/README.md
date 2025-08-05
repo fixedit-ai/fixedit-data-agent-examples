@@ -29,7 +29,7 @@ source env.sh
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-**Note**: The production setup uses configurable ports to allow running multiple instances on the same server. The development setup uses hardcoded ports (8086 for InfluxDB, 3000 for Grafana) for simplicity. This can be changed by editing the `env.sh` file after generation with the `helper_scripts/generate-env.sh` script or by manually setting the environment variables before launching the stack.
+**Note**: The production setup uses configurable ports and unique container names to allow running multiple instances on the same server. The development setup uses hardcoded ports (8086 for InfluxDB, 3000 for Grafana) for simplicity. This can be changed by editing the `env.sh` file after generation with the `helper_scripts/generate-env.sh` script or by manually setting the environment variables before launching the stack.
 
 ## Grafana
 

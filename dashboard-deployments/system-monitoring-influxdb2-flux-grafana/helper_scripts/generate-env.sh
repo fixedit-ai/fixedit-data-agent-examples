@@ -32,6 +32,10 @@ GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d "=+/")
 # Generate secure admin token (32 bytes = 64 hex characters)
 INFLUXDB_ADMIN_TOKEN=$(openssl rand -hex 32)
 
+# Generate random deployment suffix (6 alphanumeric characters).
+# This allows multiple deployments to run in parallel on the same machine.
+DEPLOYMENT_SUFFIX=$(openssl rand -hex 3)
+
 # Generate random ports within safe ranges
 # InfluxDB: 10000-19999 (10k ports)
 # Grafana: 20000-29999 (10k ports)
@@ -52,6 +56,9 @@ cat > "$ENV_FILE" << EOF
 # Then run docker-compose with production overrides:
 # docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
+# Deployment Configuration
+export COMPOSE_PROJECT_NAME="monitoring-$DEPLOYMENT_SUFFIX"
+
 # Port Configuration
 export INFLUXDB_PORT="$INFLUXDB_PORT"
 export GRAFANA_PORT="$GRAFANA_PORT"
@@ -63,9 +70,7 @@ export INFLUXDB_ADMIN_TOKEN="$INFLUXDB_ADMIN_TOKEN"
 # Grafana Configuration
 export GRAFANA_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD"
 
-# Ouroboros Configuration (Slack notifications)
-# Replace this with your actual Slack webhook URL
-export OUROBOROS_SLACK_HOOK_URL="https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+# Additional configuration can be added here as needed
 
 EOF
 
@@ -77,6 +82,8 @@ umask "$OLD_UMASK"
 echo "✅ Environment file generated: $ENV_FILE"
 echo ""
 echo "📋 Generated values:"
+echo "  DEPLOYMENT_SUFFIX: $DEPLOYMENT_SUFFIX"
+echo "  COMPOSE_PROJECT_NAME: monitoring-$DEPLOYMENT_SUFFIX"
 echo "  INFLUXDB_PORT: $INFLUXDB_PORT"
 echo "  GRAFANA_PORT: $GRAFANA_PORT"
 echo "  INFLUXDB_PASSWORD: $INFLUXDB_PASSWORD"
@@ -84,6 +91,5 @@ echo "  INFLUXDB_ADMIN_TOKEN: $INFLUXDB_ADMIN_TOKEN"
 echo "  GRAFANA_ADMIN_PASSWORD: $GRAFANA_ADMIN_PASSWORD"
 echo ""
 echo "⚠️  IMPORTANT:"
-echo "  1. Update OUROBOROS_SLACK_HOOK_URL with your actual Slack webhook URL"
-echo "  2. Keep this file secure and don't commit it to version control"
-echo "  3. To use: source env.sh && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d" 
+echo "  1. Keep this file secure and don't commit it to version control"
+echo "  2. To use: source env.sh && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d"

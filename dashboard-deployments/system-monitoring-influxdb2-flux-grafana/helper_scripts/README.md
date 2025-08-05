@@ -12,10 +12,11 @@ This script generates an `env.sh` file with secure random values for all environ
 
 The script generates:
 
-- Random port numbers for InfluxDB and Grafana (to avoid conflicts on multiple deployments)
-- Secure passwords for InfluxDB and Grafana
-- Secure admin token for InfluxDB
-- Placeholder for Slack webhook URL (needs manual update)
+- **Unique project name**: `monitoring-{suffix}` for container isolation where `{suffix}` is a random 6-character hex string (e.g., `a1b2c3`)
+- **Random port numbers**: For InfluxDB and Grafana (to avoid conflicts)
+- **Secure passwords**: For InfluxDB and Grafana
+- **Secure admin token**: For InfluxDB
+- **Placeholder for Slack webhook URL**: (needs manual update)
 
 Usage:
 

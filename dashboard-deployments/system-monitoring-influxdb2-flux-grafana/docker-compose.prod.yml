@@ -1,30 +1,15 @@
 # This override file:
-# - Adds Ouroboros for monitoring, updating, and restarting unhealthy containers (more work needed)
 # - Adds healthchecks to InfluxDB and Grafana
-# - Configures Slack notifications for status updates
 # - Overrides production secrets for InfluxDB and Grafana
+# - Supports multiple deployments on same host using COMPOSE_PROJECT_NAME
 #
 # This stack is only intended as an example.
 
 version: "3.8"
 
 services:
-  ouroboros:
-    image: pyouroboros/ouroboros
-    container_name: ouroboros
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - INTERVAL=300 # Check every 5 minutes
-      - CLEANUP=true # Remove old images
-      - SELF_UPDATE=true # Update Ouroboros itself
-      - HEALTHCHECK_MONITORING=true # Restart unhealthy containers
-      - NOTIFIERS=slack://${OUROBOROS_SLACK_HOOK_URL}
-    labels:
-      - "com.ouroboros.enable=true" # Allow Ouroboros to watch itself
-    restart: unless-stopped
-
   influxdb:
+    container_name: influxdb-${COMPOSE_PROJECT_NAME:-default}
     environment:
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
       - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
@@ -39,6 +24,7 @@ services:
     restart: unless-stopped
 
   grafana:
+    container_name: grafana-${COMPOSE_PROJECT_NAME:-default}
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - INFLUXDB_TOKEN=${INFLUXDB_ADMIN_TOKEN}

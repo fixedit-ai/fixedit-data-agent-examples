@@ -12,7 +12,6 @@ x-common-vars: &common-vars
 services:
   influxdb:
     image: influxdb:2
-    container_name: influxdb
     ports:
       - "${INFLUXDB_PORT:-8086}:8086"
     environment:
@@ -27,7 +26,6 @@ services:
 
   grafana:
     image: grafana/grafana
-    container_name: grafana
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     # To avoid permission issues to the mounted dir we run as root...

@@ -5,7 +5,7 @@ import io
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple, Iterator
+from typing import Iterator, List, Optional, Tuple
 
 import boto3
 import click
@@ -21,6 +21,79 @@ class TimelapseViewer:
         self.bucket_name = bucket_name
         self.s3_client = boto3.client("s3", region_name=aws_region)
 
+    def _paginated_s3_request(self, **request_params) -> Iterator[dict]:
+        """
+        Generator that yields S3 API responses across all pages.
+
+        S3 list_objects_v2 has a default limit of 1000 objects per response.
+        When a bucket contains more than 1000 objects, the response includes
+        IsTruncated=True and NextContinuationToken for the next page.
+        This generator handles pagination automatically to ensure all data
+        is retrieved, not just the first 1000.
+
+        Args:
+            **request_params: Parameters to pass to list_objects_v2
+
+        Yields:
+            S3 API response dictionaries from all pages
+        """
+        continuation_token = None
+
+        while True:
+            # Add continuation token if we have one
+            if continuation_token:
+                request_params["ContinuationToken"] = continuation_token
+
+            # Make the S3 API call
+            response = self.s3_client.list_objects_v2(**request_params)
+
+            # Yield the response from this page
+            yield response
+
+            # Check if there are more pages
+            if not response.get("IsTruncated", False):
+                break
+
+            # Get continuation token for next page
+            continuation_token = response.get("NextContinuationToken")
+            if not continuation_token:
+                break
+
+    def _paginated_s3_list(self, **request_params) -> Iterator[dict]:
+        """
+        Generator that yields S3 objects across all pages.
+
+        Uses the shared pagination logic to iterate through all objects.
+
+        Args:
+            **request_params: Parameters to pass to list_objects_v2
+
+        Yields:
+            S3 object dictionaries from all pages
+        """
+        for response in self._paginated_s3_request(**request_params):
+            if "Contents" in response:
+                for obj in response["Contents"]:
+                    yield obj
+
+    def _paginated_s3_common_prefixes(self, **request_params) -> Iterator[str]:
+        """
+        Generator that yields S3 common prefixes across all pages.
+
+        Uses the shared pagination logic to iterate through all common prefixes.
+        When using Delimiter="/", S3 returns CommonPrefixes instead of Contents.
+
+        Args:
+            **request_params: Parameters to pass to list_objects_v2
+
+        Yields:
+            Common prefix strings from all pages
+        """
+        for response in self._paginated_s3_request(**request_params):
+            if "CommonPrefixes" in response:
+                for prefix in response["CommonPrefixes"]:
+                    yield prefix["Prefix"]
+
     def list_timelapse_files(
         self, device_serial: str, date: Optional[str] = None
     ) -> List[str]:
@@ -30,16 +103,10 @@ class TimelapseViewer:
             prefix += f"{date}/"
 
         try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket_name, Prefix=prefix
-            )
-
-            if "Contents" not in response:
-                return []
-
-            # Filter for timelapse files and sort by timestamp
             timelapse_files = []
-            for obj in response["Contents"]:
+
+            # Use pagination helper to get all objects
+            for obj in self._paginated_s3_list(Bucket=self.bucket_name, Prefix=prefix):
                 key = obj["Key"]
                 if "timelapse-" in key and key.endswith(".json"):
                     timelapse_files.append(key)
@@ -61,20 +128,55 @@ class TimelapseViewer:
             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
             json_data = json.loads(response["Body"].read().decode("utf-8"))
 
+            # Validate required JSON structure
+            if "fields" not in json_data:
+                click.echo(
+                    f"Error: Missing 'fields' key in JSON data from {s3_key}", err=True
+                )
+                return None, None
+
+            fields = json_data["fields"]
+            if "image_base64" not in fields:
+                click.echo(
+                    f"Error: Missing 'image_base64' key in fields from {s3_key}",
+                    err=True,
+                )
+                return None, None
+
             # Extract base64 image data
-            image_base64 = json_data["fields"]["image_base64"]
-            image_data = base64.b64decode(image_base64)
+            image_base64 = fields["image_base64"]
+
+            # Validate that image_base64 is not empty
+            if not image_base64:
+                click.echo(f"Error: Empty image_base64 data in {s3_key}", err=True)
+                return None, None
+
+            try:
+                image_data = base64.b64decode(image_base64)
+            except Exception as e:
+                click.echo(f"Error: Invalid base64 data in {s3_key}: {e}", err=True)
+                return None, None
 
             # Convert to PIL Image
-            image = Image.open(io.BytesIO(image_data))
+            try:
+                image = Image.open(io.BytesIO(image_data))
+            except Exception as e:
+                click.echo(
+                    f"Error: Failed to decode image data from {s3_key}: {e}", err=True
+                )
+                return None, None
 
             # Extract timestamp from filename
             # Format: DEVICE_SERIAL/YYYY-MM-DD/timelapse-HH-MM-SS.json
-            filename = s3_key.split("/")[-1]
-            time_str = filename.replace("timelapse-", "").replace(".json", "")
-            date_str = s3_key.split("/")[-2]
-            timestamp_str = f"{date_str} {time_str.replace('-', ':')}"
-            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+            try:
+                filename = s3_key.split("/")[-1]
+                time_str = filename.replace("timelapse-", "").replace(".json", "")
+                date_str = s3_key.split("/")[-2]
+                timestamp_str = f"{date_str} {time_str.replace('-', ':')}"
+                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+            except (IndexError, ValueError) as e:
+                click.echo(f"Error: Invalid filename format in {s3_key}: {e}", err=True)
+                return None, None
 
             return image, timestamp
 
@@ -246,15 +348,14 @@ class TimelapseViewer:
     def list_devices(self) -> List[str]:
         """List all devices (device serials) in the bucket."""
         try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket_name, Delimiter="/"
-            )
-
             devices = []
-            if "CommonPrefixes" in response:
-                for prefix in response["CommonPrefixes"]:
-                    device = prefix["Prefix"].rstrip("/")
-                    devices.append(device)
+
+            # Use pagination helper to get all common prefixes
+            for prefix in self._paginated_s3_common_prefixes(
+                Bucket=self.bucket_name, Delimiter="/"
+            ):
+                device = prefix.rstrip("/")
+                devices.append(device)
 
             return devices
 
@@ -267,16 +368,14 @@ class TimelapseViewer:
         prefix = f"{device_serial}/"
 
         try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket_name, Prefix=prefix, Delimiter="/"
-            )
-
             dates = []
-            if "CommonPrefixes" in response:
-                for prefix_obj in response["CommonPrefixes"]:
-                    date_path = prefix_obj["Prefix"]
-                    date = date_path.split("/")[-2]  # Extract date from path
-                    dates.append(date)
+
+            # Use pagination helper to get all common prefixes
+            for prefix_path in self._paginated_s3_common_prefixes(
+                Bucket=self.bucket_name, Prefix=prefix, Delimiter="/"
+            ):
+                date = prefix_path.split("/")[-2]  # Extract date from path
+                dates.append(date)
 
             return sorted(dates)
 

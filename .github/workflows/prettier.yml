@@ -14,7 +14,7 @@ jobs:
     env:
       # List of files patterns that should be formatted by prettier. This should normally include:
       # workflow files (yml) and any other json/yml/markdown files, including hidden config files for tools.
-      PRETTIER_FILES: '"**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" ".*.{yml,yaml}"'
+      PRETTIER_FILES: '"**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" ".*.{yml,yaml,json,md}"'
       # Pin Prettier version to ensure deterministic CI runs and avoid unpredictable failures
       PRETTIER_VERSION: "3.6.0"
 

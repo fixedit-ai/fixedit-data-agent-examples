@@ -5,13 +5,14 @@ import io
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Iterator
 
 import boto3
 import click
 import cv2
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 
 class TimelapseViewer:
@@ -101,46 +102,93 @@ class TimelapseViewer:
 
         return img_cv
 
+    def image_generator(
+        self, files: List[str]
+    ) -> Iterator[Tuple[Image.Image, datetime, int]]:
+        """
+        Generator that yields images one at a time from S3.
+
+        This approach provides several benefits:
+        1. Memory efficiency: Only one image is loaded at a time instead of all images
+        2. Faster startup: No preprocessing delay - images are fetched on-demand
+        3. Scalability: Can handle very large timelapses without memory issues
+        4. Streaming: Enables real-time processing as images are fetched (theoretically)
+
+        Args:
+            files: List of S3 keys for timelapse files
+
+        Yields:
+            Tuple of (image, timestamp, frame_number) for each image
+        """
+        for frame_num, s3_key in enumerate(files, 1):
+            image, timestamp = self.fetch_image_from_s3(s3_key)
+            if image and timestamp:
+                yield image, timestamp, frame_num
+
     def save_images_to_video(
-        self, images: List[Image.Image], output_file: Path, fps: int = 10
+        self, files: List[str], output_file: Path, fps: int = 10
     ) -> None:
-        """Save a list of images as a video file."""
-        if not images:
-            click.echo("No images to process", err=True)
+        """
+        Save images as a video file using a generator to avoid loading all images into memory.
+
+        This method uses the image_generator to stream images one at a time,
+        significantly reducing memory usage for large timelapses.
+        """
+        if not files:
+            click.echo("No files to process", err=True)
             return
 
-        # Get dimensions from first image
-        height, width = images[0].size[
-            ::-1
-        ]  # PIL uses (width, height), OpenCV uses (height, width)
+        # Initialize video writer lazily - will be created with first image
+        out = None
+        height = width = None
 
-        # Create video writer
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(output_file), fourcc, fps, (width, height))
-
-        click.echo(f"Processing {len(images)} images at {fps} FPS")
+        click.echo(f"Processing {len(files)} images at {fps} FPS")
         click.echo(f"Saving video to: {output_file}")
 
-        # Process images for video file
-        for i, img in enumerate(images):
-            img_cv = self._prepare_image_for_display(img, i + 1, len(images))
-            out.write(img_cv)
+        # Process images using generator to avoid memory issues
+        with tqdm(total=len(files), desc="Writing video frames", unit="frame") as pbar:
+            for image, timestamp, frame_num in self.image_generator(files):
+                # Lazy initialization of video writer with first image
+                if out is None:
+                    height, width = image.size[
+                        ::-1
+                    ]  # PIL uses (width, height), OpenCV uses (height, width)
+                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                    out = cv2.VideoWriter(
+                        str(output_file), fourcc, fps, (width, height)
+                    )
+                    click.echo(
+                        f"Video writer initialized with dimensions: {width}x{height}"
+                    )
+
+                img_cv = self._prepare_image_for_display(image, frame_num, len(files))
+                out.write(img_cv)
+                pbar.update(1)
+
+        if out is None:
+            click.echo("No valid images found to create video", err=True)
+            return
 
         # Cleanup
         out.release()
         click.echo(f"Video saved successfully to: {output_file}")
 
-    def show_images_live(self, images: List[Image.Image], fps: int = 10) -> None:
-        """Display a list of images as a live video."""
-        if not images:
-            click.echo("No images to process", err=True)
+    def show_images_live(self, files: List[str], fps: int = 10) -> None:
+        """
+        Display images as a live video using a generator to avoid loading all images into memory.
+
+        This method streams images one at a time, making it suitable for very large timelapses
+        that would otherwise consume excessive memory.
+        """
+        if not files:
+            click.echo("No files to process", err=True)
             return
 
-        click.echo(f"Displaying {len(images)} images at {fps} FPS")
+        click.echo(f"Displaying {len(files)} images at {fps} FPS")
 
-        # Display images
-        for i, img in enumerate(images):
-            img_cv = self._prepare_image_for_display(img, i + 1, len(images))
+        # Display images using generator
+        for image, timestamp, frame_num in self.image_generator(files):
+            img_cv = self._prepare_image_for_display(image, frame_num, len(files))
 
             # Display the image
             cv2.imshow("Timelapse Viewer", img_cv)
@@ -162,7 +210,16 @@ class TimelapseViewer:
         fps: int = 10,
         output_file: Optional[Path] = None,
     ) -> None:
-        """Create and display a timelapse for a specific device and date."""
+        """
+        Create and display a timelapse for a specific device and date.
+
+        This method now uses generators to avoid loading all images into memory at once.
+        This provides significant benefits:
+        - Reduced memory usage: Only one image is loaded at a time
+        - Faster startup: No preprocessing delay - images are fetched on-demand
+        - Better scalability: Can handle very large timelapses
+        - Streaming approach: Enables real-time processing
+        """
         click.echo(f"Fetching timelapse files for device {device_serial}...")
 
         # List all timelapse files
@@ -172,31 +229,19 @@ class TimelapseViewer:
             return
 
         click.echo(f"Found {len(files)} timelapse files")
+        click.echo("Using streaming approach - images will be fetched on-demand")
 
-        # Fetch all images
-        images = []
-        timestamps = []
+        # Get time range info (fetch first and last images)
+        if files:
+            first_image, first_timestamp, _ = next(self.image_generator([files[0]]))
+            last_image, last_timestamp, _ = next(self.image_generator([files[-1]]))
+            click.echo(f"Time range: {first_timestamp} to {last_timestamp}")
 
-        with click.progressbar(files, label="Processing images") as file_bar:
-            for s3_key in file_bar:
-                image, timestamp = self.fetch_image_from_s3(s3_key)
-                if image:
-                    images.append(image)
-                    timestamps.append(timestamp)
-
-        if not images:
-            click.echo("No valid images found", err=True)
-            return
-
-        click.echo(f"Successfully loaded {len(images)} images")
-        if timestamps:
-            click.echo(f"Time range: {timestamps[0]} to {timestamps[-1]}")
-
-        # Create video or display live
+        # Create video or display live using generator
         if output_file:
-            self.save_images_to_video(images, output_file, fps)
+            self.save_images_to_video(files, output_file, fps)
         else:
-            self.show_images_live(images, fps)
+            self.show_images_live(files, fps)
 
     def list_devices(self) -> List[str]:
         """List all devices (device serials) in the bucket."""

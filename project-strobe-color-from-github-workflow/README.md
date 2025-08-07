@@ -1,6 +1,6 @@
 # Strobe Color From GitHub API
 
-This project demonstrates how the [FixedIt Data Agent](https://fixedit.ai/products-data-agent/) can be deployed on an Axis strobe light to fetch GitHub API data and dynamically control the device's color based on workflow execution status. The target GitHub repository should have a configured workflow, and this project will monitor the execution status of the latest workflow run on the main branch.
+This project demonstrates how the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) can be deployed on an Axis strobe light to fetch GitHub API data and dynamically control the device's color based on workflow execution status. The target GitHub repository should have a configured workflow, and this project will monitor the execution status of the latest workflow run on the main branch.
 
 ## How It Works
 
@@ -23,34 +23,6 @@ flowchart TD
     style F fill:#f1f8e9
 ```
 
-## Table of Contents
-
-- [Strobe Color From GitHub API](#strobe-color-from-github-api)
-  - [How It Works](#how-it-works)
-  - [Table of Contents](#table-of-contents)
-  - [Why Choose This Approach?](#why-choose-this-approach)
-  - [Demo Video](#demo-video)
-  - [Setup](#setup)
-    - [Compatibility](#compatibility)
-    - [High-level overview](#high-level-overview)
-    - [Creating the github workflow](#creating-the-github-workflow)
-    - [Creating a GitHub access token](#creating-a-github-access-token)
-    - [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe)
-  - [Test GitHub API](#test-github-api)
-  - [Configuration Files](#configuration-files)
-    - [`config_agent.conf` - Global Settings](#config_agentconf-global-settings)
-    - [`config_input_github.conf` - Data Collection](#config_input_githubconf-data-collection)
-    - [`config_process_github.conf` - Data Transformation ](#config_process_githubconf-data-transformation)
-    - [`config_output_strobe.conf` - Hardware Control](#config_output_strobeconf-hardware-control)
-    - [`config_output_stdout.conf` - Debugging (Optional)](#config_output_stdoutconf-debugging-optional)
-    - [`test_files/config_input_file.conf` - Mock input for testing](#test_filesconfig_input_fileconf-mock-input-for-testing)
-  - [Local Testing](#local-testing)
-    - [Prerequisites for Local Testing](#prerequisites-for-local-testing)
-    - [Run locally with mock input data](#run-locally-with-mock-input-data)
-    - [Test mock data with real strobe control](#test-mock-data-with-real-strobe-control)
-    - [Run locally with real GitHub API data](#run-locally-with-real-github-api-data)
-    - [Test the complete workflow (including strobe control)](#test-the-complete-workflow-including-strobe-control)
-
 ## Why Choose This Approach?
 
 **No C/C++ development required!** Unlike traditional Axis ACAP applications that require complex C/C++ programming, this solution uses simple configuration files and basic shell scripting.
@@ -64,11 +36,45 @@ This example is perfect for **system integrators and IT professionals** who want
 
 **The result:** Custom edge intelligence that would typically require months of ACAP development can now be implemented in hours using familiar IT tools and practices.
 
+## Table of Contents
+
+- [Strobe Color From GitHub API](#strobe-color-from-github-api)
+  - [How It Works](#how-it-works)
+  - [Why Choose This Approach?](#why-choose-this-approach)
+  - [Table of Contents](#table-of-contents)
+  - [Demo Video](#demo-video)
+  - [Compatibility](#compatibility)
+    - [AXIS OS Compatibility](#axis-os-compatibility)
+    - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
+  - [Quick Setup](#quick-setup)
+    - [High-Level Steps](#high-level-steps)
+    - [Creating the GitHub workflow](#creating-the-github-workflow)
+    - [Creating a GitHub access token](#creating-a-github-access-token)
+    - [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe)
+  - [Troubleshooting](#troubleshooting)
+    - [Test GitHub API](#test-github-api)
+  - [Configuration Files](#configuration-files)
+    - [`config_agent.conf` - Global Settings](#config_agentconf-global-settings)
+    - [`config_input_github.conf` - Data Collection](#config_input_githubconf-data-collection)
+    - [`config_process_github.conf` - Data Transformation](#config_process_githubconf-data-transformation)
+    - [`config_output_strobe.conf` - Hardware Control](#config_output_strobeconf-hardware-control)
+    - [`config_output_stdout.conf` - Debugging (Optional)](#config_output_stdoutconf-debugging-optional)
+    - [`test_files/config_input_file.conf` - Mock input for testing](#test_filesconfig_input_fileconf-mock-input-for-testing)
+  - [Local Testing](#local-testing)
+    - [Prerequisites](#prerequisites)
+    - [Host Testing Limitations](#host-testing-limitations)
+    - [Run locally with mock input data](#run-locally-with-mock-input-data)
+    - [Run locally with real GitHub API data](#run-locally-with-real-github-api-data)
+    - [Test mock data with real strobe control](#test-mock-data-with-real-strobe-control)
+    - [Run locally with real GitHub API data](#run-locally-with-real-github-api-data-1)
+    - [Test the complete workflow (including strobe control)](#test-the-complete-workflow-including-strobe-control)
+  - [License](#license)
+
 ## Demo Video
 
 [![Watch the demo](./.images/webinar-on-youtube.png)](https://www.youtube.com/watch?v=nLwVUYieFLE)
 
-In this demo, we show how **anyone with basic IT skills can create intelligent edge devices** using the FixedIt Data Agent—no cloud dependency, no C/C++ programming, no complex development environment setup required.
+In this demo, we show how **anyone with basic IT skills can create intelligent edge devices** using the FixedIT Data Agent—no cloud dependency, no C/C++ programming, no complex development environment setup required.
 
 Using a GitHub Actions job as an example input, we demonstrate how to:
 
@@ -76,27 +82,52 @@ Using a GitHub Actions job as an example input, we demonstrate how to:
 - Transform data using simple Starlark scripts to decide the color of the strobe light
 - Trigger a change of the strobe light color via standard HTTP API calls (VAPIX)
 
-This effectively shows how to transform an Axis strobe to an intelligent device that can poll third party APIs and set its color based on the API return status. This can easily be adapted to use any cloud-based or locally hosted API as an input. Whether you're building smart alerts, visual indicators, or edge-based automation pipelines—this is a glimpse of what FixedIt Data Agent makes possible.
-
-## Setup
+This effectively shows how to transform an Axis strobe to an intelligent device that can poll third party APIs and set its color based on the API return status. This can easily be adapted to use any cloud-based or locally hosted API as an input. Whether you're building smart alerts, visual indicators, or edge-based automation pipelines—this is a glimpse of what FixedIT Data Agent makes possible.
 
 ## Compatibility
 
-This project is making use of the `jq` command in the shell script. This is available in newer AXIS OS versions, but did not exist in the early versions of AXIS OS.
+### AXIS OS Compatibility
 
-## High-level overview
+- **Minimum AXIS OS version**: Should be compatible with AXIS OS 11 and 12+.
+- **Required tools**: Uses `jq` which was not available in older AXIS OS versions. Uses curl and openssl which are installed by default.
+- **Other notes**: Uses HTTP Digest authentication for VAPIX API calls which is supported in all AXIS OS versions.
 
-1. Create a new GitHub repo and configure a workflow to run on push to the main branch.
-1. Create a new token in GitHub for programmatic access (see instructions below).
-1. Create the color profiles in the Axis strobe (see instructions below).
-1. Set the `GITHUB_TOKEN`, `GITHUB_USER`, `GITHUB_REPO`, `GITHUB_BRANCH`, and `GITHUB_WORKFLOW` environment variables in the FixedIT Data Agent configuration under the `Extra env` parameter by concatanating them with `;` (e.g. `GITHUB_TOKEN=my-token;GITHUB_USER=my-github-user;GITHUB_REPO=my-test-repo;GITHUB_BRANCH=main;GITHUB_WORKFLOW=My Workflow Name`)
-1. Upload the configuration files to the FixedIT Data Agent.
-1. Enable the configuration files in the FixedIT Data Agent.
-1. The strobe light should now change color based on the status of the last job on the main branch.
+### FixedIT Data Agent Compatibility
 
-### Creating the github workflow
+- **Minimum Data Agent version**: 1.0
+- **Required features**: Uses the `input.http`, `processors.starlark`, `outputs.exec` plugins and the `HELPER_FILES_DIR` and `TELEGRAF_DEBUG` environment variables set by the FixedIT Data Agent.
 
-How to create a GitHub workflow is outside the scope of this project. However, here is one example:
+## Quick Setup
+
+### High-Level Steps
+
+1. **Create a GitHub repository with a workflow** (see instructions below)
+
+2. **Create a GitHub access token** with `workflow` scope (see instructions below)
+
+3. **Create color profiles in your Axis strobe** named `green`, `yellow`, and `red` (see instructions below)
+
+4. **Configure FixedIT Data Agent variables:**
+
+   Set the custom environment variables in the `Extra env` parameter as a semicolon-separated list:
+
+   ```txt
+   GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW="Your Workflow Name";VAPIX_USERNAME=your_vapix_user;VAPIX_PASSWORD=your_vapix_password;
+   ```
+
+   For the VAPIX username and password, it is recommended to create a new user with operator privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the "System" tab and click on the "Accounts" sub-tab. Then click on "Add account".
+
+5. **Upload the configuration files to the FixedIT Data Agent**
+
+6. **Enable the configuration files**
+
+The strobe light should now change color based on the status of the latest workflow run on your specified branch.
+
+### Creating the GitHub workflow
+
+How to create a GitHub workflow is outside the scope of this project. However, here is one example.
+
+Adding this example file to the `<repo-root>/.github/workflows` folder will create a workflow for the repository. For more information about creating GitHub workflows, see the [GitHub Actions documentation](https://docs.github.com/en/actions).
 
 ```yml
 name: Validate JSON
@@ -172,7 +203,17 @@ It should now look like this:
 
 ![All profiles](./.images/axis-strobe-all-profiles.png)
 
-## Test GitHub API
+## Troubleshooting
+
+Enable the `Debug` option in the FixedIT Data Agent for detailed logs.
+
+**Common issues:**
+
+- **Strobe doesn't change color**: Check that the color profiles (`green`, `yellow`, `red`) are created on the device. Check the FixedIT Data Agent logs page for any errors. Enable `Debug mode` and check if there are any "metrics" being sent to the strobe.
+- **GitHub API errors**: Verify your GitHub token has `workflow` scope and the repository/branch/workflow names are correct. You'll see errors like `received status code 401 (Unauthorized), expected any value out of [200]`. See the [Test GitHub API](#test-github-api) section below for how to test the GitHub API.
+- **VAPIX authentication errors**: Check that `VAPIX_USERNAME` and `VAPIX_PASSWORD` are correct. The strobe control API requires at least operator privileges. You'll see errors like `curl: (22) The requested URL returned error: 401` and `Failed to start profile 'green'`.
+
+### Test GitHub API
 
 You can test the GitHub API by running the following command (slight modifications might be needed for Windows/PowerShell users):
 
@@ -184,239 +225,7 @@ curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
 
 The conclusion can be `success`, `failure` or null (when it is running).
 
-An example response is:
-
-```json
-{
-  "total_count": 3,
-  "workflow_runs": [
-    {
-      "id": 15208529511,
-      "name": "Validate JSON",
-      "node_id": "WFR_kwLOOvI4888AAAADin--Zw",
-      "head_branch": "main",
-      "head_sha": "6067d04a654d3dfaad8e8c9aa2259f7d070fa4d3",
-      "path": ".github/workflows/validate-json.yml",
-      "display_title": "Update data.json",
-      "run_number": 3,
-      "event": "push",
-      "status": "completed",
-      "conclusion": "success",
-      "workflow_id": 163811337,
-      "check_suite_id": 39027529483,
-      "check_suite_node_id": "CS_kwDOOvI4888AAAAJFjjXCw",
-      "url": "https://api.github.com/repos/df2test/my-test-repo/actions/runs/15208529511",
-      "html_url": "https://github.com/df2test/my-test-repo/actions/runs/15208529511",
-      "pull_requests": [],
-      "created_at": "2025-05-23T10:49:24Z",
-      "updated_at": "2025-05-23T10:49:34Z",
-      "actor": {
-        "login": "df2test",
-        "id": 123725069,
-        "node_id": "U_kgDOB1_lDQ",
-        "avatar_url": "https://avatars.githubusercontent.com/u/123725069?v=4",
-        "gravatar_id": "",
-        "url": "https://api.github.com/users/df2test",
-        "html_url": "https://github.com/df2test",
-        "followers_url": "https://api.github.com/users/df2test/followers",
-        "following_url": "https://api.github.com/users/df2test/following{/other_user}",
-        "gists_url": "https://api.github.com/users/df2test/gists{/gist_id}",
-        "starred_url": "https://api.github.com/users/df2test/starred{/owner}{/repo}",
-        "subscriptions_url": "https://api.github.com/users/df2test/subscriptions",
-        "organizations_url": "https://api.github.com/users/df2test/orgs",
-        "repos_url": "https://api.github.com/users/df2test/repos",
-        "events_url": "https://api.github.com/users/df2test/events{/privacy}",
-        "received_events_url": "https://api.github.com/users/df2test/received_events",
-        "type": "User",
-        "user_view_type": "public",
-        "site_admin": false
-      },
-      "run_attempt": 1,
-      "referenced_workflows": [],
-      "run_started_at": "2025-05-23T10:49:24Z",
-      "triggering_actor": {
-        "login": "df2test",
-        "id": 123725069,
-        "node_id": "U_kgDOB1_lDQ",
-        "avatar_url": "https://avatars.githubusercontent.com/u/123725069?v=4",
-        "gravatar_id": "",
-        "url": "https://api.github.com/users/df2test",
-        "html_url": "https://github.com/df2test",
-        "followers_url": "https://api.github.com/users/df2test/followers",
-        "following_url": "https://api.github.com/users/df2test/following{/other_user}",
-        "gists_url": "https://api.github.com/users/df2test/gists{/gist_id}",
-        "starred_url": "https://api.github.com/users/df2test/starred{/owner}{/repo}",
-        "subscriptions_url": "https://api.github.com/users/df2test/subscriptions",
-        "organizations_url": "https://api.github.com/users/df2test/orgs",
-        "repos_url": "https://api.github.com/users/df2test/repos",
-        "events_url": "https://api.github.com/users/df2test/events{/privacy}",
-        "received_events_url": "https://api.github.com/users/df2test/received_events",
-        "type": "User",
-        "user_view_type": "public",
-        "site_admin": false
-      },
-      "jobs_url": "https://api.github.com/repos/df2test/my-test-repo/actions/runs/15208529511/jobs",
-      "logs_url": "https://api.github.com/repos/df2test/my-test-repo/actions/runs/15208529511/logs",
-      "check_suite_url": "https://api.github.com/repos/df2test/my-test-repo/check-suites/39027529483",
-      "artifacts_url": "https://api.github.com/repos/df2test/my-test-repo/actions/runs/15208529511/artifacts",
-      "cancel_url": "https://api.github.com/repos/df2test/my-test-repo/actions/runs/15208529511/cancel",
-      "rerun_url": "https://api.github.com/repos/df2test/my-test-repo/actions/runs/15208529511/rerun",
-      "previous_attempt_url": null,
-      "workflow_url": "https://api.github.com/repos/df2test/my-test-repo/actions/workflows/163811337",
-      "head_commit": {
-        "id": "6067d04a654d3dfaad8e8c9aa2259f7d070fa4d3",
-        "tree_id": "e98a02d39de1fd8ab9c7fed3b0fa213fae6dd950",
-        "message": "Update data.json",
-        "timestamp": "2025-05-23T10:49:22Z",
-        "author": {
-          "name": "df2test",
-          "email": "123725069+df2test@users.noreply.github.com"
-        },
-        "committer": {
-          "name": "GitHub",
-          "email": "noreply@github.com"
-        }
-      },
-      "repository": {
-        "id": 988952819,
-        "node_id": "R_kgDOOvI48w",
-        "name": "my-test-repo",
-        "full_name": "df2test/my-test-repo",
-        "private": true,
-        "owner": {
-          "login": "df2test",
-          "id": 123725069,
-          "node_id": "U_kgDOB1_lDQ",
-          "avatar_url": "https://avatars.githubusercontent.com/u/123725069?v=4",
-          "gravatar_id": "",
-          "url": "https://api.github.com/users/df2test",
-          "html_url": "https://github.com/df2test",
-          "followers_url": "https://api.github.com/users/df2test/followers",
-          "following_url": "https://api.github.com/users/df2test/following{/other_user}",
-          "gists_url": "https://api.github.com/users/df2test/gists{/gist_id}",
-          "starred_url": "https://api.github.com/users/df2test/starred{/owner}{/repo}",
-          "subscriptions_url": "https://api.github.com/users/df2test/subscriptions",
-          "organizations_url": "https://api.github.com/users/df2test/orgs",
-          "repos_url": "https://api.github.com/users/df2test/repos",
-          "events_url": "https://api.github.com/users/df2test/events{/privacy}",
-          "received_events_url": "https://api.github.com/users/df2test/received_events",
-          "type": "User",
-          "user_view_type": "public",
-          "site_admin": false
-        },
-        "html_url": "https://github.com/df2test/my-test-repo",
-        "description": null,
-        "fork": false,
-        "url": "https://api.github.com/repos/df2test/my-test-repo",
-        "forks_url": "https://api.github.com/repos/df2test/my-test-repo/forks",
-        "keys_url": "https://api.github.com/repos/df2test/my-test-repo/keys{/key_id}",
-        "collaborators_url": "https://api.github.com/repos/df2test/my-test-repo/collaborators{/collaborator}",
-        "teams_url": "https://api.github.com/repos/df2test/my-test-repo/teams",
-        "hooks_url": "https://api.github.com/repos/df2test/my-test-repo/hooks",
-        "issue_events_url": "https://api.github.com/repos/df2test/my-test-repo/issues/events{/number}",
-        "events_url": "https://api.github.com/repos/df2test/my-test-repo/events",
-        "assignees_url": "https://api.github.com/repos/df2test/my-test-repo/assignees{/user}",
-        "branches_url": "https://api.github.com/repos/df2test/my-test-repo/branches{/branch}",
-        "tags_url": "https://api.github.com/repos/df2test/my-test-repo/tags",
-        "blobs_url": "https://api.github.com/repos/df2test/my-test-repo/git/blobs{/sha}",
-        "git_tags_url": "https://api.github.com/repos/df2test/my-test-repo/git/tags{/sha}",
-        "git_refs_url": "https://api.github.com/repos/df2test/my-test-repo/git/refs{/sha}",
-        "trees_url": "https://api.github.com/repos/df2test/my-test-repo/git/trees{/sha}",
-        "statuses_url": "https://api.github.com/repos/df2test/my-test-repo/statuses/{sha}",
-        "languages_url": "https://api.github.com/repos/df2test/my-test-repo/languages",
-        "stargazers_url": "https://api.github.com/repos/df2test/my-test-repo/stargazers",
-        "contributors_url": "https://api.github.com/repos/df2test/my-test-repo/contributors",
-        "subscribers_url": "https://api.github.com/repos/df2test/my-test-repo/subscribers",
-        "subscription_url": "https://api.github.com/repos/df2test/my-test-repo/subscription",
-        "commits_url": "https://api.github.com/repos/df2test/my-test-repo/commits{/sha}",
-        "git_commits_url": "https://api.github.com/repos/df2test/my-test-repo/git/commits{/sha}",
-        "comments_url": "https://api.github.com/repos/df2test/my-test-repo/comments{/number}",
-        "issue_comment_url": "https://api.github.com/repos/df2test/my-test-repo/issues/comments{/number}",
-        "contents_url": "https://api.github.com/repos/df2test/my-test-repo/contents/{+path}",
-        "compare_url": "https://api.github.com/repos/df2test/my-test-repo/compare/{base}...{head}",
-        "merges_url": "https://api.github.com/repos/df2test/my-test-repo/merges",
-        "archive_url": "https://api.github.com/repos/df2test/my-test-repo/{archive_format}{/ref}",
-        "downloads_url": "https://api.github.com/repos/df2test/my-test-repo/downloads",
-        "issues_url": "https://api.github.com/repos/df2test/my-test-repo/issues{/number}",
-        "pulls_url": "https://api.github.com/repos/df2test/my-test-repo/pulls{/number}",
-        "milestones_url": "https://api.github.com/repos/df2test/my-test-repo/milestones{/number}",
-        "notifications_url": "https://api.github.com/repos/df2test/my-test-repo/notifications{?since,all,participating}",
-        "labels_url": "https://api.github.com/repos/df2test/my-test-repo/labels{/name}",
-        "releases_url": "https://api.github.com/repos/df2test/my-test-repo/releases{/id}",
-        "deployments_url": "https://api.github.com/repos/df2test/my-test-repo/deployments"
-      },
-      "head_repository": {
-        "id": 988952819,
-        "node_id": "R_kgDOOvI48w",
-        "name": "my-test-repo",
-        "full_name": "df2test/my-test-repo",
-        "private": true,
-        "owner": {
-          "login": "df2test",
-          "id": 123725069,
-          "node_id": "U_kgDOB1_lDQ",
-          "avatar_url": "https://avatars.githubusercontent.com/u/123725069?v=4",
-          "gravatar_id": "",
-          "url": "https://api.github.com/users/df2test",
-          "html_url": "https://github.com/df2test",
-          "followers_url": "https://api.github.com/users/df2test/followers",
-          "following_url": "https://api.github.com/users/df2test/following{/other_user}",
-          "gists_url": "https://api.github.com/users/df2test/gists{/gist_id}",
-          "starred_url": "https://api.github.com/users/df2test/starred{/owner}{/repo}",
-          "subscriptions_url": "https://api.github.com/users/df2test/subscriptions",
-          "organizations_url": "https://api.github.com/users/df2test/orgs",
-          "repos_url": "https://api.github.com/users/df2test/repos",
-          "events_url": "https://api.github.com/users/df2test/events{/privacy}",
-          "received_events_url": "https://api.github.com/users/df2test/received_events",
-          "type": "User",
-          "user_view_type": "public",
-          "site_admin": false
-        },
-        "html_url": "https://github.com/df2test/my-test-repo",
-        "description": null,
-        "fork": false,
-        "url": "https://api.github.com/repos/df2test/my-test-repo",
-        "forks_url": "https://api.github.com/repos/df2test/my-test-repo/forks",
-        "keys_url": "https://api.github.com/repos/df2test/my-test-repo/keys{/key_id}",
-        "collaborators_url": "https://api.github.com/repos/df2test/my-test-repo/collaborators{/collaborator}",
-        "teams_url": "https://api.github.com/repos/df2test/my-test-repo/teams",
-        "hooks_url": "https://api.github.com/repos/df2test/my-test-repo/hooks",
-        "issue_events_url": "https://api.github.com/repos/df2test/my-test-repo/issues/events{/number}",
-        "events_url": "https://api.github.com/repos/df2test/my-test-repo/events",
-        "assignees_url": "https://api.github.com/repos/df2test/my-test-repo/assignees{/user}",
-        "branches_url": "https://api.github.com/repos/df2test/my-test-repo/branches{/branch}",
-        "tags_url": "https://api.github.com/repos/df2test/my-test-repo/tags",
-        "blobs_url": "https://api.github.com/repos/df2test/my-test-repo/git/blobs{/sha}",
-        "git_tags_url": "https://api.github.com/repos/df2test/my-test-repo/git/tags{/sha}",
-        "git_refs_url": "https://api.github.com/repos/df2test/my-test-repo/git/refs{/sha}",
-        "trees_url": "https://api.github.com/repos/df2test/my-test-repo/git/trees{/sha}",
-        "statuses_url": "https://api.github.com/repos/df2test/my-test-repo/statuses/{sha}",
-        "languages_url": "https://api.github.com/repos/df2test/my-test-repo/languages",
-        "stargazers_url": "https://api.github.com/repos/df2test/my-test-repo/stargazers",
-        "contributors_url": "https://api.github.com/repos/df2test/my-test-repo/contributors",
-        "subscribers_url": "https://api.github.com/repos/df2test/my-test-repo/subscribers",
-        "subscription_url": "https://api.github.com/repos/df2test/my-test-repo/subscription",
-        "commits_url": "https://api.github.com/repos/df2test/my-test-repo/commits{/sha}",
-        "git_commits_url": "https://api.github.com/repos/df2test/my-test-repo/git/commits{/sha}",
-        "comments_url": "https://api.github.com/repos/df2test/my-test-repo/comments{/number}",
-        "issue_comment_url": "https://api.github.com/repos/df2test/my-test-repo/issues/comments{/number}",
-        "contents_url": "https://api.github.com/repos/df2test/my-test-repo/contents/{+path}",
-        "compare_url": "https://api.github.com/repos/df2test/my-test-repo/compare/{base}...{head}",
-        "merges_url": "https://api.github.com/repos/df2test/my-test-repo/merges",
-        "archive_url": "https://api.github.com/repos/df2test/my-test-repo/{archive_format}{/ref}",
-        "downloads_url": "https://api.github.com/repos/df2test/my-test-repo/downloads",
-        "issues_url": "https://api.github.com/repos/df2test/my-test-repo/issues{/number}",
-        "pulls_url": "https://api.github.com/repos/df2test/my-test-repo/pulls{/number}",
-        "milestones_url": "https://api.github.com/repos/df2test/my-test-repo/milestones{/number}",
-        "notifications_url": "https://api.github.com/repos/df2test/my-test-repo/notifications{?since,all,participating}",
-        "labels_url": "https://api.github.com/repos/df2test/my-test-repo/labels{/name}",
-        "releases_url": "https://api.github.com/repos/df2test/my-test-repo/releases{/id}",
-        "deployments_url": "https://api.github.com/repos/df2test/my-test-repo/deployments"
-      }
-    }
-  ]
-}
-```
+An example response can be seen in the [sample.json](./sample.json) file.
 
 ## Configuration Files
 
@@ -450,21 +259,42 @@ This file can be used together with the `sample.json` file to test the pipeline 
 
 You can test the workflow on your development machine before deploying to your Axis device. This requires [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) to be installed locally.
 
-### Prerequisites for Local Testing
+### Prerequisites
 
 - Install Telegraf on your development machine
 - Have `jq` installed for JSON processing (used by `trigger_strobe.sh`)
 - Clone this repository and navigate to the project directory
 
+### Host Testing Limitations
+
+**What works on host:**
+
+- GitHub API data fetching and parsing
+- Data transformation logic
+- Configuration validation
+
+**What requires actual Axis device:**
+
+- Strobe light control (VAPIX API calls)
+
+The strobe control functionality requires actual Axis device hardware and VAPIX API access, which cannot be simulated on a host machine.
+
 ### Run locally with mock input data
 
-Test the API parsing pipeline using sample GitHub API data without making actual API calls:
+Test the API parsing pipeline using sample GitHub API data without making actual API calls.
+
+First, set up the environment variables:
 
 ```bash
 # Set up environment
 export HELPER_FILES_DIR=$(pwd)
+export TELEGRAF_DEBUG=true
+```
 
-# Run with mock input data and output to console
+Then run the following command:
+
+```bash
+# Test with mock data (no GitHub API calls needed)
 telegraf --config config_agent.conf \
          --config test_files/config_input_file.conf \
          --config config_process_github.conf \
@@ -485,6 +315,36 @@ telegraf --config config_agent.conf \
 
 This shows the pipeline successfully converted the sample GitHub "success" status into "green" color output.
 
+### Run locally with real GitHub API data
+
+Test with live GitHub API data (requires valid credentials):
+
+```bash
+# Test with real GitHub API (requires valid credentials)
+export GITHUB_TOKEN=your_github_token
+export GITHUB_USER=your_github_username
+export GITHUB_REPO=your_repo_name
+export GITHUB_BRANCH=main
+export GITHUB_WORKFLOW="Your Workflow Name"
+
+export TELEGRAF_DEBUG=true
+export HELPER_FILES_DIR=$(pwd)
+
+telegraf --config config_agent.conf \
+         --config config_input_github.conf \
+         --config config_process_github.conf \
+         --config config_output_stdout.conf \
+         --once
+```
+
+**Expected output:** With valid credentials, you'll see the JSON result like the mock test above. With invalid/expired credentials, you'll see:
+
+```
+Error in plugin: received status code 401 (Unauthorized)
+```
+
+If you get a 401 error, check that your GitHub token is valid and has the required permissions.
+
 ### Test mock data with real strobe control
 
 Test the data transformation and strobe control using sample data (no GitHub API calls needed):
@@ -497,6 +357,7 @@ export VAPIX_IP=your.axis.device.ip
 
 # Set helper files directory
 export HELPER_FILES_DIR=$(pwd)
+export TELEGRAF_DEBUG=true
 
 # Run with mock data but real strobe control
 telegraf --config config_agent.conf \
@@ -509,13 +370,22 @@ telegraf --config config_agent.conf \
 
 This will process the sample GitHub API response and **actually control your strobe light** based on the sample data (which shows a "success" status, so it should turn the strobe green).
 
+**Expected output:** With valid VAPIX credentials, you'll see the strobe light change to green. With invalid credentials, you'll see:
+
+```
+Error: curl: (22) The requested URL returned error: 401
+Error: Failed to start profile 'green'
+```
+
+If you get a 401 error, check that your VAPIX username and password are correct and that the user has at least operator privileges.
+
 ### Run locally with real GitHub API data
 
 Test with live GitHub API data (requires valid credentials):
 
 ```bash
 # Set up your GitHub credentials
-export GITHUB_TOKEN=ghp_YOUR_GITHUB_TOKEN_HERE
+export GITHUB_TOKEN=your_github_token
 export GITHUB_USER=your-github-username
 export GITHUB_REPO=your-repo-name
 export GITHUB_BRANCH=main
@@ -523,6 +393,7 @@ export GITHUB_WORKFLOW="Your Workflow Name"
 
 # Set helper files directory
 export HELPER_FILES_DIR=$(pwd)
+export TELEGRAF_DEBUG=true
 
 # Run with real GitHub API (will make actual API calls)
 telegraf --config config_agent.conf \
@@ -544,7 +415,7 @@ If you get a 401 error, check that your GitHub token is valid and has the requir
 
 ```bash
 # Set up your GitHub credentials
-export GITHUB_TOKEN=ghp_YOUR_GITHUB_TOKEN_HERE
+export GITHUB_TOKEN=your_github_token
 export GITHUB_USER=your-github-username
 export GITHUB_REPO=your-repo-name
 export GITHUB_BRANCH=main
@@ -557,6 +428,7 @@ export VAPIX_IP=your.axis.device.ip
 
 # Set helper files directory
 export HELPER_FILES_DIR=$(pwd)
+export TELEGRAF_DEBUG=true
 
 # Full pipeline including strobe control
 telegraf --config config_agent.conf \
@@ -568,3 +440,7 @@ telegraf --config config_agent.conf \
 ```
 
 This will fetch real GitHub data AND control your strobe light based on the workflow status.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""Timelapse viewer for FixedIT Data Agent S3 timelapse files.
+
+This module provides functionality to view and analyze timelapse videos
+created by the FixedIT Data Agent and stored in AWS S3.
+"""
 
 import base64
 import io
@@ -17,13 +22,22 @@ from tqdm import tqdm
 
 
 def handle_s3_client_error(e: ClientError, bucket: str) -> None:
-    """Handle S3 ClientError and provide user-friendly error messages."""
+    """Handle S3 ClientError and provide user-friendly error messages.
+
+    Args:
+        e: The ClientError exception from boto3
+        bucket: The S3 bucket name for error context
+
+    Raises:
+        click.Abort: Always raised after displaying error message
+    """
     error_code = e.response["Error"]["Code"]
     error_message = e.response["Error"]["Message"]
 
     if error_code == "AccessDenied":
         click.echo(
-            f"Error: Access denied to S3 bucket '{bucket}'. Please check your AWS credentials and permissions.",
+            f"Error: Access denied to S3 bucket '{bucket}'. "
+            f"Please check your AWS credentials and permissions.",
             err=True,
         )
         click.echo(f"Details: {error_message}", err=True)
@@ -34,14 +48,24 @@ def handle_s3_client_error(e: ClientError, bucket: str) -> None:
 
 
 class TimelapseViewer:
+    """A viewer for timelapse videos stored in AWS S3.
+
+    This class provides functionality to fetch, decode, and display timelapse
+    images stored as JSON files in S3 buckets.
+    """
+
     def __init__(self, bucket_name: str, aws_region: Optional[str] = None):
-        """Initialize the timelapse viewer with S3 connection."""
+        """Initialize the timelapse viewer with S3 connection.
+
+        Args:
+            bucket_name: The S3 bucket name containing timelapse files
+            aws_region: The AWS region for the S3 bucket (optional)
+        """
         self.bucket_name = bucket_name
         self.s3_client = boto3.client("s3", region_name=aws_region)
 
     def _paginated_s3_request(self, **request_params) -> Iterator[dict]:
-        """
-        Generator that yields S3 API responses across all pages.
+        """Generate S3 API responses across all pages.
 
         S3 list_objects_v2 has a default limit of 1000 objects per response.
         When a bucket contains more than 1000 objects, the response includes
@@ -78,8 +102,7 @@ class TimelapseViewer:
                 break
 
     def _paginated_s3_list(self, **request_params) -> Iterator[dict]:
-        """
-        Generator that yields S3 objects across all pages.
+        """Generate S3 objects across all pages.
 
         Uses the shared pagination logic to iterate through all objects.
 
@@ -91,12 +114,10 @@ class TimelapseViewer:
         """
         for response in self._paginated_s3_request(**request_params):
             if "Contents" in response:
-                for obj in response["Contents"]:
-                    yield obj
+                yield from response["Contents"]
 
     def _paginated_s3_common_prefixes(self, **request_params) -> Iterator[str]:
-        """
-        Generator that yields S3 common prefixes across all pages.
+        """Generate S3 common prefixes across all pages.
 
         Uses the shared pagination logic to iterate through all common prefixes.
         When using Delimiter="/", S3 returns CommonPrefixes instead of Contents.
@@ -109,13 +130,20 @@ class TimelapseViewer:
         """
         for response in self._paginated_s3_request(**request_params):
             if "CommonPrefixes" in response:
-                for prefix in response["CommonPrefixes"]:
-                    yield prefix["Prefix"]
+                yield from (prefix["Prefix"] for prefix in response["CommonPrefixes"])
 
     def list_timelapse_files(
         self, device_serial: str, date: Optional[str] = None
     ) -> List[str]:
-        """List all timelapse files for a device, optionally filtered by date."""
+        """List all timelapse files for a device, optionally filtered by date.
+
+        Args:
+            device_serial: The device serial number to search for
+            date: Optional date filter in YYYY-MM-DD format
+
+        Returns:
+            List of S3 keys for timelapse JSON files
+        """
         prefix = f"{device_serial}/"
         if date:
             prefix += f"{date}/"
@@ -133,7 +161,17 @@ class TimelapseViewer:
         return timelapse_files
 
     def fetch_image_from_s3(self, s3_key: str) -> Tuple[Image.Image, datetime]:
-        """Fetch a single image from S3 and decode it."""
+        """Fetch a single image from S3 and decode it.
+
+        Args:
+            s3_key: The S3 key for the JSON file containing the image
+
+        Returns:
+            Tuple of (PIL Image, UTC datetime timestamp)
+
+        Raises:
+            ValueError: If JSON structure is invalid or image data is corrupted
+        """
         # Download the JSON file
         response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
         json_data = json.loads(response["Body"].read().decode("utf-8"))
@@ -157,19 +195,20 @@ class TimelapseViewer:
         try:
             image_data = base64.b64decode(image_base64)
         except Exception as e:
-            raise ValueError(f"Invalid base64 data in {s3_key}: {e}")
+            raise ValueError(f"Invalid base64 data in {s3_key}: {e}") from e
 
         # Convert to PIL Image
         try:
             image = Image.open(io.BytesIO(image_data))
         except Exception as e:
-            raise ValueError(f"Failed to decode image data from {s3_key}: {e}")
+            raise ValueError(f"Failed to decode image data from {s3_key}: {e}") from e
 
         # Extract UTC timestamp from JSON timestamp field (nanoseconds)
         # The timestamp is at the root level, not inside fields
         if "timestamp" not in json_data:
             raise ValueError(
-                f"Missing 'timestamp' field in JSON data from {s3_key}. JSON structure: {json_data.keys()}"
+                f"Missing 'timestamp' field in JSON data from {s3_key}. "
+                f"JSON structure: {json_data.keys()}"
             )
 
         # Convert timestamp to datetime
@@ -178,7 +217,8 @@ class TimelapseViewer:
         # Validate that timestamp is a number
         if not isinstance(timestamp_s, (int, float)):
             raise ValueError(
-                f"Invalid timestamp type in {s3_key}: expected number, got {type(timestamp_s)}"
+                f"Invalid timestamp type in {s3_key}: expected number, "
+                f"got {type(timestamp_s)}"
             )
 
         timestamp = datetime.fromtimestamp(timestamp_s, tz=timezone.utc)
@@ -186,9 +226,17 @@ class TimelapseViewer:
         return image, timestamp
 
     def _prepare_image_for_display(
-        self, img: Image.Image, timestamp: datetime, frame_num: int, total_frames: int
+        self, img: Image.Image, timestamp: datetime
     ) -> np.ndarray:
-        """Convert PIL image to OpenCV format and add UTC timestamp information."""
+        """Convert PIL image to OpenCV format and add UTC timestamp information.
+
+        Args:
+            img: PIL Image to convert
+            timestamp: UTC timestamp to display
+
+        Returns:
+            OpenCV image array with timestamp overlay
+        """
         # Convert PIL image to OpenCV format
         img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
@@ -211,8 +259,7 @@ class TimelapseViewer:
     def image_generator(
         self, files: List[str]
     ) -> Iterator[Tuple[Image.Image, datetime, int]]:
-        """
-        Generator that yields images one at a time from S3.
+        """Generate images one at a time from S3.
 
         This approach provides several benefits:
         1. Memory efficiency: Only one image is loaded at a time instead of all images
@@ -233,11 +280,15 @@ class TimelapseViewer:
     def save_images_to_video(
         self, files: List[str], output_file: Path, fps: int = 10
     ) -> None:
-        """
-        Save images as a video file using a generator to avoid loading all images into memory.
+        """Save images as a video file using a generator to avoid loading all images into memory.
 
         This method uses the image_generator to stream images one at a time,
         significantly reducing memory usage for large timelapses.
+
+        Args:
+            files: List of S3 keys for timelapse files
+            output_file: Path where the MP4 video will be saved
+            fps: Frames per second for the output video
         """
         if not files:
             click.echo("No files to process", err=True)
@@ -252,13 +303,15 @@ class TimelapseViewer:
 
         # Process images using generator to avoid memory issues
         with tqdm(total=len(files), desc="Writing video frames", unit="frame") as pbar:
-            for image, timestamp, frame_num in self.image_generator(files):
+            for image, timestamp, _ in self.image_generator(files):
                 # Lazy initialization of video writer with first image
                 if out is None:
                     height, width = image.size[
                         ::-1
                     ]  # PIL uses (width, height), OpenCV uses (height, width)
-                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                    fourcc = cv2.VideoWriter_fourcc(  # type: ignore[attr-defined]
+                        *"mp4v"
+                    )
                     out = cv2.VideoWriter(
                         str(output_file), fourcc, fps, (width, height)
                     )
@@ -266,9 +319,7 @@ class TimelapseViewer:
                         f"Video writer initialized with dimensions: {width}x{height}"
                     )
 
-                img_cv = self._prepare_image_for_display(
-                    image, timestamp, frame_num, len(files)
-                )
+                img_cv = self._prepare_image_for_display(image, timestamp)
                 out.write(img_cv)
                 pbar.update(1)
 
@@ -281,11 +332,14 @@ class TimelapseViewer:
         click.echo(f"Video saved successfully to: {output_file}")
 
     def show_images_live(self, files: List[str], fps: int = 10) -> None:
-        """
-        Display images as a live video using a generator to avoid loading all images into memory.
+        """Display images as a live video using a generator to avoid loading all images into memory.
 
         This method streams images one at a time, making it suitable for very large timelapses
         that would otherwise consume excessive memory.
+
+        Args:
+            files: List of S3 keys for timelapse files
+            fps: Frames per second for playback
         """
         if not files:
             click.echo("No files to process", err=True)
@@ -294,10 +348,8 @@ class TimelapseViewer:
         click.echo(f"Displaying {len(files)} images at {fps} FPS")
 
         # Display images using generator
-        for image, timestamp, frame_num in self.image_generator(files):
-            img_cv = self._prepare_image_for_display(
-                image, timestamp, frame_num, len(files)
-            )
+        for image, timestamp, _ in self.image_generator(files):
+            img_cv = self._prepare_image_for_display(image, timestamp)
 
             # Display the image
             cv2.imshow("Timelapse Viewer", img_cv)
@@ -306,7 +358,7 @@ class TimelapseViewer:
             key = cv2.waitKey(int(1000 / fps)) & 0xFF
             if key == ord("q"):
                 break
-            elif key == ord(" "):  # Spacebar to pause
+            if key == ord(" "):  # Spacebar to pause
                 cv2.waitKey(0)
 
         # Cleanup
@@ -319,15 +371,13 @@ class TimelapseViewer:
         fps: int = 10,
         output_file: Optional[Path] = None,
     ) -> None:
-        """
-        Create and display a timelapse for a specific device and date.
+        """Create and display a timelapse for a specific device and date.
 
-        This method now uses generators to avoid loading all images into memory at once.
-        This provides significant benefits:
-        - Reduced memory usage: Only one image is loaded at a time
-        - Faster startup: No preprocessing delay - images are fetched on-demand
-        - Better scalability: Can handle very large timelapses
-        - Streaming approach: Enables real-time processing
+        Args:
+            device_serial: The device serial number to create timelapse for
+            date: Optional date filter in YYYY-MM-DD format
+            fps: Frames per second for playback/saving
+            output_file: Optional path to save MP4 video file
         """
         click.echo(f"Fetching timelapse files for device {device_serial}...")
 
@@ -340,12 +390,6 @@ class TimelapseViewer:
         click.echo(f"Found {len(files)} timelapse files")
         click.echo("Using streaming approach - images will be fetched on-demand")
 
-        # Get time range info (fetch first and last images)
-        if files:
-            first_image, first_timestamp, _ = next(self.image_generator([files[0]]))
-            last_image, last_timestamp, _ = next(self.image_generator([files[-1]]))
-            click.echo(f"Time range: {first_timestamp} to {last_timestamp}")
-
         # Create video or display live using generator
         if output_file:
             self.save_images_to_video(files, output_file, fps)
@@ -353,7 +397,11 @@ class TimelapseViewer:
             self.show_images_live(files, fps)
 
     def list_devices(self) -> List[str]:
-        """List all devices (device serials) in the bucket."""
+        """List all devices (device serials) in the bucket.
+
+        Returns:
+            List of device serial numbers found in the bucket
+        """
         devices = []
 
         # Use pagination helper to get all common prefixes
@@ -366,7 +414,14 @@ class TimelapseViewer:
         return devices
 
     def list_dates(self, device_serial: str) -> List[str]:
-        """List all dates available for a device."""
+        """List all dates available for a device.
+
+        Args:
+            device_serial: The device serial number to list dates for
+
+        Returns:
+            List of date strings in YYYY-MM-DD format
+        """
         prefix = f"{device_serial}/"
 
         dates = []
@@ -383,7 +438,7 @@ class TimelapseViewer:
 
 @click.group()
 def cli():
-    """Timelapse Viewer for FixedIT Data Agent S3 Timelapse
+    """Timelapse Viewer for FixedIT Data Agent S3 Timelapse.
 
     This script fetches timelapse images from AWS S3 and displays them as a video.
     It can also save the timelapse as an MP4 file.
@@ -399,10 +454,12 @@ def cli():
         python timelapse_viewer.py view --bucket my-timelapse-bucket --device CAMERA-001 --fps 10
 
         # View timelapse for a specific date
-        python timelapse_viewer.py view --bucket my-timelapse-bucket --device CAMERA-001 --date 2025-08-06 --fps 15
+        python timelapse_viewer.py view --bucket my-timelapse-bucket \
+            --device CAMERA-001 --date 2025-08-06 --fps 15
 
         # Save timelapse as MP4 file
-        python timelapse_viewer.py view --bucket my-timelapse-bucket --device CAMERA-001 --date 2025-08-06 --output timelapse.mp4
+        python timelapse_viewer.py view --bucket my-timelapse-bucket \
+            --device CAMERA-001 --date 2025-08-06 --output timelapse.mp4
     """
 
 
@@ -412,7 +469,12 @@ def cli():
 )
 @click.option("--region", help="AWS region (optional, uses default if not specified)")
 def list_devices(bucket: str, region: Optional[str]):
-    """List all devices (cameras) in the S3 bucket."""
+    """List all devices (cameras) in the S3 bucket.
+
+    Args:
+        bucket: S3 bucket name containing timelapse files
+        region: AWS region (optional, uses default if not specified)
+    """
     try:
         viewer = TimelapseViewer(bucket, region)
         devices = viewer.list_devices()
@@ -434,7 +496,13 @@ def list_devices(bucket: str, region: Optional[str]):
 @click.option("--device", required=True, help="Device serial number")
 @click.option("--region", help="AWS region (optional, uses default if not specified)")
 def list_dates(bucket: str, device: str, region: Optional[str]):
-    """List all dates available for a specific device."""
+    """List all dates available for a specific device.
+
+    Args:
+        bucket: S3 bucket name containing timelapse files
+        device: Device serial number
+        region: AWS region (optional, uses default if not specified)
+    """
     try:
         viewer = TimelapseViewer(bucket, region)
         dates = viewer.list_dates(device)
@@ -461,7 +529,7 @@ def list_dates(bucket: str, device: str, region: Optional[str]):
 @click.option("--fps", default=10, help="Frames per second for playback (default: 10)")
 @click.option("--output", type=click.Path(), help="Output MP4 file path (optional)")
 @click.option("--region", help="AWS region (optional, uses default if not specified)")
-def view(
+def view(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     bucket: str,
     device: str,
     date: Optional[str],
@@ -476,6 +544,14 @@ def view(
     - Press 'space' to pause/unpause
 
     If --output is specified, the video will also be saved as an MP4 file.
+
+    Args:
+        bucket: S3 bucket name containing timelapse files
+        device: Device serial number
+        date: Date in YYYY-MM-DD format (optional, shows all dates if not specified)
+        fps: Frames per second for playback (default: 10)
+        output: Output MP4 file path (optional)
+        region: AWS region (optional, uses default if not specified)
     """
     try:
         viewer = TimelapseViewer(bucket, region)

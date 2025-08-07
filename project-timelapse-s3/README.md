@@ -68,6 +68,7 @@ This approach makes timelapse functionality accessible to system integrators and
   - [Host Testing Limitations](#host-testing-limitations)
   - [Test Commands](#test-commands)
 - [Known issues](#known-issues)
+- [License](#license)
 
 ## Compatibility
 
@@ -190,7 +191,7 @@ Then run the timelapse viewer:
 ```bash
 cd test_scripts
 pip install -r requirements.txt
-python timelapse_viewer.py view --bucket your-bucket --device <DEVICE_SERIAL> --fps 10
+python timelapse_viewer.py view --bucket <your_s3_bucket_name> --device <DEVICE_SERIAL> --fps 10
 ```
 
 For more information, see the [test_scripts/README.md](test_scripts/README.md) file.
@@ -346,3 +347,7 @@ telegraf --config timelapse-to-s3.conf
 Although the `remotefile` output will buffer frames in memory for later upload if no internet connection is available, it seems like it is blocking the initialization of the workflow until it can connect to the S3 bucket the first time. This means that if the device boots up with no internet connection, the workflow will not start capturing frames until it has managed to connect to the S3 bucket at least once. This can be seen in the logs below:
 
 ![No internet connection will block the start of the e workflow](./.images/logs-offline-boot.png)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

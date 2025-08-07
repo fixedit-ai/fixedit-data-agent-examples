@@ -2,6 +2,10 @@
 
 This project demonstrates how to create automated timelapse videos using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) by capturing images from an AXIS device and uploading them to AWS S3. The solution creates a time-series collection of images that can be used to generate timelapse videos or for long-term storage and analysis. This approach is perfect for construction sites, environmental monitoring, safety applications, or any scenario requiring periodic visual documentation.
 
+[![Timelapse Preview](.images/timelapse-preview.jpg)](https://youtu.be/mcw3iAlBOj8)
+
+_Click the image above to watch the timelapse video on YouTube_
+
 ## How It Works
 
 The system captures images at regular intervals and uploads them to AWS S3 with timestamped filenames, creating a chronological sequence perfect for timelapse generation. Images are encoded as base64 strings within JSON files due to the Telegraf data format limitations. Telegraf does not generally support binary data, so base64 encoding is used as a workaround. The [remotefile](https://github.com/influxdata/telegraf/blob/master/plugins/outputs/remotefile/README.md) plugin only supports structured data, therefore the files are saved as json files with the base64 encoded image in them.

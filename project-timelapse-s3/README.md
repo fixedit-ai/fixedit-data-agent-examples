@@ -249,7 +249,7 @@ Each uploaded file contains a JSON object with the following structure:
   "tags": {
     "host": "device-hostname"
   },
-  "timestamp": 1691328000000000000
+  "timestamp": 1691328000
 }
 ```
 
@@ -257,7 +257,7 @@ Each uploaded file contains a JSON object with the following structure:
 
 - `image_base64`: Base64-encoded JPEG image data (starts with `/9j/` for JPEG)
 - `length`: Size of the base64-encoded image data in characters
-- `timestamp`: Unix timestamp in nanoseconds when the image was captured
+- `timestamp`: Unix timestamp in seconds when the image was captured
 
 ### S3 Bucket Structure
 

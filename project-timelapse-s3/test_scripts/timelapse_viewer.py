@@ -3,7 +3,7 @@
 import base64
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, List, Optional, Tuple
 
@@ -11,8 +11,26 @@ import boto3
 import click
 import cv2
 import numpy as np
+from botocore.exceptions import ClientError
 from PIL import Image
 from tqdm import tqdm
+
+
+def handle_s3_client_error(e: ClientError, bucket: str) -> None:
+    """Handle S3 ClientError and provide user-friendly error messages."""
+    error_code = e.response["Error"]["Code"]
+    error_message = e.response["Error"]["Message"]
+
+    if error_code == "AccessDenied":
+        click.echo(
+            f"Error: Access denied to S3 bucket '{bucket}'. Please check your AWS credentials and permissions.",
+            err=True,
+        )
+        click.echo(f"Details: {error_message}", err=True)
+    else:
+        click.echo(f"Error: AWS S3 error ({error_code}): {error_message}", err=True)
+
+    raise click.Abort()
 
 
 class TimelapseViewer:
@@ -102,99 +120,85 @@ class TimelapseViewer:
         if date:
             prefix += f"{date}/"
 
-        try:
-            timelapse_files = []
+        timelapse_files = []
 
-            # Use pagination helper to get all objects
-            for obj in self._paginated_s3_list(Bucket=self.bucket_name, Prefix=prefix):
-                key = obj["Key"]
-                if "timelapse-" in key and key.endswith(".json"):
-                    timelapse_files.append(key)
+        # Use pagination helper to get all objects
+        for obj in self._paginated_s3_list(Bucket=self.bucket_name, Prefix=prefix):
+            key = obj["Key"]
+            if "timelapse-" in key and key.endswith(".json"):
+                timelapse_files.append(key)
 
-            # Sort by filename (which includes timestamp)
-            timelapse_files.sort()
-            return timelapse_files
+        # Sort by filename (which includes timestamp)
+        timelapse_files.sort()
+        return timelapse_files
 
-        except Exception as e:
-            click.echo(f"Error listing files: {e}", err=True)
-            return []
-
-    def fetch_image_from_s3(
-        self, s3_key: str
-    ) -> Tuple[Optional[Image.Image], Optional[datetime]]:
+    def fetch_image_from_s3(self, s3_key: str) -> Tuple[Image.Image, datetime]:
         """Fetch a single image from S3 and decode it."""
+        # Download the JSON file
+        response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
+        json_data = json.loads(response["Body"].read().decode("utf-8"))
+
+        # Validate required JSON structure
+        if "fields" not in json_data:
+            raise ValueError(f"Missing 'fields' key in JSON data from {s3_key}")
+
+        fields = json_data["fields"]
+        if "image_base64" not in fields:
+            raise ValueError(f"Missing 'image_base64' key in fields from {s3_key}")
+
+        # Extract base64 image data
+        image_base64 = fields["image_base64"]
+
+        # Validate that image_base64 is not empty
+        if not image_base64:
+            raise ValueError(f"Empty image_base64 data in {s3_key}")
+
+        # Decode base64 image data
         try:
-            # Download the JSON file
-            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
-            json_data = json.loads(response["Body"].read().decode("utf-8"))
-
-            # Validate required JSON structure
-            if "fields" not in json_data:
-                click.echo(
-                    f"Error: Missing 'fields' key in JSON data from {s3_key}", err=True
-                )
-                return None, None
-
-            fields = json_data["fields"]
-            if "image_base64" not in fields:
-                click.echo(
-                    f"Error: Missing 'image_base64' key in fields from {s3_key}",
-                    err=True,
-                )
-                return None, None
-
-            # Extract base64 image data
-            image_base64 = fields["image_base64"]
-
-            # Validate that image_base64 is not empty
-            if not image_base64:
-                click.echo(f"Error: Empty image_base64 data in {s3_key}", err=True)
-                return None, None
-
-            try:
-                image_data = base64.b64decode(image_base64)
-            except Exception as e:
-                click.echo(f"Error: Invalid base64 data in {s3_key}: {e}", err=True)
-                return None, None
-
-            # Convert to PIL Image
-            try:
-                image = Image.open(io.BytesIO(image_data))
-            except Exception as e:
-                click.echo(
-                    f"Error: Failed to decode image data from {s3_key}: {e}", err=True
-                )
-                return None, None
-
-            # Extract timestamp from filename
-            # Format: DEVICE_SERIAL/YYYY-MM-DD/timelapse-HH-MM-SS.json
-            try:
-                filename = s3_key.split("/")[-1]
-                time_str = filename.replace("timelapse-", "").replace(".json", "")
-                date_str = s3_key.split("/")[-2]
-                timestamp_str = f"{date_str} {time_str.replace('-', ':')}"
-                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
-            except (IndexError, ValueError) as e:
-                click.echo(f"Error: Invalid filename format in {s3_key}: {e}", err=True)
-                return None, None
-
-            return image, timestamp
-
+            image_data = base64.b64decode(image_base64)
         except Exception as e:
-            click.echo(f"Error fetching image from {s3_key}: {e}", err=True)
-            return None, None
+            raise ValueError(f"Invalid base64 data in {s3_key}: {e}")
+
+        # Convert to PIL Image
+        try:
+            image = Image.open(io.BytesIO(image_data))
+        except Exception as e:
+            raise ValueError(f"Failed to decode image data from {s3_key}: {e}")
+
+        # Extract UTC timestamp from JSON timestamp field (nanoseconds)
+        # The timestamp is at the root level, not inside fields
+        if "timestamp" not in json_data:
+            raise ValueError(
+                f"Missing 'timestamp' field in JSON data from {s3_key}. JSON structure: {json_data.keys()}"
+            )
+
+        # Convert timestamp to datetime
+        timestamp_s = json_data["timestamp"]
+
+        # Validate that timestamp is a number
+        if not isinstance(timestamp_s, (int, float)):
+            raise ValueError(
+                f"Invalid timestamp type in {s3_key}: expected number, got {type(timestamp_s)}"
+            )
+
+        timestamp = datetime.fromtimestamp(timestamp_s, tz=timezone.utc)
+
+        return image, timestamp
 
     def _prepare_image_for_display(
-        self, img: Image.Image, frame_num: int, total_frames: int
+        self, img: Image.Image, timestamp: datetime, frame_num: int, total_frames: int
     ) -> np.ndarray:
-        """Convert PIL image to OpenCV format and add frame information."""
+        """Convert PIL image to OpenCV format and add UTC timestamp information."""
         # Convert PIL image to OpenCV format
         img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
-        # Add frame number and timestamp
+        # Format UTC timestamp for display
+        timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        # Add UTC timestamp
         cv2.putText(
             img_cv,
-            f"Frame {frame_num}/{total_frames}",
+            timestamp_str,
             (10, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
@@ -224,8 +228,7 @@ class TimelapseViewer:
         """
         for frame_num, s3_key in enumerate(files, 1):
             image, timestamp = self.fetch_image_from_s3(s3_key)
-            if image and timestamp:
-                yield image, timestamp, frame_num
+            yield image, timestamp, frame_num
 
     def save_images_to_video(
         self, files: List[str], output_file: Path, fps: int = 10
@@ -263,7 +266,9 @@ class TimelapseViewer:
                         f"Video writer initialized with dimensions: {width}x{height}"
                     )
 
-                img_cv = self._prepare_image_for_display(image, frame_num, len(files))
+                img_cv = self._prepare_image_for_display(
+                    image, timestamp, frame_num, len(files)
+                )
                 out.write(img_cv)
                 pbar.update(1)
 
@@ -290,7 +295,9 @@ class TimelapseViewer:
 
         # Display images using generator
         for image, timestamp, frame_num in self.image_generator(files):
-            img_cv = self._prepare_image_for_display(image, frame_num, len(files))
+            img_cv = self._prepare_image_for_display(
+                image, timestamp, frame_num, len(files)
+            )
 
             # Display the image
             cv2.imshow("Timelapse Viewer", img_cv)
@@ -347,41 +354,31 @@ class TimelapseViewer:
 
     def list_devices(self) -> List[str]:
         """List all devices (device serials) in the bucket."""
-        try:
-            devices = []
+        devices = []
 
-            # Use pagination helper to get all common prefixes
-            for prefix in self._paginated_s3_common_prefixes(
-                Bucket=self.bucket_name, Delimiter="/"
-            ):
-                device = prefix.rstrip("/")
-                devices.append(device)
+        # Use pagination helper to get all common prefixes
+        for prefix in self._paginated_s3_common_prefixes(
+            Bucket=self.bucket_name, Delimiter="/"
+        ):
+            device = prefix.rstrip("/")
+            devices.append(device)
 
-            return devices
-
-        except Exception as e:
-            click.echo(f"Error listing devices: {e}", err=True)
-            return []
+        return devices
 
     def list_dates(self, device_serial: str) -> List[str]:
         """List all dates available for a device."""
         prefix = f"{device_serial}/"
 
-        try:
-            dates = []
+        dates = []
 
-            # Use pagination helper to get all common prefixes
-            for prefix_path in self._paginated_s3_common_prefixes(
-                Bucket=self.bucket_name, Prefix=prefix, Delimiter="/"
-            ):
-                date = prefix_path.split("/")[-2]  # Extract date from path
-                dates.append(date)
+        # Use pagination helper to get all common prefixes
+        for prefix_path in self._paginated_s3_common_prefixes(
+            Bucket=self.bucket_name, Prefix=prefix, Delimiter="/"
+        ):
+            date = prefix_path.split("/")[-2]  # Extract date from path
+            dates.append(date)
 
-            return sorted(dates)
-
-        except Exception as e:
-            click.echo(f"Error listing dates: {e}", err=True)
-            return []
+        return sorted(dates)
 
 
 @click.group()
@@ -416,15 +413,18 @@ def cli():
 @click.option("--region", help="AWS region (optional, uses default if not specified)")
 def list_devices(bucket: str, region: Optional[str]):
     """List all devices (cameras) in the S3 bucket."""
-    viewer = TimelapseViewer(bucket, region)
-    devices = viewer.list_devices()
+    try:
+        viewer = TimelapseViewer(bucket, region)
+        devices = viewer.list_devices()
 
-    if devices:
-        click.echo("Available devices:")
-        for device in devices:
-            click.echo(f"  {device}")
-    else:
-        click.echo("No devices found in the bucket")
+        if devices:
+            click.echo("Available devices:")
+            for device in devices:
+                click.echo(f"  {device}")
+        else:
+            click.echo("No devices found in the bucket")
+    except ClientError as e:
+        handle_s3_client_error(e, bucket)
 
 
 @cli.command()
@@ -435,15 +435,18 @@ def list_devices(bucket: str, region: Optional[str]):
 @click.option("--region", help="AWS region (optional, uses default if not specified)")
 def list_dates(bucket: str, device: str, region: Optional[str]):
     """List all dates available for a specific device."""
-    viewer = TimelapseViewer(bucket, region)
-    dates = viewer.list_dates(device)
+    try:
+        viewer = TimelapseViewer(bucket, region)
+        dates = viewer.list_dates(device)
 
-    if dates:
-        click.echo(f"Available dates for device {device}:")
-        for date in dates:
-            click.echo(f"  {date}")
-    else:
-        click.echo(f"No dates found for device {device}")
+        if dates:
+            click.echo(f"Available dates for device {device}:")
+            for date in dates:
+                click.echo(f"  {date}")
+        else:
+            click.echo(f"No dates found for device {device}")
+    except ClientError as e:
+        handle_s3_client_error(e, bucket)
 
 
 @cli.command()
@@ -474,19 +477,22 @@ def view(
 
     If --output is specified, the video will also be saved as an MP4 file.
     """
-    viewer = TimelapseViewer(bucket, region)
+    try:
+        viewer = TimelapseViewer(bucket, region)
 
-    # Validate output path if specified
-    if output:
-        output_path = Path(output)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        if output_path.exists():
-            if not click.confirm(f"File {output_path} already exists. Overwrite?"):
-                return
-    else:
-        output_path = None
+        # Validate output path if specified
+        if output:
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            if output_path.exists():
+                if not click.confirm(f"File {output_path} already exists. Overwrite?"):
+                    return
+        else:
+            output_path = None
 
-    viewer.create_timelapse(device, date, fps, output_path)
+        viewer.create_timelapse(device, date, fps, output_path)
+    except ClientError as e:
+        handle_s3_client_error(e, bucket)
 
 
 if __name__ == "__main__":

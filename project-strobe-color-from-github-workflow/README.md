@@ -54,12 +54,12 @@ This example is perfect for **system integrators and IT professionals** who want
   - [Troubleshooting](#troubleshooting)
     - [Test GitHub API](#test-github-api)
   - [Configuration Files](#configuration-files)
-    - [`config_agent.conf` - Global Settings](#config_agentconf-global-settings)
-    - [`config_input_github.conf` - Data Collection](#config_input_githubconf-data-collection)
-    - [`config_process_github.conf` - Data Transformation](#config_process_githubconf-data-transformation)
-    - [`config_output_strobe.conf` - Hardware Control](#config_output_strobeconf-hardware-control)
-    - [`config_output_stdout.conf` - Debugging (Optional)](#config_output_stdoutconf-debugging-optional)
-    - [`test_files/config_input_file.conf` - Mock input for testing](#test_filesconfig_input_fileconf-mock-input-for-testing)
+    - [config_agent.conf](#config_agentconf)
+    - [config_input_github.conf](#config_input_githubconf)
+    - [config_process_github.conf](#config_process_githubconf)
+    - [config_output_strobe.conf](#config_output_strobeconf)
+    - [config_output_stdout.conf](#config_output_stdoutconf)
+    - [test_files/config_input_file.conf](#test_filesconfig_input_fileconf)
   - [Local Testing on Host](#local-testing-on-host)
     - [Prerequisites](#prerequisites)
     - [Host Testing Limitations](#host-testing-limitations)
@@ -231,27 +231,27 @@ An example response can be seen in the [sample.json](./sample.json) file.
 
 This project uses several configuration files that work together to create a data pipeline. Each file handles a specific part of the workflow:
 
-### `config_agent.conf` - Global Settings
+### config_agent.conf
 
 Controls how often the system checks GitHub for updates (every 5 seconds by default). Also includes timing randomization to prevent multiple devices from overwhelming GitHub's servers.
 
-### `config_input_github.conf` - Data Collection
+### config_input_github.conf
 
 Defines how to fetch workflow status from GitHub's REST API. Uses your GitHub token for authentication and retrieves information about the most recent workflow run on your specified branch.
 
-### `config_process_github.conf` - Data Transformation
+### config_process_github.conf
 
 Contains a Starlark script that converts GitHub's workflow status (`success`, `failure`, or `null` for running) into simple color names (`green`, `red`, or `yellow`) that the strobe can understand.
 
-### `config_output_strobe.conf` - Hardware Control
+### config_output_strobe.conf
 
 Executes the `trigger_strobe.sh` script whenever the workflow status changes. This script uses VAPIX commands to actually change the strobe light color on your Axis device.
 
-### `config_output_stdout.conf` - Debugging (Optional)
+### config_output_stdout.conf
 
 When enabled, this outputs all pipeline data to the FixedIT Data Agent logs. Useful for troubleshooting if the strobe isn't responding as expected.
 
-### `test_files/config_input_file.conf` - Mock input for testing
+### test_files/config_input_file.conf
 
 This file can be used together with the `sample.json` file to test the pipeline without having to wait for a GitHub Actions job to complete. Upload this file instead of the `config_input_github.conf` file, then upload the `sample.json` file as a helper file.
 

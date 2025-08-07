@@ -9,7 +9,7 @@ The system captures images at regular intervals and uploads them to AWS S3 with 
 ```mermaid
 flowchart TD
     A["⏳ Wait<br/>Sleep for interval"] --> B1["📥 VAPIX API Call<br/>Fetch JPEG image"]
-    B3 --> C["☁️ AWS S3<br/>Upload with timestamp"]
+    B3 --> C["☁️ AWS S3<br/>Upload with local buffer"]
     C --> A
 
     subgraph "axis_image_consumer.sh"
@@ -23,6 +23,8 @@ flowchart TD
     style B2 fill:#fff3e0
     style B3 fill:#fff3e0
 ```
+
+The `remotefile` plugin will buffer frames in memory if an internet connection is not available. This means that you will not lose any frames if the device is offline for a short time. Do however note the [known issue](#known-issues) below affecting the startup of the workflow when no internet connection is available.
 
 ## Why Choose This Approach?
 
@@ -61,6 +63,7 @@ This approach makes timelapse functionality accessible to system integrators and
   - [Prerequisites](#prerequisites)
   - [Host Testing Limitations](#host-testing-limitations)
   - [Test Commands](#test-commands)
+- [Known issues](#known-issues)
 
 ## Compatibility
 
@@ -333,3 +336,9 @@ telegraf --config timelapse-to-s3.conf --once
 # Run continuously (use Ctrl+C to stop)
 telegraf --config timelapse-to-s3.conf
 ```
+
+## Known issues
+
+Although the `remotefile` output will buffer frames in memory for later upload if no internet connection is available, it seems like it is blocking the initialization of the workflow until it can connect to the S3 bucket the first time. This means that if the device boots up with no internet connection, the workflow will not start capturing frames until it has managed to connect to the S3 bucket at least once. This can be seen in the logs below:
+
+![No internet connection will block the start of the e workflow](./.images/logs-offline-boot.png)

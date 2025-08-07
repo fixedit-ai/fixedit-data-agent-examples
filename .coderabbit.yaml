@@ -6,32 +6,93 @@ reviews:
   path_instructions:
     - path: "dashboard-deployments/**"
       instructions: >-
-        This directory contains server-side dashboard examples for visualizing data from 
-        FixedIT Data Agent running on Axis devices. These are primarily for DevOps/IT 
-        professionals comfortable with deploying Grafana dashboards and InfluxDB servers. 
-        Some dashboards work directly with bundled agent configurations, others can be 
-        customized. Licensed under Elastic License 2.0. Review for deployment complexity, 
+        This directory contains server-side dashboard examples for visualizing data from
+        FixedIT Data Agent running on Axis devices. These are primarily for DevOps/IT
+        professionals comfortable with deploying Grafana dashboards and InfluxDB servers.
+        Some dashboards work directly with bundled agent configurations, others can be
+        customized. Licensed under Elastic License 2.0. Review for deployment complexity,
         dashboard usability, and proper licensing compliance. We should make sure that
         dashboards are portable and does not check in specific host names, or refer to
         other specific data from a single deployment.
+    - path: "project-*/**"
+      instructions: >-
+        Each example project for the FixedIT Data Agent should be self-contained and
+        designed as a standalone example / tutorial showing how to use the FixedIT Data Agent.
+        The project should be well documented and include all the necessary files to run the example.
+        A reader should be able to understand the background and the purpose of the project, and be able to
+        understand the implementation details and how to use it. If the project includes a
+        dashboard, it should be placed in a new folder in the repo-root/dashboard-deployments/
+        directory instead of being included in the project folder. In the README for the project,
+        the first time the FixedIT Data Agent is mentioned, we should link to the product page:
+        https://fixedit.ai/products-data-agent/
+        Emphasize that these solutions are accessible to system integrators and IT professionals
+        without requiring complex C/C++ ACAP development. Highlight that custom edge intelligence can be
+        implemented using familiar IT tools (configuration files, shell scripts, REST APIs) rather than
+        traditional embedded programming approaches. Note that bash does not exist on the Axis devices,
+        so .sh scripts should be written in portable shell syntax.
+
+        **README Structure**: All project README files should follow the standardized template at
+        `.project_readme_template.md`. This template ensures consistent documentation that serves
+        both audiences: (1) IT professionals who want plug-and-play solutions, and (2) developers
+        who want to customize and extend the examples. The template enforces a logical structure:
+        1) Introduction and background (project purpose, how it works, why choose this approach)
+        2) Technical explanation and quick start guide (compatibility, setup, troubleshooting)
+        3) Developer-oriented notes (local testing, implementation details)
+
+        **Key README Requirements**:
+        - Include compatibility sections for both AXIS OS and FixedIT Data Agent versions
+        - Explain host testing and its limitations and why certain parts require actual Axis devices
+        - Provide clear troubleshooting guidance right after the quick setup
+        - Use visual diagrams (mermaid) to explain system flows
+        - Emphasize "no C/C++ development required" value proposition
+        - Include comprehensive table of contents with proper anchor links
+        - Template values for environment variables should use format like `VAPIX_PASS="your_vapix_password"`
+        - In bash commands, use format like `--bucket <my_s3_bucket_name>` for template values
+        - When using credentials, specify minimum required privileges (e.g., viewer/operator/admin) and
+          encourage not using higher than needed
+        - Always correctly capitalize "FixedIT Data Agent" in all documentation and always include "FixedIT"
+
+        **Project Structure Requirements**:
+        - Test scripts for testing functionality or visualizing data should be placed in a
+          `test_scripts/` folder
+        - Configuration files used by default should be placed in the root of the project directory
+        - Optional files used for testing purposes (like mocked versions) can go in `test_files/`
+        - Each project should contain a license file with the appropriate license for that project
+        - If a project contains Python files, it should have a `requirements.txt` file with pinned
+          versions of the latest packages
+        - Python helper scripts should use `click` for argument parsing and have good help texts
+        - Use `pathlib` instead of `os.path` for platform portability in Python
+        - If the project contains Python files, ensure there's a GitHub Actions workflow called
+          `project-<project-dir-name>-python-quality.yml`
     - path: "**/*.md"
       instructions: >-
-        Documentation files should clearly communicate the dual audience: (1) server-side 
-        dashboard users who want to keep agent with bundled configs, and (2) edge device 
-        developers who want to customize agent behavior. Ensure examples and instructions 
+        Documentation files should clearly communicate the dual audience: (1) server-side
+        dashboard users who want to keep agent with bundled configs, and (2) edge device
+        developers who want to customize agent behavior. Ensure examples and instructions
         are appropriate for the intended skill level and use case. Since this is a public
         repository, we should not include any sensitive information, the instructions
         should be easily understandable for a wide audience, and we should avoid using
         any jargon or technical terms that are not commonly used.
     - path: "**/*"
       instructions: >-
-        This repository serves FixedIT Data Agent users across a spectrum from plug-and-play 
-        dashboard deployment to advanced edge device customization. Consider whether changes 
-        maintain accessibility for both DevOps professionals (server-side focus) and 
-        developers (edge customization focus). If new features are added or existing ones 
-        changed significantly, ensure documentation clearly explains the intended audience 
+        This repository serves FixedIT Data Agent users across a spectrum from plug-and-play
+        dashboard deployment to advanced edge device customization. Consider whether changes
+        maintain accessibility for both DevOps professionals (server-side focus) and
+        developers (edge customization focus). If new features are added or existing ones
+        changed significantly, ensure documentation clearly explains the intended audience
         and usage level. We use prettier for formatting of common file formats like markdown,
-        yaml, json, etc.
+        yaml, json, etc. Example projects should be placed in the repo-root in a directory named
+        project-*/. Whenever referencing Axis device model names like "D4100-VE mk II" or "M3045",
+        prefix it with "AXIS" in capital letters (e.g. "AXIS D4100-VE mk II"). When using Axis
+        as a company name, use "Axis Communications", note that all-caps is only used when "AXIS" is
+        used in their product names, not their company name. When using the name of an Axis product,
+        google on the name to verify that it is correctly identified. Avoid using 'cameras' or
+        'Axis cameras' unless the solution in related to visual analytics, otherwise prefer using
+        'Axis devices' to show that the FixedIT Data Agent also works with strobes, speakers,
+        door stations, etc.
+        Images used for the README should be placed in a directory called .images/ in the affected
+        project folder. These images might also be referred to from other sources like the top-level
+        README.md file.
   auto_review:
     enabled: true
     auto_incremental_review: true

@@ -30,12 +30,3 @@ This will create an `env.sh` file in the project root. To use it:
 source env.sh
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
-
-## Deployment Organization
-
-The intended deployment pattern is to use **separate folders for different deployments**:
-
-- Copy the content of this directory to separate folders (e.g., `site-1-dashboard/`, `site-2-dashboard/`, etc.)
-- Each folder contains the same code and has its own `env.sh` file with unique credentials and ports
-- Data volumes mount to consistent folder names within each deployment directory
-- This makes it easy to see which code version was used for each deployment and keeps credentials isolated.

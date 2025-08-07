@@ -60,14 +60,13 @@ This example is perfect for **system integrators and IT professionals** who want
     - [`config_output_strobe.conf` - Hardware Control](#config_output_strobeconf-hardware-control)
     - [`config_output_stdout.conf` - Debugging (Optional)](#config_output_stdoutconf-debugging-optional)
     - [`test_files/config_input_file.conf` - Mock input for testing](#test_filesconfig_input_fileconf-mock-input-for-testing)
-  - [Local Testing](#local-testing)
+  - [Local Testing on Host](#local-testing-on-host)
     - [Prerequisites](#prerequisites)
     - [Host Testing Limitations](#host-testing-limitations)
-    - [Run locally with mock input data](#run-locally-with-mock-input-data)
-    - [Run locally with real GitHub API data](#run-locally-with-real-github-api-data)
-    - [Test mock data with real strobe control](#test-mock-data-with-real-strobe-control)
-    - [Run locally with real GitHub API data](#run-locally-with-real-github-api-data-1)
-    - [Test the complete workflow (including strobe control)](#test-the-complete-workflow-including-strobe-control)
+    - [Test GitHub API data parsing using mock data](#test-github-api-data-parsing-using-mock-data)
+    - [Test GitHub API integration](#test-github-api-integration)
+    - [Test strobe control using mock data](#test-strobe-control-using-mock-data)
+    - [Test complete workflow integration](#test-complete-workflow-integration)
   - [License](#license)
 
 ## Demo Video
@@ -115,7 +114,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
    GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW="Your Workflow Name";VAPIX_USERNAME=your_vapix_user;VAPIX_PASSWORD=your_vapix_password;
    ```
 
-   For the VAPIX username and password, it is recommended to create a new user with operator privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the "System" tab and click on the "Accounts" sub-tab. Then click on "Add account".
+   For the VAPIX username and password, it is recommended to create a new user with `operator` privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the `System` tab and click on the `Accounts` sub-tab. Then click on `Add account`.
 
 5. **Upload the configuration files to the FixedIT Data Agent**
 
@@ -130,6 +129,8 @@ How to create a GitHub workflow is outside the scope of this project. However, h
 Adding this example file to the `<repo-root>/.github/workflows` folder will create a workflow for the repository. For more information about creating GitHub workflows, see the [GitHub Actions documentation](https://docs.github.com/en/actions).
 
 ```yml
+# This job will trigger when the data.json file is changed. It will then
+# validate the JSON format and fail the job if the file is not valid.
 name: Validate JSON
 
 on:
@@ -205,13 +206,12 @@ It should now look like this:
 
 ## Troubleshooting
 
-Enable the `Debug` option in the FixedIT Data Agent for detailed logs.
+Enable the `Debug mode` option in the FixedIT Data Agent for detailed logs.
 
 **Common issues:**
 
-- **Strobe doesn't change color**: Check that the color profiles (`green`, `yellow`, `red`) are created on the device. Check the FixedIT Data Agent logs page for any errors. Enable `Debug mode` and check if there are any "metrics" being sent to the strobe.
+- **Strobe doesn't change color**: Check that the color profiles (`green`, `yellow`, `red`) are created on the device. Check the FixedIT Data Agent logs page for any errors. Enable `Debug mode` and check if there are any "metrics" being sent to the strobe. Check that `VAPIX_USERNAME` and `VAPIX_PASSWORD` are correct. The strobe control API requires at least operator privileges. You'll see errors like `curl: (22) The requested URL returned error: 401` and `Failed to start profile 'green'` if the VAPIX user is not valid.
 - **GitHub API errors**: Verify your GitHub token has `workflow` scope and the repository/branch/workflow names are correct. You'll see errors like `received status code 401 (Unauthorized), expected any value out of [200]`. See the [Test GitHub API](#test-github-api) section below for how to test the GitHub API.
-- **VAPIX authentication errors**: Check that `VAPIX_USERNAME` and `VAPIX_PASSWORD` are correct. The strobe control API requires at least operator privileges. You'll see errors like `curl: (22) The requested URL returned error: 401` and `Failed to start profile 'green'`.
 
 ### Test GitHub API
 
@@ -255,7 +255,7 @@ When enabled, this outputs all pipeline data to the FixedIT Data Agent logs. Use
 
 This file can be used together with the `sample.json` file to test the pipeline without having to wait for a GitHub Actions job to complete. Upload this file instead of the `config_input_github.conf` file, then upload the `sample.json` file as a helper file.
 
-## Local Testing
+## Local Testing on Host
 
 You can test the workflow on your development machine before deploying to your Axis device. This requires [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) to be installed locally.
 
@@ -279,7 +279,7 @@ You can test the workflow on your development machine before deploying to your A
 
 The strobe control functionality requires actual Axis device hardware and VAPIX API access, which cannot be simulated on a host machine.
 
-### Run locally with mock input data
+### Test GitHub API data parsing using mock data
 
 Test the API parsing pipeline using sample GitHub API data without making actual API calls.
 
@@ -315,7 +315,7 @@ telegraf --config config_agent.conf \
 
 This shows the pipeline successfully converted the sample GitHub "success" status into "green" color output.
 
-### Run locally with real GitHub API data
+### Test GitHub API integration
 
 Test with live GitHub API data (requires valid credentials):
 
@@ -345,7 +345,7 @@ Error in plugin: received status code 401 (Unauthorized)
 
 If you get a 401 error, check that your GitHub token is valid and has the required permissions.
 
-### Test mock data with real strobe control
+### Test strobe control using mock data
 
 Test the data transformation and strobe control using sample data (no GitHub API calls needed):
 
@@ -379,39 +379,9 @@ Error: Failed to start profile 'green'
 
 If you get a 401 error, check that your VAPIX username and password are correct and that the user has at least operator privileges.
 
-### Run locally with real GitHub API data
+### Test complete workflow integration
 
-Test with live GitHub API data (requires valid credentials):
-
-```bash
-# Set up your GitHub credentials
-export GITHUB_TOKEN=your_github_token
-export GITHUB_USER=your-github-username
-export GITHUB_REPO=your-repo-name
-export GITHUB_BRANCH=main
-export GITHUB_WORKFLOW="Your Workflow Name"
-
-# Set helper files directory
-export HELPER_FILES_DIR=$(pwd)
-export TELEGRAF_DEBUG=true
-
-# Run with real GitHub API (will make actual API calls)
-telegraf --config config_agent.conf \
-         --config config_input_github.conf \
-         --config config_process_github.conf \
-         --config config_output_stdout.conf \
-         --once
-```
-
-**Expected output:** With valid credentials, you'll see the JSON result like the mock test above. With invalid/expired credentials, you'll see:
-
-```
-Error in plugin: received status code 401 (Unauthorized)
-```
-
-If you get a 401 error, check that your GitHub token is valid and has the required permissions.
-
-### Test the complete workflow (including strobe control)
+Test the whole workflow from getting the job status from the GitHub API to controlling the strobe light. This will test thw same functionality as will run in the strobe device. The option `--once` will make it run once and then exit, you can remove this to run it continiously.
 
 ```bash
 # Set up your GitHub credentials
@@ -439,7 +409,7 @@ telegraf --config config_agent.conf \
          --once
 ```
 
-This will fetch real GitHub data AND control your strobe light based on the workflow status.
+You should now see the strobe change color based on the status of the last GitHub workflow.
 
 ## License
 

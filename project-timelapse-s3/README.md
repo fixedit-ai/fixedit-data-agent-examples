@@ -139,7 +139,7 @@ Click "Next" and then "Create access key". Copy both the access key ID and secre
 
 ### Create a user for the viewer script
 
-Repeat the same steps as for the FixedIT Data Agent user above, but this time, select all S3 actions (including listing and viewing data). You will need these credentials to view the timelapse videos using the viewer script.
+Repeat the same steps as for the FixedIT Data Agent user above, but this time, select all S3 actions (including listing and viewing data).
 
 After creating the user and setting up the permissions, create access keys following the same process as above. You will need these credentials to view the timelapse videos using the viewer script.
 
@@ -162,7 +162,7 @@ After creating the user and setting up the permissions, create access keys follo
 
    **Optional variables:**
    - `RESOLUTION`: Image resolution (optional - if not set, camera default will be used)
-   - `CAMERA_IP`: Camera IP address for image capture (optional - if not set, `localhost` will be used)
+   - `CAMERA_IP`: Camera IP address for image capture (optional - if not set, `localhost` will be used). If you want to use images from the camera that is running the FixedIT Data Agent, this does not need to be set.
 
 2. **Upload the files to the FixedIT Data Agent**
 

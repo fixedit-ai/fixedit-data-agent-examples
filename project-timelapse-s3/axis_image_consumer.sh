@@ -33,7 +33,11 @@ VAPIX_PASS="${VAPIX_PASS:-pass}"
 CAMERA_IP="${CAMERA_IP:-127.0.0.1}"
 
 # We use HTTP for the image fetch. Since the request is to localhost, this is quite safe.
-# This will remove the overhead of TLS. All Axis devices accpets DIGEST authentication
+# If using this to fetch images from an external camera in a non-private network,
+# then it is recommended to use HTTPS instead. That can be used together with --insecure
+# to handle self-signed certificates, and --anyauth to handle compatibility with both
+# AXIS OS 12 and previous versions.
+# Using HTTP will remove the overhead of TLS. All Axis devices accept DIGEST authentication
 # when using HTTP.
 IMAGE_URL="http://${CAMERA_IP}/axis-cgi/jpg/image.cgi"
 

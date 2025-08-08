@@ -273,7 +273,7 @@ You can test the workflow on your development machine before deploying to your A
 - Data transformation logic
 - Configuration validation
 
-**What requires actual Axis device:**
+**What requires an actual Axis device:**
 
 - Strobe light control (VAPIX API calls)
 

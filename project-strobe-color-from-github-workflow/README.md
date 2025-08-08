@@ -351,8 +351,8 @@ Test the data transformation and strobe control using sample data (no GitHub API
 
 ```bash
 # Set up your Axis device credentials
-export VAPIX_USERNAME=root
-export VAPIX_PASSWORD=your-device-password
+export VAPIX_USERNAME=your_vapix_user
+export VAPIX_PASSWORD=your_vapix_password
 export VAPIX_IP=your.axis.device.ip
 
 # Set helper files directory
@@ -386,14 +386,14 @@ Test the whole workflow from getting the job status from the GitHub API to contr
 ```bash
 # Set up your GitHub credentials
 export GITHUB_TOKEN=your_github_token
-export GITHUB_USER=your-github-username
-export GITHUB_REPO=your-repo-name
+export GITHUB_USER=your_github_username
+export GITHUB_REPO=your_repo_name
 export GITHUB_BRANCH=main
 export GITHUB_WORKFLOW="Your Workflow Name"
 
 # Set up your Axis device credentials
-export VAPIX_USERNAME=root
-export VAPIX_PASSWORD=your-device-password
+export VAPIX_USERNAME=your_vapix_user
+export VAPIX_PASSWORD=your_vapix_password
 export VAPIX_IP=your.axis.device.ip
 
 # Set helper files directory

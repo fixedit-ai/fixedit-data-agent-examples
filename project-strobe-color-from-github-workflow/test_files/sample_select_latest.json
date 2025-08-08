@@ -1,0 +1,37 @@
+{
+  "total_count": 4,
+  "workflow_runs": [
+    {
+      "id": 16833205169,
+      "name": "Validate JSON",
+      "display_title": "test failure",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_number": 16
+    },
+    {
+      "id": 16833205170,
+      "name": "Validate JSON",
+      "display_title": "test success",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 20
+    },
+    {
+      "id": 16833205171,
+      "name": "Validate JSON",
+      "display_title": "test success repeat",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 20
+    },
+    {
+      "id": 16833205172,
+      "name": "Validate JSON",
+      "display_title": "test older success",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 19
+    }
+  ]
+}

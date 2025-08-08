@@ -4,11 +4,15 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 
 ## Table of Contents
 
-- [📊 Server-side Dashboards](#-server-side-dashboards)
-  - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
-- [🛠️ Edge Device Customization](#️-edge-device-customization)
-  - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
-  - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
+- [FixedIT Data Agent Examples](#fixedit-data-agent-examples)
+  - [Table of Contents](#table-of-contents)
+  - [📊 Server-side Dashboards](#server-side-dashboards)
+    - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
+  - [🛠️ Edge Device Customization](#edge-device-customization)
+    - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
+    - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
+
+<a id="server-side-dashboards"></a>
 
 ## 📊 Server-side Dashboards
 
@@ -19,6 +23,8 @@ The [dashboard-deployments](./dashboard-deployments) directory contains visualiz
 The dashboard stack in the image below is the system monitoring example for the bundled configuration in the FixedIT Data Agent, for more details see the [README](./dashboard-deployments/system-monitoring-influxdb2-flux-grafana/README.md) in the dashboard-deployments directory.
 
 ![Grafana Dashboard Overview](./dashboard-deployments/system-monitoring-influxdb2-flux-grafana/.images/laptop-with-grafana-for-monitoring.png)
+
+<a id="edge-device-customization"></a>
 
 ## 🛠️ Edge Device Customization
 

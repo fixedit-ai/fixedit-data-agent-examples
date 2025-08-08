@@ -381,7 +381,7 @@ If you get a 401 error, check that your VAPIX username and password are correct 
 
 ### Test complete workflow integration
 
-Test the whole workflow from getting the job status from the GitHub API to controlling the strobe light. This will test thw same functionality as will run in the strobe device. The option `--once` will make it run once and then exit, you can remove this to run it continiously.
+Test the whole workflow from getting the job status from the GitHub API to controlling the strobe light. This will test the same functionality that will run in the strobe device. The option `--once` will make it run once and then exit, you can remove this to run it continuously.
 
 ```bash
 # Set up your GitHub credentials

@@ -8,20 +8,29 @@ The system operates in a continuous monitoring loop, automatically fetching GitH
 
 ```mermaid
 flowchart TD
-    A["🔍 Fetch GitHub API<br/>Get latest workflow status"] --> B["📊 Parse Response<br/>Extract conclusion field"]
-    B --> C["🎨 Map to Color<br/>success → green<br/>failure → red<br/>running → yellow"]
-    C --> D["✅ Enable Profile<br/>Start target color strobe"]
-    D --> E["❌ Disable Other Profiles<br/>Stop yellow, red, green<br/>(except active one)"]
-    E --> F["⏳ Wait<br/>Sleep for interval period<br/>(default: 5 seconds)"]
-    F --> A
+    A["🔍 Fetch GitHub API<br/>Get 10 latest workflow runs<br/>Out: github_workflow"] --> B["🔍 Filter by Name<br/>Keep only target workflow<br/>In: github_workflow<br/>Out: github_workflow_filtered"]
+    B --> C["🏆 Filter for Latest<br/>Keep only latest run<br/>In: github_workflow_filtered<br/>Out: github_workflow_latest"]
+    C --> D["🎨 Map to Color<br/>success → green<br/>failure → red<br/>running → yellow<br/>In: github_workflow_latest<br/>Out: workflow_color"]
+    D --> E["✅ Enable Profile<br/>Set color on strobe<br/>In: workflow_color"]
+    E --> F["❌ Disable Other Profiles<br/>Stop yellow, red, green<br/>(except active one)"]
+    F --> G["⏳ Wait<br/>Sleep for interval period<br/>(default: 5 seconds)"]
+    G --> A
 
     style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#fff3e0
-    style D fill:#e8f5e8
-    style E fill:#fce4ec
-    style F fill:#f1f8e9
+    style B fill:#e8f5e8
+    style C fill:#f3e5f5
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+    style F fill:#fce4ec
+    style G fill:#f1f8e9
 ```
+
+This project uses **Telegraf's Starlark processor** for flexible data transformation and filtering. Starlark is a Python-like scripting language that provides more powerful processing capabilities than Telegraf's built-in processors, especially for complex logic and environment variable support.
+
+**Learn more about Starlark in Telegraf:**
+
+- [How to Use Starlark with Telegraf](https://www.influxdata.com/blog/how-use-starlark-telegraf) - Overview and basic concepts
+- [Quick Start Guide: Telegraf Starlark Processor](https://www.influxdata.com/blog/quick-start-telegraf-starlark-processor-plugin/) - Practical examples and state management
 
 ## Why Choose This Approach?
 
@@ -56,7 +65,9 @@ This example is perfect for **system integrators and IT professionals** who want
   - [Configuration Files](#configuration-files)
     - [config_agent.conf](#config_agentconf)
     - [config_input_github.conf](#config_input_githubconf)
-    - [config_process_github.conf](#config_process_githubconf)
+    - [config_process_filter_by_name.conf](#config_process_filter_by_nameconf)
+    - [config_process_status_to_color.conf](#config_process_status_to_colorconf)
+    - [config_process_select_latest.conf](#config_process_select_latestconf)
     - [config_output_strobe.conf](#config_output_strobeconf)
     - [config_output_stdout.conf](#config_output_stdoutconf)
     - [test_files/config_input_file.conf](#test_filesconfig_input_fileconf)
@@ -64,6 +75,7 @@ This example is perfect for **system integrators and IT professionals** who want
     - [Prerequisites](#prerequisites)
     - [Host Testing Limitations](#host-testing-limitations)
     - [Test GitHub API data parsing using mock data](#test-github-api-data-parsing-using-mock-data)
+    - [Test latest workflow selection logic](#test-latest-workflow-selection-logic)
     - [Test GitHub API integration](#test-github-api-integration)
     - [Test strobe control using mock data](#test-strobe-control-using-mock-data)
     - [Test complete workflow integration](#test-complete-workflow-integration)
@@ -111,7 +123,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
    Set the custom environment variables in the `Extra env` parameter as a semicolon-separated list:
 
    ```txt
-   GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW="Your Workflow Name";VAPIX_USERNAME=your_vapix_user;VAPIX_PASSWORD=your_vapix_password;
+   GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW=Your Workflow Name;VAPIX_USERNAME=your_vapix_user;VAPIX_PASSWORD=your_vapix_password;
    ```
 
    For the VAPIX username and password, it is recommended to create a new user with `operator` privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the `System` tab and click on the `Accounts` sub-tab. Then click on `Add account`.
@@ -166,8 +178,11 @@ jobs:
           echo "Success: data.json is valid JSON"
 ```
 
-> [!WARNING]
-> Note that the `GITHUB_WORKFLOW` variable needs to be set to exactly the name of the workflow you want to monitor, specified by the `name` field in the workflow YAML file.
+> [!IMPORTANT]
+> **Important notes about the `GITHUB_WORKFLOW` variable:**
+>
+> - Must be set to exactly the name of the workflow you want to monitor (the `name` field in the workflow YAML file).
+> - **Do NOT use quotes** around workflow names with spaces in the `Extra Env` parameter due to how the FixedIT Data Agent parses the variables. The FixedIT Data Agent preserves quotes as literal characters, so `GITHUB_WORKFLOW="Validate JSON"` would become `"Validate JSON"` (with quotes) instead of `Validate JSON`
 
 ### Creating a GitHub access token
 
@@ -208,24 +223,71 @@ It should now look like this:
 
 Enable the `Debug mode` option in the FixedIT Data Agent for detailed logs.
 
-**Common issues:**
+### Strobe doesn't change color
 
-- **Strobe doesn't change color**: Check that the color profiles (`green`, `yellow`, `red`) are created on the device. Check the FixedIT Data Agent logs page for any errors. Enable `Debug mode` and check if there are any "metrics" being sent to the strobe. Check that `VAPIX_USERNAME` and `VAPIX_PASSWORD` are correct. The strobe control API requires at least operator privileges. You'll see errors like `curl: (22) The requested URL returned error: 401` and `Failed to start profile 'green'` if the VAPIX user is not valid.
-- **GitHub API errors**: Verify your GitHub token has `workflow` scope and the repository/branch/workflow names are correct. You'll see errors like `received status code 401 (Unauthorized), expected any value out of [200]`. See the [Test GitHub API](#test-github-api) section below for how to test the GitHub API.
+**First, check if workflow data is being processed:**
 
-### Test GitHub API
+- Enable debug mode OR upload and enable `config_output_stdout.conf` to see if workflow_color metrics are being produced
+- If no data is being produced, see [No workflow data appears](#no-workflow-data-appears) section below
 
-You can test the GitHub API by running the following command (slight modifications might be needed for Windows/PowerShell users):
+**If workflow data is being processed, check strobe configuration:**
+
+- Verify color profiles (`green`, `yellow`, `red`) are created on the device
+- Check that `VAPIX_USERNAME` and `VAPIX_PASSWORD` are correct
+- The strobe control API requires at least operator privileges
+- You'll see errors like `curl: (22) The requested URL returned error: 401` and `Failed to start profile 'green'` if the VAPIX user is not valid
+- Check the FixedIT Data Agent logs page for any VAPIX-related errors
+
+### No workflow data appears
+
+This typically occurs when the system can't find your target workflow among the recent runs, or when there's a configuration issue. This would be indicated by FixedIT Data Agent showing "Buffer fullness: 0 / 10000 metrics" in debug logs (when `Debug mode` is enabled)
+
+- **Workflow name mismatch**: `GITHUB_WORKFLOW` doesn't match exactly with the workflow name in your GitHub Actions YAML file
+- **Quote parsing issue**: The FixedIT Data Agent's `Extra env` parameter handling (see below)
+- **Target workflow not in results**: Your target workflow is not among the fetched runs due to `per_page` being too small, see [Workflow not found among recent runs](#workflow-not-found-among-recent-runs) section below
+- **Invalid credentials**: GitHub token issues (you'll see 401 errors in logs)
+
+**How the FixedIT Data Agent parses the `Extra env` parameter:**
+The FixedIT Data Agent preserves quotes as literal characters instead of treating them as string delimiters. When you set `GITHUB_WORKFLOW="Validate JSON"` in the `Extra env` parameter, the actual environment variable value becomes `"Validate JSON"` (with literal quotes), not `Validate JSON`.
+
+### Workflow not found among recent runs
+
+If your target workflow isn't among the recent runs fetched by the API, no metrics are produced and the strobe appears "silent".
+
+**The Problem:** The `per_page` parameter in [config_input_github.conf](./config_input_github.conf) might be too small. If you have 6 workflows but `per_page=3`, your target workflow might not be in the returned results.
+
+**The Solution:** Increase `per_page` in [config_input_github.conf](./config_input_github.conf) to at least the number of workflows in the repository.
+
+**Diagnose this issue:**
 
 ```bash
 curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
      -H "Accept: application/vnd.github+json" \
-     "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/runs?branch=$GITHUB_BRANCH&per_page=1" | jq .workflow_runs[0].conclusion
+     "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/runs?branch=$GITHUB_BRANCH&per_page=10" | jq '.workflow_runs[] | .name'
+```
+
+Check if your `GITHUB_WORKFLOW` value appears in the output.
+
+### GitHub API issues
+
+**Common API errors:**
+
+- `"Bad credentials"` (401): GitHub token is invalid or expired
+- `received status code 401 (Unauthorized)`: Token lacks `workflow` scope or repository access
+- Verify repository/branch/workflow names are correct
+
+**Test the GitHub API:**
+
+```bash
+# Test fetching recent workflow runs (same as the system does)
+curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+     -H "Accept: application/vnd.github+json" \
+     "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/runs?branch=$GITHUB_BRANCH&per_page=10" | jq '.workflow_runs[] | select(.name == env.GITHUB_WORKFLOW) | .conclusion' | head -1
 ```
 
 The conclusion can be `success`, `failure` or null (when it is running).
 
-An example response can be seen in the [sample.json](./sample.json) file.
+An example successful response can be seen in the [sample.json](./sample.json) file.
 
 ## Configuration Files
 
@@ -239,9 +301,17 @@ Controls how often the system checks GitHub for updates (every 5 seconds by defa
 
 Defines how to fetch workflow status from GitHub's REST API. Uses your GitHub token for authentication and retrieves information about the most recent workflow run on your specified branch.
 
-### config_process_github.conf
+### config_process_filter_by_name.conf
+
+Uses a Starlark script to filter GitHub workflow runs by name, keeping only workflows that match the `GITHUB_WORKFLOW` environment variable. This early-stage filtering ensures only relevant workflows are processed. Uses Starlark instead of Telegraf's built-in `processors.filter` because the built-in filter doesn't support environment variable substitution.
+
+### config_process_status_to_color.conf
 
 Contains a Starlark script that converts GitHub's workflow status (`success`, `failure`, or `null` for running) into simple color names (`green`, `red`, or `yellow`) that the strobe can understand.
+
+### config_process_select_latest.conf
+
+Uses a Starlark script to select only the most recent workflow run when multiple workflow runs are returned by the GitHub API. The processor tracks the highest `run_number` seen and drops older workflow runs, ensuring the strobe always reflects the current workflow status. This needs to be run after the `config_process_filter_by_name.conf` processor.
 
 ### config_output_strobe.conf
 
@@ -288,6 +358,7 @@ First, set up the environment variables:
 ```bash
 # Set up environment
 export HELPER_FILES_DIR=$(pwd)
+export SAMPLE_FILE=sample.json
 export TELEGRAF_DEBUG=true
 ```
 
@@ -297,7 +368,9 @@ Then run the following command:
 # Test with mock data (no GitHub API calls needed)
 telegraf --config config_agent.conf \
          --config test_files/config_input_file.conf \
-         --config config_process_github.conf \
+         --config config_process_filter_by_name.conf \
+         --config config_process_select_latest.conf \
+         --config config_process_status_to_color.conf \
          --config config_output_stdout.conf \
          --once
 ```
@@ -306,7 +379,7 @@ telegraf --config config_agent.conf \
 
 ```json
 {
-  "fields": { "color": "green" },
+  "fields": { "color": "green", "run_number": 20 },
   "name": "workflow_color",
   "tags": {},
   "timestamp": 1754301969
@@ -314,6 +387,35 @@ telegraf --config config_agent.conf \
 ```
 
 This shows the pipeline successfully converted the sample GitHub "success" status into "green" color output.
+
+### Test latest workflow selection logic
+
+Test only the latest workflow selection processor with out-of-order workflow data to verify it correctly selects the most recent run:
+
+```bash
+# Set up environment for latest selection test
+export HELPER_FILES_DIR=$(pwd)
+export SAMPLE_FILE=test_files/sample_select_latest.json
+export GITHUB_WORKFLOW="Validate JSON"
+export TELEGRAF_DEBUG=false
+
+# Test only the latest selection logic (no color transformation)
+telegraf --config config_agent.conf \
+         --config test_files/config_input_file.conf \
+         --config config_process_filter_by_name.conf \
+         --config config_process_select_latest.conf \
+         --config config_output_stdout.conf \
+         --once
+```
+
+**Expected behavior:** The test data contains workflow runs with `run_number` values 16, 20, 20, 19 (intentionally out of order). The processor should:
+
+- Let through run 16 (first metric)
+- Let through run 20 (higher number)
+- Let through run 20 again (same latest number)
+- Drop run 19 (lower than current state)
+
+**Expected output:** You'll see 3 JSON metrics (runs 16, 20, 20) with the original GitHub workflow data structure, demonstrating the latest selection logic works correctly.
 
 ### Test GitHub API integration
 
@@ -332,12 +434,17 @@ export HELPER_FILES_DIR=$(pwd)
 
 telegraf --config config_agent.conf \
          --config config_input_github.conf \
-         --config config_process_github.conf \
+         --config config_process_filter_by_name.conf \
+         --config config_process_select_latest.conf \
+         --config config_process_status_to_color.conf \
          --config config_output_stdout.conf \
          --once
 ```
 
-**Expected output:** With valid credentials, you'll see the JSON result like the mock test above. With invalid/expired credentials, you'll see:
+**Expected output:**
+
+- With valid credentials, you'll see the JSON result like the mock test above.
+- With invalid/expired credentials, you'll see:
 
 ```
 Error in plugin: received status code 401 (Unauthorized)
@@ -358,11 +465,14 @@ export VAPIX_IP=your.axis.device.ip
 # Set helper files directory
 export HELPER_FILES_DIR=$(pwd)
 export TELEGRAF_DEBUG=true
+export SAMPLE_FILE=sample.json
 
 # Run with mock data but real strobe control
 telegraf --config config_agent.conf \
          --config test_files/config_input_file.conf \
-         --config config_process_github.conf \
+         --config config_process_filter_by_name.conf \
+         --config config_process_select_latest.conf \
+         --config config_process_status_to_color.conf \
          --config config_output_strobe.conf \
          --config config_output_stdout.conf \
          --once
@@ -370,7 +480,10 @@ telegraf --config config_agent.conf \
 
 This will process the sample GitHub API response and **actually control your strobe light** based on the sample data (which shows a "success" status, so it should turn the strobe green).
 
-**Expected output:** With valid VAPIX credentials, you'll see the strobe light change to green. With invalid credentials, you'll see:
+**Expected output:**
+
+- With valid VAPIX credentials, you'll see the strobe light change to green.
+- With invalid credentials, you'll see:
 
 ```
 Error: curl: (22) The requested URL returned error: 401
@@ -381,7 +494,7 @@ If you get a 401 error, check that your VAPIX username and password are correct 
 
 ### Test complete workflow integration
 
-Test the whole workflow from getting the job status from the GitHub API to controlling the strobe light. This will test the same functionality that will run in the strobe device. The option `--once` will make it run once and then exit, you can remove this to run it continuously.
+Test the whole workflow from getting the job status from the GitHub API to controlling the strobe light. This will test the same functionality that will run in the strobe device.
 
 ```bash
 # Set up your GitHub credentials
@@ -403,13 +516,15 @@ export TELEGRAF_DEBUG=true
 # Full pipeline including strobe control
 telegraf --config config_agent.conf \
          --config config_input_github.conf \
-         --config config_process_github.conf \
+         --config config_process_filter_by_name.conf \
+         --config config_process_select_latest.conf \
+         --config config_process_status_to_color.conf \
          --config config_output_strobe.conf \
          --config config_output_stdout.conf \
          --once
 ```
 
-You should now see the strobe change color based on the status of the last GitHub workflow.
+You should now see the strobe change color based on the status of the last GitHub workflow. The option `--once` will make it run once and then exit, you can remove this to run it continuously.
 
 ## License
 

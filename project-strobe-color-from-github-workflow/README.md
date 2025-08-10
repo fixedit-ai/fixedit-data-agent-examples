@@ -69,7 +69,7 @@ This example is perfect for **system integrators and IT professionals** who want
     - [config_process_status_to_color.conf](#config_process_status_to_colorconf)
     - [config_process_select_latest.conf](#config_process_select_latestconf)
     - [config_output_strobe.conf](#config_output_strobeconf)
-    - [config_output_stdout.conf](#config_output_stdoutconf)
+    - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
     - [test_files/config_input_file.conf](#test_filesconfig_input_fileconf)
   - [Local Testing on Host](#local-testing-on-host)
     - [Prerequisites](#prerequisites)
@@ -227,7 +227,7 @@ Enable the `Debug mode` option in the FixedIT Data Agent for detailed logs.
 
 **First, check if workflow data is being processed:**
 
-- Enable debug mode OR upload and enable `config_output_stdout.conf` to see if workflow_color metrics are being produced
+- Enable debug mode OR upload and enable `test_files/config_output_stdout.conf` to see if workflow_color metrics are being produced
 - If no data is being produced, see [No workflow data appears](#no-workflow-data-appears) section below
 
 **If workflow data is being processed, check strobe configuration:**
@@ -317,13 +317,13 @@ Uses a Starlark script to select only the most recent workflow run when multiple
 
 Executes the `trigger_strobe.sh` script whenever the workflow status changes. This script uses VAPIX commands to actually change the strobe light color on your Axis device.
 
-### config_output_stdout.conf
+### test_files/config_output_stdout.conf
 
-When enabled, this outputs all pipeline data to the FixedIT Data Agent logs. Useful for troubleshooting if the strobe isn't responding as expected.
+When enabled, this outputs all pipeline data to the FixedIT Data Agent logs. Useful for troubleshooting if the strobe isn't responding as expected. This is also very useful for on-host testing since it makes it easy to validate the data at each stage of the pipeline.
 
 ### test_files/config_input_file.conf
 
-This file can be used together with the `sample.json` file to test the pipeline without having to wait for a GitHub Actions job to complete. Upload this file instead of the `config_input_github.conf` file, then upload the `sample.json` file as a helper file.
+This file can be used together with the `sample.json` file to test the pipeline without having to wait for a GitHub Actions job to complete. This is intended primarily for on-host testing, but works well for testing in the FixedIT Data Agent too. Upload this file instead of the `config_input_github.conf` file, then upload the `sample.json` file as a helper file. You also need to set the `SAMPLE_FILE` environment variable to `sample.json` in the FixedIT Data Agent.
 
 ## Local Testing on Host
 
@@ -371,7 +371,7 @@ telegraf --config config_agent.conf \
          --config config_process_filter_by_name.conf \
          --config config_process_select_latest.conf \
          --config config_process_status_to_color.conf \
-         --config config_output_stdout.conf \
+         --config test_files/config_output_stdout.conf \
          --once
 ```
 
@@ -404,7 +404,7 @@ telegraf --config config_agent.conf \
          --config test_files/config_input_file.conf \
          --config config_process_filter_by_name.conf \
          --config config_process_select_latest.conf \
-         --config config_output_stdout.conf \
+         --config test_files/config_output_stdout.conf \
          --once
 ```
 
@@ -437,7 +437,7 @@ telegraf --config config_agent.conf \
          --config config_process_filter_by_name.conf \
          --config config_process_select_latest.conf \
          --config config_process_status_to_color.conf \
-         --config config_output_stdout.conf \
+         --config test_files/config_output_stdout.conf \
          --once
 ```
 
@@ -474,7 +474,7 @@ telegraf --config config_agent.conf \
          --config config_process_select_latest.conf \
          --config config_process_status_to_color.conf \
          --config config_output_strobe.conf \
-         --config config_output_stdout.conf \
+         --config test_files/config_output_stdout.conf \
          --once
 ```
 
@@ -520,7 +520,7 @@ telegraf --config config_agent.conf \
          --config config_process_select_latest.conf \
          --config config_process_status_to_color.conf \
          --config config_output_strobe.conf \
-         --config config_output_stdout.conf \
+         --config test_files/config_output_stdout.conf \
          --once
 ```
 

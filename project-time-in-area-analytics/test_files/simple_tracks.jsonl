@@ -1,0 +1,10 @@
+{"frame": 1, "timestamp": "2024-01-15T10:00:00Z", "detections": []}
+{"frame": 2, "timestamp": "2024-01-15T10:00:01Z", "detections": [{"track_id": "track_001", "object_type": "human", "x": 250, "y": 200}]}
+{"frame": 3, "timestamp": "2024-01-15T10:00:02Z", "detections": [{"track_id": "track_001", "object_type": "human", "x": 260, "y": 210}]}
+{"frame": 4, "timestamp": "2024-01-15T10:00:03Z", "detections": [{"track_id": "track_001", "object_type": "human", "x": 270, "y": 220}, {"track_id": "track_002", "object_type": "human", "x": 150, "y": 180}]}
+{"frame": 5, "timestamp": "2024-01-15T10:00:04Z", "detections": [{"track_id": "track_001", "object_type": "human", "x": 280, "y": 230}, {"track_id": "track_002", "object_type": "human", "x": 160, "y": 190}]}
+{"frame": 6, "timestamp": "2024-01-15T10:00:05Z", "detections": [{"track_id": "track_002", "object_type": "human", "x": 170, "y": 200}]}
+{"frame": 7, "timestamp": "2024-01-15T10:01:10Z", "detections": [{"track_id": "track_003", "object_type": "vehicle", "x": 300, "y": 250}]}
+{"frame": 8, "timestamp": "2024-01-15T10:01:11Z", "detections": [{"track_id": "track_003", "object_type": "vehicle", "x": 310, "y": 260}]}
+{"frame": 9, "timestamp": "2024-01-15T10:01:12Z", "detections": [{"track_id": "track_003", "object_type": "vehicle", "x": 320, "y": 270}, {"track_id": "track_001", "object_type": "human", "x": 290, "y": 240}]}
+{"frame": 10, "timestamp": "2024-01-15T10:01:13Z", "detections": [{"track_id": "track_004", "object_type": "human", "x": 400, "y": 300}]}

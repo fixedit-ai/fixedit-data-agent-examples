@@ -47,7 +47,33 @@ flowchart TD
 
 ## Table of Contents
 
-TODO
+<!-- toc -->
+
+- [Compatibility](#compatibility)
+  - [AXIS OS Compatibility](#axis-os-compatibility)
+  - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
+- [Quick Setup](#quick-setup)
+  - [Troubleshooting](#troubleshooting)
+- [Configuration Files](#configuration-files)
+  - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
+  - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
+  - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
+  - [test_files/sample_data_feeder.sh](#test_filessample_data_feedersh)
+- [Future Enhancements](#future-enhancements)
+- [Local Testing on Host](#local-testing-on-host)
+  - [Prerequisites](#prerequisites)
+  - [Host Testing Limitations](#host-testing-limitations)
+  - [Test Commands](#test-commands)
+    - [Test Time in Area Calculation Only](#test-time-in-area-calculation-only)
+    - [Test Complete Alert Pipeline](#test-complete-alert-pipeline)
+    - [Test with Real Device Data](#test-with-real-device-data)
+- [Analytics Data Structure](#analytics-data-structure)
+  - [Data Format](#data-format)
+  - [Data Behavior](#data-behavior)
+  - [Data Transformation for Telegraf](#data-transformation-for-telegraf)
+- [Track Activity Visualization](#track-activity-visualization)
+
+<!-- tocstop -->
 
 ## Compatibility
 
@@ -167,3 +193,126 @@ telegraf --config test_files/config_input_sample_data.conf \
 
 **Expected Output:**
 Only detections with time in area (`time_in_area_seconds`) > `ALERT_THRESHOLD_SECONDS` plus debug messages for track cleanup.
+
+#### Test with Real Device Data
+
+You can also test with real analytics scene description data recorded from an Axis device:
+
+```bash
+# Set up test environment with real device data
+export HELPER_FILES_DIR="$(pwd)"
+export SAMPLE_FILE="test_files/real_device_data.jsonl"
+
+# Test time in area calculation with real data
+telegraf --config test_files/config_input_sample_data.conf \
+         --config config_process_track_duration.conf \
+         --config test_files/config_output_stdout.conf \
+         --once
+```
+
+**Note:** The `real_device_data.jsonl` file contains actual analytics scene description data recorded from an Axis device. This provides more realistic testing with real track IDs, timestamps, and object detection patterns.
+
+## Analytics Data Structure
+
+The analytics scene description data follows a specific format and behavior:
+
+### Data Format
+
+Each line contains a JSON object with this structure:
+
+```json
+{
+  "frame": {
+    "observations": [
+      {
+        "bounding_box": {
+          "bottom": 0.6,
+          "left": 0.2,
+          "right": 0.3,
+          "top": 0.4
+        },
+        "class": { "type": "Human" },
+        "timestamp": "2024-01-15T10:00:01Z",
+        "track_id": "track_001"
+      }
+    ],
+    "operations": [],
+    "timestamp": "2024-01-15T10:00:01Z"
+  }
+}
+```
+
+### Data Behavior
+
+- **Sparse Output**: Frames are primarily output when objects are detected, with occasional empty frames
+- **Time Gaps**: Periods with no activity result in no output (creating gaps in timestamps)
+- **Occasional Empty Frames**: Sporadically output with `"observations": []`, usually for cleanup operations or periodic heartbeats
+- **Operations Array**: May contain delete operations when tracks disappear
+- **Optional Classification**: The `class` field may be missing from observations, especially for short-lived tracks where classification hasn't completed yet
+
+### Data Transformation for Telegraf
+
+The raw analytics data needs transformation for Telegraf's JSON parser because metrics must be flat - the contained list of detections would cause strange concatenations if parsed directly. Both the `sample_data_feeder.sh` script and the real `axis_metadata_consumer.sh` running on the camera perform this transformation.
+
+**From:** Frame-based format (multiple observations per frame)
+
+```json
+{
+  "frame": {
+    "observations": [
+      {"track_id": "track_001", "class": {"type": "Human"}, ...},
+      {"track_id": "track_002", "class": {"type": "Human"}, ...}
+    ],
+    "timestamp": "2024-01-15T10:00:01Z"
+  }
+}
+```
+
+**To:** Individual detection messages (one observation per message, multiple messages per frame)
+
+```json
+{
+  "frame": "2024-01-15T10:00:01Z",
+  "timestamp": "2024-01-15T10:00:01Z",
+  "track_id": "track_001",
+  "object_type": "Human",
+  "bounding_box": {"bottom": 0.6, "left": 0.2, "right": 0.3, "top": 0.4}
+}
+{
+  "frame": "2024-01-15T10:00:01Z",
+  "timestamp": "2024-01-15T10:00:01Z",
+  "track_id": "track_002",
+  "object_type": "Human",
+  "bounding_box": {"bottom": 0.58, "left": 0.14, "right": 0.20, "top": 0.38}
+}
+```
+
+This transformation:
+
+- **Flattens** nested observations into individual messages
+- **Preserves** object bounding box coordinates
+- **Simplifies** object classification to just the type
+- **Skips** frames with no observations entirely
+
+**Recording Real Device Data:**
+
+You can record real analytics scene description data from your Axis camera for deterministic testing and analysis. This allows you to run the analytics pipeline on your host machine with reproducible results.
+
+```bash
+python test_scripts/record_real_data.py --host <device_ip> --username <username>
+```
+
+The recorded data works with the track heatmap visualization and other analysis tools. For detailed usage instructions, see the [test_scripts README](test_scripts/README.md).
+
+## Track Activity Visualization
+
+This project includes a track heatmap visualization script that shows when different track IDs are active over time, helping you analyze track patterns and activity density in your data.
+
+```bash
+python test_scripts/track_heatmap_viewer.py test_files/simple_tracks.jsonl
+```
+
+For installation, usage details, and examples, see the [test_scripts README](test_scripts/README.md).
+
+![Track Heatmap Example](.images/track-heatmap-120s.png)
+_Example heatmap showing track activity over time with labeled components_

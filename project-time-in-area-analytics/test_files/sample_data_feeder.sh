@@ -26,28 +26,29 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
-# Process each frame and output one detection per message
+# Process each frame and output one observation per message
 while IFS= read -r line; do
-    # Extract frame info
-    frame=$(echo "$line" | jq -r '.frame')
-    timestamp=$(echo "$line" | jq -r '.timestamp')
+    # Extract frame timestamp
+    frame_timestamp=$(echo "$line" | jq -r '.frame.timestamp')
 
-    # Get number of detections
-    detection_count=$(echo "$line" | jq '.detections | length')
+    # Get number of observations (handle null/empty cases)
+    observation_count=$(echo "$line" | jq '.frame.observations | length // 0')
 
-    # Only output messages if there are detections
-    if [ "$detection_count" -gt 0 ]; then
-        # Output each detection as a separate message
+    # Only output messages if there are observations
+    if [ "$observation_count" -gt 0 ] 2>/dev/null; then
+        # Output each observation as a separate message
         i=0
-        while [ $i -lt "$detection_count" ]; do
-            detection=$(echo "$line" | jq ".detections[$i]")
-            track_id=$(echo "$detection" | jq -r '.track_id')
-            object_type=$(echo "$detection" | jq -r '.object_type')
-            x=$(echo "$detection" | jq -r '.x')
-            y=$(echo "$detection" | jq -r '.y')
+        while [ $i -lt "$observation_count" ]; do
+            observation=$(echo "$line" | jq ".frame.observations[$i]")
+            track_id=$(echo "$observation" | jq -r '.track_id')
+            object_type=$(echo "$observation" | jq -r '.class.type')
+            timestamp=$(echo "$observation" | jq -r '.timestamp')
+
+            # Extract bounding box data
+            bounding_box=$(echo "$observation" | jq -c '.bounding_box')
 
             # Output individual detection with frame context
-            echo "{\"frame\": $frame, \"timestamp\": \"$timestamp\", \"track_id\": \"$track_id\", \"object_type\": \"$object_type\", \"x\": $x, \"y\": $y}"
+            echo "{\"frame\": \"$frame_timestamp\", \"timestamp\": \"$timestamp\", \"track_id\": \"$track_id\", \"object_type\": \"$object_type\", \"bounding_box\": $bounding_box}"
 
             i=$((i + 1))
         done

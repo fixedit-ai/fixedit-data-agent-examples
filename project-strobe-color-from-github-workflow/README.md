@@ -69,8 +69,8 @@ This example is perfect for **system integrators and IT professionals** who want
     - [config_agent.conf](#config_agentconf)
     - [config_input_github.conf](#config_input_githubconf)
     - [config_process_filter_by_name.conf](#config_process_filter_by_nameconf)
-    - [config_process_status_to_color.conf](#config_process_status_to_colorconf)
     - [config_process_select_latest.conf](#config_process_select_latestconf)
+    - [config_process_status_to_color.conf](#config_process_status_to_colorconf)
     - [config_output_strobe.conf](#config_output_strobeconf)
     - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
     - [test_files/config_input_file.conf](#test_filesconfig_input_fileconf)
@@ -324,13 +324,13 @@ Defines how to fetch workflow status from GitHub's REST API. Uses your GitHub to
 
 Uses a Starlark script to filter GitHub workflow runs by name, keeping only workflows that match the `GITHUB_WORKFLOW` environment variable. This early-stage filtering ensures only relevant workflows are processed. Uses Starlark instead of Telegraf's built-in `processors.filter` because the built-in filter doesn't support environment variable substitution.
 
-### config_process_status_to_color.conf
-
-Contains a Starlark script that converts GitHub's workflow status (`success`, `failure`, or `null` for running) into simple color names (`green`, `red`, or `yellow`) that the strobe can understand.
-
 ### config_process_select_latest.conf
 
 Uses a Starlark script to select only the most recent workflow run when multiple workflow runs are returned by the GitHub API. The processor tracks the highest `run_number` seen and drops older workflow runs, ensuring the strobe always reflects the current workflow status. This needs to be run after the `config_process_filter_by_name.conf` processor.
+
+### config_process_status_to_color.conf
+
+Contains a Starlark script that converts GitHub's workflow status (`success`, `failure`, or `null` for running) into simple color names (`green`, `red`, or `yellow`) that the strobe can understand.
 
 ### config_output_strobe.conf
 

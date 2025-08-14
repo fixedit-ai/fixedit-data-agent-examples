@@ -108,8 +108,8 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 
 ### FixedIT Data Agent Compatibility
 
-- **Minimum Data Agent version**: 1.0
-- **Required features**: Uses the `input.http`, `processors.starlark`, `outputs.exec` plugins and the `HELPER_FILES_DIR` and `TELEGRAF_DEBUG` environment variables set by the FixedIT Data Agent.
+- **Minimum Data Agent version**: 1.1
+- **Required features**: Uses the `input.http`, `processors.starlark`, `outputs.exec` plugins and the `HELPER_FILES_DIR` and `TELEGRAF_DEBUG` environment variables set by the FixedIT Data Agent (version 1.0). It is recommended to use version 1.1 or higher since the load order of config files was not visible in the web user interface in version 1.0.
 
 ## Quick Setup
 

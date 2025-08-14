@@ -326,11 +326,11 @@ Uses a Starlark script to filter GitHub workflow runs by name, keeping only work
 
 ### config_process_select_latest.conf
 
-Uses a Starlark script to select only the most recent workflow run when multiple workflow runs are returned by the GitHub API. The processor tracks the highest `run_number` seen and drops older workflow runs, ensuring the strobe always reflects the current workflow status. This needs to be run after the `config_process_filter_by_name.conf` processor.
+Uses a Starlark script to select only the most recent workflow run when multiple workflow runs are returned by the GitHub API. The processor tracks the highest `run_number` seen and drops older workflow runs, ensuring the strobe always reflects the current workflow status. This needs to be loaded (enabled) after `config_process_filter_by_name.conf`.
 
 ### config_process_status_to_color.conf
 
-Contains a Starlark script that converts GitHub's workflow status (`success`, `failure`, or `null` for running) into simple color names (`green`, `red`, or `yellow`) that the strobe can understand.
+Contains a Starlark script that converts GitHub's workflow status (`success`, `failure`, or `null` for running) into simple color names (`green`, `red`, or `yellow`) that the strobe can understand. This needs to be loaded (enabled) after `config_process_select_latest.conf`.
 
 ### config_output_strobe.conf
 

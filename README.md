@@ -11,6 +11,7 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 - [Edge Device Customization Examples](#edge-device-customization-examples)
   - [Older Examples](#older-examples)
   - [Hello, World!](#hello-world)
+  - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
 
 <!-- tocstop -->
@@ -57,6 +58,35 @@ flowchart TD
     style A2 fill:#90EE90,stroke:#43a047
     style C fill:#ffebee,stroke:#e53935
 ```
+
+### Visualizing a GitHub Workflow Status with an Axis Strobe
+
+The [Strobe Color From GitHub Workflow](./project-strobe-color-from-github-workflow) project demonstrates real-time CI/CD status visualization by automatically controlling an Axis strobe light based on GitHub Actions workflow results. When your workflow succeeds, the strobe glows green; when it fails, it turns red; and yellow indicates tests are running. The FixedIT Data Agent should be running on the Axis strobe device, since this will poll the GitHub API, no other infrastructure is required.
+
+![Axis strobe with green color](./project-strobe-color-from-github-workflow/.images/strobe.jpg)
+
+The following diagram shows the data flow of the "Strobe Color From GitHub Workflow" project. For more details see the [README](./project-strobe-color-from-github-workflow/README.md) in the `project-strobe-color-from-github-workflow` directory.
+
+```mermaid
+flowchart TD
+    A["🔍 Fetch GitHub API<br/>Get 10 latest workflow runs<br/>Out: github_workflow"] --> B["🔍 Filter by Name<br/>Keep only target workflow<br/>In: github_workflow<br/>Out: github_workflow_filtered"]
+    B --> C["🏆 Filter for Latest<br/>Keep only latest run<br/>In: github_workflow_filtered<br/>Out: github_workflow_latest"]
+    C --> D["🎨 Map to Color<br/>success → green<br/>failure → red<br/>running → yellow<br/>In: github_workflow_latest<br/>Out: workflow_color"]
+    D --> E["✅ Enable Profile<br/>Set color on strobe<br/>In: workflow_color"]
+    E --> F["❌ Disable Other Profiles<br/>Stop yellow, red, green<br/>(except active one)"]
+    F --> G["⏳ Wait<br/>Sleep for interval period<br/>(default: 5 seconds)"]
+    G --> A
+
+    style A fill:#e1f5fe
+    style B fill:#e8f5e8
+    style C fill:#f3e5f5
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+    style F fill:#fce4ec
+    style G fill:#f1f8e9
+```
+
+This example showcases how simple configuration files and shell scripts can create powerful edge intelligence in your Axis strobes without traditional embedded development complexity. The project could easily be adapted to work together with other APIs to visualize statuses such as server health monitoring, weather warnings (like high wind alerts), IoT sensor data (temperature, moisture, etc.), security system states, or any REST API (or most other APIs) that provides status information.
 
 ### Creating a Timelapse with AWS S3 Upload
 

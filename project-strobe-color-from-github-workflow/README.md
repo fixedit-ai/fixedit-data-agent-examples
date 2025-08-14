@@ -61,7 +61,10 @@ This example is perfect for **system integrators and IT professionals** who want
     - [Creating a GitHub access token](#creating-a-github-access-token)
     - [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe)
   - [Troubleshooting](#troubleshooting)
-    - [Test GitHub API](#test-github-api)
+    - [Strobe doesn't change color](#strobe-doesnt-change-color)
+    - [No workflow data appears](#no-workflow-data-appears)
+    - [Workflow not found among recent runs](#workflow-not-found-among-recent-runs)
+    - [GitHub API issues](#github-api-issues)
   - [Configuration Files](#configuration-files)
     - [config_agent.conf](#config_agentconf)
     - [config_input_github.conf](#config_input_githubconf)
@@ -100,7 +103,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 ### AXIS OS Compatibility
 
 - **Minimum AXIS OS version**: Should be compatible with AXIS OS 11 and 12+.
-- **Required tools**: Uses `jq` which was not available in older AXIS OS versions. Uses curl and openssl which are installed by default.
+- **Required tools**: Uses `jq` which was not available in older AXIS OS versions. Uses `curl` which is installed by default, and standard Unix utilities (`cat`, `echo`, `printf`, `tr`).
 - **Other notes**: Uses HTTP Digest authentication for VAPIX API calls which is supported in all AXIS OS versions.
 
 ### FixedIT Data Agent Compatibility
@@ -131,6 +134,18 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 5. **Upload the configuration files to the FixedIT Data Agent**
 
 6. **Enable the configuration files**
+
+   > [!IMPORTANT]
+   > In this project, order of the files matter!
+   > This project is making use of multiple processors stacked after each other,
+   > in Telegraf, this means that the first processor must already be defined when
+   > the second processor depending on the first processor is defined. This is
+   > handled by the load order which is visible in the configuration UI. Files enabled
+   > later will have a later load order. In this case it is important that you enable the
+   > `config_process_filter_by_name.conf` file before the `config_process_select_latest.conf` file, and that one before the `config_process_status_to_color.conf` file.
+
+   This can be seen in the configuration UI:
+   ![Configuration UI](./.images/uploaded-files-with-order.png)
 
 The strobe light should now change color based on the status of the latest workflow run on your specified branch.
 
@@ -221,7 +236,11 @@ It should now look like this:
 
 ## Troubleshooting
 
-Enable the `Debug mode` option in the FixedIT Data Agent for detailed logs.
+Enable the `Debug mode` option in the FixedIT Data Agent for detailed logs. This will also make the `trigger_strobe.sh` script output debug logs to the `trigger_strobe.debug` file in the helper files directory. You need to refresh the web UI to see the new file.
+
+![Debug logs created by the script](./.images/debug-mode-script-logs.png)
+
+In the example above, the debug log for the `trigger_strobe.sh` script shows that the API command fails due to a space incorrectly specified in the URL of the strobe.
 
 ### Strobe doesn't change color
 
@@ -266,7 +285,7 @@ curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
      "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/runs?branch=$GITHUB_BRANCH&per_page=10" | jq '.workflow_runs[] | .name'
 ```
 
-Check if your `GITHUB_WORKFLOW` value appears in the output.
+Check if your `GITHUB_WORKFLOW` value appears in the output. If it does, it should be found by the starlark scripts, if it does not, then you need to debug your GitHub workflows and possibly increase the `per_page` limit.
 
 ### GitHub API issues
 
@@ -397,7 +416,7 @@ Test only the latest workflow selection processor with out-of-order workflow dat
 export HELPER_FILES_DIR=$(pwd)
 export SAMPLE_FILE=test_files/sample_select_latest.json
 export GITHUB_WORKFLOW="Validate JSON"
-export TELEGRAF_DEBUG=false
+export TELEGRAF_DEBUG=true
 
 # Test only the latest selection logic (no color transformation)
 telegraf --config config_agent.conf \

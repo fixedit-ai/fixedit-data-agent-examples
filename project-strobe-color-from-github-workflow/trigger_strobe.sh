@@ -17,6 +17,8 @@
 # - VAPIX_PASSWORD: Device password
 # - VAPIX_IP: IP address of the Axis strobe device (should be 127.0.0.1 when
 #   the FixedIT Data Agent runs on the Axis strobe).
+# - TELEGRAF_DEBUG: Enable debug logging when set to "true"
+# - HELPER_FILES_DIR: Directory for debug log files
 #
 # Error Codes:
 # - 10: Missing required environment variables
@@ -33,14 +35,30 @@ if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ] || [ -z "$VAPIX_IP" ]; t
     exit 10
 fi
 
+# Debug mode - use TELEGRAF_DEBUG environment variable
+DEBUG="${TELEGRAF_DEBUG:-false}"
+
+# Function to log debug messages to a file
+debug_log_file() {
+    if [ "$DEBUG" = "true" ]; then
+        echo "DEBUG: $1" >> "${HELPER_FILES_DIR}/trigger_strobe.debug" 2>/dev/null || true
+    fi
+}
+
+debug_log_file "Starting trigger_strobe.sh script"
+debug_log_file "Environment variables - VAPIX_USERNAME: $VAPIX_USERNAME, VAPIX_IP: $VAPIX_IP, DEBUG: $DEBUG"
+
 # Read JSON input from Telegraf via stdin
 # Expected format: {"fields":{"color":"green"},"name":"workflow_color",...}
 # This is the metric data sent by the Telegraf exec output plugin
 json_input=$(cat)
 
+debug_log_file "Received JSON input: $json_input"
+
 # Validate that we received input data
 # Empty input indicates a problem with the Telegraf pipeline
 if [ -z "$json_input" ]; then
+    debug_log_file "ERROR: Empty input received from Telegraf"
     printf "Error: Empty input received from Telegraf\n" >&2
     printf "Expected JSON format: {\"fields\":{\"color\":\"value\"}}\n" >&2
     exit 11
@@ -53,10 +71,14 @@ fi
 # Note: If use_batch_format=true was used, we'd need '.metrics[0].fields.color'
 color=$(echo "$json_input" | jq -r '.fields.color')
 
+debug_log_file "Extracted color value: $color"
+
 # Validate that color extraction was successful
 # jq returns 'null' as a string if the field doesn't exist
 # Empty result indicates JSON parsing failure or missing field
 if [ -z "$color" ] || [ "$color" = "null" ]; then
+    debug_log_file "ERROR: No color field found in JSON input"
+    debug_log_file "Input received: $json_input"
     printf "Error: No color field found in JSON input\n" >&2
     printf "Input received: %s\n" "$json_input" >&2
     printf "Expected JSON with .fields.color field\n" >&2
@@ -66,14 +88,19 @@ fi
 # Validate color value against supported strobe profiles
 # Only these three colors have corresponding profiles configured on the device
 # Each color represents a different workflow state for visual monitoring
+debug_log_file "Validating color value: $color"
 case $color in
     "green")   # Workflow success - all tests passed, deployment successful
+        debug_log_file "Color validation successful: green (success)"
         ;;
     "yellow")  # Workflow running - in progress, queued, or unknown state
+        debug_log_file "Color validation successful: yellow (running)"
         ;;
     "red")     # Workflow failure - tests failed, build errors, deployment issues
+        debug_log_file "Color validation successful: red (failure)"
         ;;
     *)
+        debug_log_file "ERROR: Invalid color value: $color"
         printf "Error: Invalid color '%s'\n" "$color" >&2
         printf "Supported colors: green (success), yellow (running), red (failure)\n" >&2
         printf "Ensure corresponding profiles are configured on the Axis device\n" >&2
@@ -88,43 +115,62 @@ control_profile() {
     profile=$1    # Profile name (green, yellow, red)
     action=$2     # Action to perform (start, stop)
 
+    debug_log_file "Making VAPIX API call - Profile: $profile, Action: $action"
+    debug_log_file "API endpoint: http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi"
+    debug_log_file "Using credentials: $VAPIX_USERNAME:$(printf '%*s' ${#VAPIX_PASSWORD} '' | tr ' ' '*')"
+
     # Make VAPIX API call to control the strobe profile
     # Endpoint: siren_and_light.cgi for controlling light patterns
     # Method: POST with JSON payload specifying action and profile
     # Auth: HTTP Digest authentication
-    curl --fail --digest -u ${VAPIX_USERNAME}:${VAPIX_PASSWORD} "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
+    api_response=$(curl --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
         -X POST \
         -H "Content-Type: application/json" \
-        -d "{\"apiVersion\":\"1.0\",\"method\":\"$action\",\"params\":{\"profile\":\"$profile\"}}"
+        -d "{\"apiVersion\":\"1.0\",\"method\":\"$action\",\"params\":{\"profile\":\"$profile\"}}" 2>&1)
+    api_exit=$?
+
+    debug_log_file "API call exit code: $api_exit"
+    debug_log_file "API response: $api_response"
 
     # Check if the API call was successful
     # Non-zero exit code indicates network error, authentication failure,
     # or invalid profile/action parameters
-    if [ $? -ne 0 ]; then
+    if [ $api_exit -ne 0 ]; then
+        debug_log_file "ERROR: VAPIX API call failed - Profile: $profile, Action: $action"
+        debug_log_file "ERROR: Response: $api_response"
         printf "Failed to %s profile '%s'\n" "$action" "$profile" >&2
         printf "Check network connectivity, credentials, and profile configuration\n" >&2
         exit 14
+    else
+        debug_log_file "VAPIX API call successful - Profile: $profile, Action: $action"
     fi
 }
 
 # Activate the requested color profile
 # This starts the strobe pattern corresponding to the workflow status
+debug_log_file "Starting color profile: $color"
 control_profile "$color" "start"
 
 # Deactivate all other color profiles to ensure exclusive operation,
 # this way we do not need to care about the priorities of the profiles
 # when creating them.
+debug_log_file "Deactivating other color profiles to ensure exclusive operation"
 case $color in
     "green")   # Success state - stop running and failure indicators
+        debug_log_file "Stopping yellow and red profiles"
         control_profile "yellow" "stop"
         control_profile "red" "stop"
         ;;
     "yellow")  # Running state - stop success and failure indicators
+        debug_log_file "Stopping green and red profiles"
         control_profile "green" "stop"
         control_profile "red" "stop"
         ;;
     "red")     # Failure state - stop success and running indicators
+        debug_log_file "Stopping green and yellow profiles"
         control_profile "green" "stop"
         control_profile "yellow" "stop"
         ;;
 esac
+
+debug_log_file "Script completed successfully - Color: $color"

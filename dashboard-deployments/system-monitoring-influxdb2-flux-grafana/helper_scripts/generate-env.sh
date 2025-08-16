@@ -49,7 +49,7 @@ cat > "$ENV_FILE" << EOF
 #!/bin/bash
 # Generated environment variables for production docker-compose setup
 # Generated on: $(date)
-# 
+#
 # To use these variables, source this file:
 # source env.sh
 #

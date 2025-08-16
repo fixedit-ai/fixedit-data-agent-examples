@@ -72,6 +72,10 @@ flowchart TD
   - [Data Behavior](#data-behavior)
   - [Data Transformation for Telegraf](#data-transformation-for-telegraf)
 - [Track Activity Visualization](#track-activity-visualization)
+- [Automated Testing](#automated-testing)
+  - [GitHub Workflow](#github-workflow)
+  - [Test Data](#test-data)
+  - [PR Comments](#pr-comments)
 
 <!-- tocstop -->
 
@@ -316,3 +320,44 @@ For installation, usage details, and examples, see the [test_scripts README](tes
 
 ![Track Heatmap Example](.images/track-heatmap-120s.png)
 _Example heatmap showing track activity over time with labeled components_
+
+## Automated Testing
+
+This project includes comprehensive automated testing to ensure both the visualization script and Telegraf pipeline work correctly and produce consistent results.
+
+### GitHub Workflow
+
+The automated tests run on every push and pull request via the `project-time-in-area-test-analytics.yml` workflow, which includes:
+
+**Two Independent Test Jobs:**
+
+- **Track Heatmap Viewer Tests**: Validates alarm detection in the visualization script
+- **Telegraf Pipeline Tests**: Validates time-in-area calculations and threshold filtering
+
+**Three Test Scenarios per Tool:**
+
+- **No alarms scenario**: High threshold (15s) should produce no alarms
+- **Some alarms scenario**: Moderate threshold (2s) should identify 3 specific tracks
+- **All alarms scenario**: Low threshold (0s) should identify all 4 tracks
+
+Both tools now behave identically, calculating total time-in-area including brief gaps under 60 seconds. If a gap is longer than 60 seconds (should not happen in data from the Axis cameras!?), then the Telegraf pipeline would forget about the track and the time-in-area would be reset to 0 once the track reappears.
+
+### Test Data
+
+The tests use `test_files/simple_tracks.jsonl` which contains simplified track data with:
+
+- `track_001`: Appears twice with 8s gap (total time: 11s)
+- `track_002`: Continuous presence for 2s
+- `track_003`: Continuous presence for 2s
+- `track_004`: Single appearance (0s)
+
+![Example data visualized](./.images/track-heatmap-simple.png)
+
+### PR Comments
+
+The workflow automatically posts detailed comments to pull requests with:
+
+- ✅ Success confirmation when all tests pass
+- ❌ Specific failure diagnostics and troubleshooting steps when tests fail
+
+This ensures both tools maintain consistent alarm detection behavior and helps catch regressions early in the development process.

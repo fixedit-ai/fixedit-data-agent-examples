@@ -1,0 +1,366 @@
+name: Test Time-in-Area Analytics
+
+on:
+  push:
+    branches: [main, feature/*]
+    paths:
+      - "project-time-in-area-analytics/**"
+      - ".github/workflows/project-time-in-area-test-analytics.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "project-time-in-area-analytics/**"
+      - ".github/workflows/project-time-in-area-test-analytics.yml"
+
+jobs:
+  test-visualization-script:
+    name: Test Track Heatmap Viewer
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
+
+      - name: Install Python dependencies
+        run: |
+          cd project-time-in-area-analytics
+          pip install -r test_scripts/requirements.txt
+
+      - name: Test visualization script - No alarms (threshold 15s)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing heatmap viewer with threshold: 15s (expecting no alarms)"
+
+          # Run heatmap viewer with high threshold
+          HEATMAP_OUTPUT=$(python test_scripts/track_heatmap_viewer.py test_files/simple_tracks.jsonl --alarm-threshold 15 --no-ui 2>&1)
+          echo "Heatmap output: $HEATMAP_OUTPUT"
+
+          # Expected: 0 alarms
+          EXPECTED_ALARMS=0
+
+          if echo "$HEATMAP_OUTPUT" | grep -q "No tracks exceeded alarm threshold"; then
+            ACTUAL_ALARMS=0
+          else
+            ACTUAL_ALARMS=$(echo "$HEATMAP_OUTPUT" | grep -A 10 "Tracks with alarms" | grep -E "^\s+track_" | wc -l)
+          fi
+
+          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Actual alarms: $ACTUAL_ALARMS"
+
+          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ]; then
+            echo "✅ PASS: Heatmap viewer correctly found $ACTUAL_ALARMS alarms for threshold 15s"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms but found $ACTUAL_ALARMS for threshold 15s"
+            exit 1
+          fi
+
+      - name: Test visualization script - Some alarms (threshold 2s)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing heatmap viewer with threshold: 2s (expecting 3 alarms)"
+
+          # Run heatmap viewer with moderate threshold
+          HEATMAP_OUTPUT=$(python test_scripts/track_heatmap_viewer.py test_files/simple_tracks.jsonl --alarm-threshold 2 --no-ui 2>&1)
+          echo "Heatmap output: $HEATMAP_OUTPUT"
+
+          # Expected: 3 alarms (track_001, track_002, track_003)
+          EXPECTED_ALARMS=3
+          EXPECTED_TRACKS="track_001 track_002 track_003"
+
+          if echo "$HEATMAP_OUTPUT" | grep -q "No tracks exceeded alarm threshold"; then
+            ACTUAL_ALARMS=0
+            ACTUAL_TRACKS=""
+          else
+            ACTUAL_ALARMS=$(echo "$HEATMAP_OUTPUT" | grep -A 10 "Tracks with alarms" | grep -E "^\s+track_" | wc -l)
+            ACTUAL_TRACKS=$(echo "$HEATMAP_OUTPUT" | grep -A 10 "Tracks with alarms" | grep -E "^\s+track_" | sed 's/^\s*//' | sort | tr '\n' ' ' | sed 's/ $//')
+          fi
+
+          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Expected tracks: $EXPECTED_TRACKS"
+          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Actual tracks: $ACTUAL_TRACKS"
+
+          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Heatmap viewer correctly found $ACTUAL_ALARMS alarms with correct track IDs for threshold 2s"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms ($EXPECTED_TRACKS) but found $ACTUAL_ALARMS alarms ($ACTUAL_TRACKS) for threshold 2s"
+            exit 1
+          fi
+
+      - name: Test visualization script - All alarms (threshold 0s)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing heatmap viewer with threshold: 0s (expecting 4 alarms)"
+
+          # Run heatmap viewer with zero threshold
+          HEATMAP_OUTPUT=$(python test_scripts/track_heatmap_viewer.py test_files/simple_tracks.jsonl --alarm-threshold 0 --no-ui 2>&1)
+          echo "Heatmap output: $HEATMAP_OUTPUT"
+
+          # Expected: 4 alarms (all tracks: track_001, track_002, track_003, track_004)
+          EXPECTED_ALARMS=4
+          EXPECTED_TRACKS="track_001 track_002 track_003 track_004"
+
+          if echo "$HEATMAP_OUTPUT" | grep -q "No tracks exceeded alarm threshold"; then
+            ACTUAL_ALARMS=0
+            ACTUAL_TRACKS=""
+          else
+            ACTUAL_ALARMS=$(echo "$HEATMAP_OUTPUT" | grep -A 10 "Tracks with alarms" | grep -E "^\s+track_" | wc -l)
+            ACTUAL_TRACKS=$(echo "$HEATMAP_OUTPUT" | grep -A 10 "Tracks with alarms" | grep -E "^\s+track_" | sed 's/^\s*//' | sort | tr '\n' ' ' | sed 's/ $//')
+          fi
+
+          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Expected tracks: $EXPECTED_TRACKS"
+          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Actual tracks: $ACTUAL_TRACKS"
+
+          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Heatmap viewer correctly found $ACTUAL_ALARMS alarms with correct track IDs for threshold 0s"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms ($EXPECTED_TRACKS) but found $ACTUAL_ALARMS alarms ($ACTUAL_TRACKS) for threshold 0s"
+            exit 1
+          fi
+
+  test-telegraf-pipeline:
+    name: Test Telegraf Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Telegraf
+        run: |
+          # Add InfluxDB repository
+          wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo apt-key add -
+          echo "deb https://repos.influxdata.com/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+
+          # Install Telegraf
+          sudo apt-get update
+          sudo apt-get install -y telegraf jq
+
+      - name: Test Telegraf pipeline - No alarms (threshold 15s)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing Telegraf pipeline with threshold: 15s (expecting no alarms)"
+
+          # Set up environment variables
+          export HELPER_FILES_DIR="$(pwd)"
+          export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+          export ALERT_THRESHOLD_SECONDS="15"
+
+          # Run Telegraf pipeline
+          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+                                    --config config_process_track_duration.conf \
+                                    --config config_process_threshold_filter.conf \
+                                    --config test_files/config_output_stdout.conf \
+                                    --once 2>/dev/null)
+
+          echo "Telegraf output: $TELEGRAF_OUTPUT"
+
+          # Expected: 0 alarms
+          EXPECTED_ALARMS=0
+
+          # Count unique track IDs in detection_frame outputs
+          ACTUAL_ALARMS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | wc -l)
+
+          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Actual alarms: $ACTUAL_ALARMS"
+
+          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ]; then
+            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_ALARMS alarms for threshold 15s"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms but found $ACTUAL_ALARMS for threshold 15s"
+            exit 1
+          fi
+
+      - name: Test Telegraf pipeline - Some alarms (threshold 2s)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing Telegraf pipeline with threshold: 2s (expecting 3 alarms)"
+
+          # Set up environment variables
+          export HELPER_FILES_DIR="$(pwd)"
+          export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+          export ALERT_THRESHOLD_SECONDS="2"
+
+          # Run Telegraf pipeline
+          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+                                    --config config_process_track_duration.conf \
+                                    --config config_process_threshold_filter.conf \
+                                    --config test_files/config_output_stdout.conf \
+                                    --once 2>/dev/null)
+
+          echo "Telegraf output: $TELEGRAF_OUTPUT"
+
+          # Expected: 3 alarms (track_001, track_002, track_003)
+          EXPECTED_ALARMS=3
+          EXPECTED_TRACKS="track_001 track_002 track_003"
+
+          # Extract unique track IDs from detection_frame outputs
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
+          ACTUAL_ALARMS=$(echo "$ACTUAL_TRACKS" | wc -w)
+
+          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Expected tracks: $EXPECTED_TRACKS"
+          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Actual tracks: $ACTUAL_TRACKS"
+
+          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_ALARMS alarms with correct track IDs for threshold 1.9s"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms ($EXPECTED_TRACKS) but found $ACTUAL_ALARMS alarms ($ACTUAL_TRACKS) for threshold 1.9s"
+            exit 1
+          fi
+
+      - name: Test Telegraf pipeline - All alarms (threshold 0s)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing Telegraf pipeline with threshold: 0s (expecting 4 alarms)"
+
+          # Set up environment variables
+          export HELPER_FILES_DIR="$(pwd)"
+          export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+          export ALERT_THRESHOLD_SECONDS="0"
+
+          # Run Telegraf pipeline
+          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+                                    --config config_process_track_duration.conf \
+                                    --config config_process_threshold_filter.conf \
+                                    --config test_files/config_output_stdout.conf \
+                                    --once 2>/dev/null)
+
+          echo "Telegraf output: $TELEGRAF_OUTPUT"
+
+          # Expected: 4 alarms (all tracks: track_001, track_002, track_003, track_004)
+          EXPECTED_ALARMS=4
+          EXPECTED_TRACKS="track_001 track_002 track_003 track_004"
+
+          # Extract unique track IDs from detection_frame outputs
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
+          ACTUAL_ALARMS=$(echo "$ACTUAL_TRACKS" | wc -w)
+
+          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Expected tracks: $EXPECTED_TRACKS"
+          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Actual tracks: $ACTUAL_TRACKS"
+
+          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_ALARMS alarms with correct track IDs for threshold 0s"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms ($EXPECTED_TRACKS) but found $ACTUAL_ALARMS alarms ($ACTUAL_TRACKS) for threshold 0s"
+            exit 1
+          fi
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-visualization-script, test-telegraf-pipeline]
+    if: always()
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check test results
+        id: test_results
+        run: |
+          VIS_RESULT="${{ needs.test-visualization-script.result }}"
+          TELEGRAF_RESULT="${{ needs.test-telegraf-pipeline.result }}"
+
+          echo "vis_result=$VIS_RESULT" >> $GITHUB_OUTPUT
+          echo "telegraf_result=$TELEGRAF_RESULT" >> $GITHUB_OUTPUT
+
+          if [ "$VIS_RESULT" = "success" ] && [ "$TELEGRAF_RESULT" = "success" ]; then
+            echo "🎉 All time-in-area analytics tests passed!"
+            echo ""
+            echo "✅ Track Heatmap Viewer tests passed"
+            echo "✅ Telegraf Pipeline tests passed"
+            echo ""
+            echo "Both tools correctly identify tracks that exceed time-in-area thresholds."
+            echo "all_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Some tests failed:"
+            echo "  - Track Heatmap Viewer: $VIS_RESULT"
+            echo "  - Telegraf Pipeline: $TELEGRAF_RESULT"
+            echo "all_passed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR (success)
+        continue-on-error: true
+        if: github.event_name == 'pull_request' && steps.test_results.outputs.all_passed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 🎉 Time-in-Area Analytics Tests Passed!
+
+            All tests completed successfully:
+
+            ✅ **Track Heatmap Viewer** - All alarm detection scenarios passed
+            ✅ **Telegraf Pipeline** - All time-in-area calculations verified
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Comment on PR (failure)
+        continue-on-error: true
+        if: github.event_name == 'pull_request' && steps.test_results.outputs.all_passed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const visResult = '${{ steps.test_results.outputs.vis_result }}';
+            const telegrafResult = '${{ steps.test_results.outputs.telegraf_result }}';
+
+            let comment = `## ❌ Time-in-Area Analytics Tests Failed
+
+            Some tests did not pass:
+
+            ${visResult === 'success' ? '✅' : '❌'} **Track Heatmap Viewer**: ${visResult}
+            ${telegrafResult === 'success' ? '✅' : '❌'} **Telegraf Pipeline**: ${telegrafResult}
+
+            ### What This Means
+            `;
+
+            if (visResult !== 'success') {
+              comment += `
+            **Track Heatmap Viewer Issues:**
+            - The visualization script may not be correctly identifying tracks that exceed time-in-area thresholds
+            - Check the alarm detection logic in \`track_heatmap_viewer.py\`
+            `;
+            }
+
+            if (telegrafResult !== 'success') {
+              comment += `
+            **Telegraf Pipeline Issues:**
+            - The time-in-area calculation or threshold filtering may not be working correctly  
+            - Check the Starlark processor in \`track_duration_calculator.star\` and threshold filter configuration
+            `;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Fail if tests failed
+        if: steps.test_results.outputs.all_passed == 'false'
+        run: |
+          echo "❌ Some tests failed"
+          exit 1

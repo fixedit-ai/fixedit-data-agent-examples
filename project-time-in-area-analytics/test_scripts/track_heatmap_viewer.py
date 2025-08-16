@@ -73,8 +73,12 @@ class Frame:
         Examples:
             >>> bbox1 = BoundingBox(0.1, 0.2, 0.3, 0.4)
             >>> bbox2 = BoundingBox(0.2, 0.3, 0.4, 0.5)
-            >>> detection1 = Detection("track_001", "2024-01-15T10:00:01Z", bbox1, ObjectClass("Human"))
-            >>> detection2 = Detection("track_002", "2024-01-15T10:00:01Z", bbox2, ObjectClass("Vehicle"))
+            >>> detection1 = Detection(
+            ...     "track_001", "2024-01-15T10:00:01Z", bbox1, ObjectClass("Human")
+            ... )
+            >>> detection2 = Detection(
+            ...     "track_002", "2024-01-15T10:00:01Z", bbox2, ObjectClass("Vehicle")
+            ... )
             >>> frame = Frame(1, "2024-01-15T10:00:01Z", [detection1, detection2])
             >>> frame.track_ids
             ['track_001', 'track_002']
@@ -130,7 +134,9 @@ def _parse_observation_to_detection(obs: Dict) -> Detection:
     # Create BoundingBox
     bbox_data = obs["bounding_box"]
     if not all(coord in bbox_data for coord in ["left", "top", "right", "bottom"]):
-        raise ValueError("Missing required bounding box coordinates (left, top, right, bottom)")
+        raise ValueError(
+            "Missing required bounding box coordinates (left, top, right, bottom)"
+        )
 
     bounding_box = BoundingBox(
         left=bbox_data["left"],
@@ -213,7 +219,17 @@ def _parse_jsonl_line(line: str, line_num: int) -> Tuple[Frame, Set[str]]:
         ValueError: If JSON is invalid or doesn't contain expected 'frame' key
 
         Examples:
-        >>> line = '''{"frame": {"timestamp": "2024-01-15T10:00:01Z", "observations": [{"track_id": "track_001", "timestamp": "2024-01-15T10:00:01Z", "bounding_box": {"left": 0.2, "top": 0.4, "right": 0.3, "bottom": 0.6}, "class": {"type": "Human"}}]}}'''
+        >>> line = '''{
+        ...     "frame": {
+        ...         "timestamp": "2024-01-15T10:00:01Z",
+        ...         "observations": [{
+        ...             "track_id": "track_001",
+        ...             "timestamp": "2024-01-15T10:00:01Z",
+        ...             "bounding_box": {"left": 0.2, "top": 0.4, "right": 0.3, "bottom": 0.6},
+        ...             "class": {"type": "Human"}
+        ...         }]
+        ...     }
+        ... }'''
         >>> frame, track_ids = _parse_jsonl_line(line, 1)
         >>> frame.frame_number
         1
@@ -335,7 +351,7 @@ def _create_heatmap_matrix(
     return heatmap_matrix
 
 
-def _create_alarm_matrix(
+def _create_alarm_matrix(  # pylint: disable=too-many-locals
     frames: List[Frame], sorted_track_ids: List[str], alarm_threshold: float
 ) -> np.ndarray:
     """
@@ -410,7 +426,8 @@ def _create_alarm_matrix(
         # All frames must have timestamps for time-in-area calculation
         if not frame_timestamp:
             raise ValueError(
-                f"Missing timestamp in frame {frame_idx}. Time-in-area calculation requires timestamps in all frames."
+                f"Missing timestamp in frame {frame_idx}. "
+                "Time-in-area calculation requires timestamps in all frames."
             )
 
         # Convert timestamp to seconds relative to first frame
@@ -426,7 +443,8 @@ def _create_alarm_matrix(
                 current_time_seconds = time_diff.total_seconds()
         except ValueError as e:
             raise ValueError(
-                f"Invalid timestamp format '{frame_timestamp}' in frame {frame_idx}: {e}. Expected ISO format like '2024-01-15T10:00:01Z'"
+                f"Invalid timestamp format '{frame_timestamp}' in frame {frame_idx}: {e}. "
+                "Expected ISO format like '2024-01-15T10:00:01Z'"
             ) from e
 
         # Check each track to see if it's present and calculate time in area
@@ -504,36 +522,48 @@ def _setup_alarm_heatmap_plot(
     return ax, im
 
 
-def create_heatmap(
+@dataclass
+class HeatmapData:  # pylint: disable=too-many-instance-attributes
+    """Container for processed heatmap data and statistics."""
+
+    frames: List[Frame]
+    sorted_track_ids: List[str]
+    heatmap_matrix: np.ndarray
+    alarm_matrix: Optional[np.ndarray]
+    alarm_tracks: Set[str]
+    alarm_threshold: float
+    num_tracks: int
+    num_frames: int
+    frames_with_activity: int
+    activity_percentage: float
+
+
+def process_heatmap_data(
     frames: List[Frame],
     all_track_ids: Set[str],
     alarm_threshold: float = float("inf"),
-) -> None:
+) -> Optional[HeatmapData]:
     """
-    Create a heatmap visualization of track activity over time with optional alarm overlay.
+    Process track data and calculate heatmap matrices and statistics.
 
-    This function creates a dual-layer visualization:
-    1. Base heatmap: Shows basic track presence (green) vs absence (gray)
-    2. Alarm overlay: Shows tracks that exceed time-in-area threshold (red)
-
-    The visualization combines both layers: gray=absent, green=present, red=alarm.
-    When alarm_threshold is infinite (default), only the base heatmap is shown.
-    When a threshold is specified, tracks exceeding that time duration are highlighted in red.
-
-    This allows visual comparison with Telegraf output to validate alarm logic.
+    This function processes track data to create:
+    1. Base heatmap matrix: Track presence over time
+    2. Alarm matrix: Tracks that exceed time-in-area threshold (optional)
+    3. Statistics: Activity percentages and alarm counts
 
     Args:
         frames: List of Frame objects with timestamps and detections
         all_track_ids: Set of all unique track IDs found in the data
-        alarm_threshold: Time threshold in seconds for alarm visualization (default: inf = no alarms)
+        alarm_threshold: Time threshold in seconds for alarm calculation (default: inf = no alarms)
+
+    Returns:
+        HeatmapData object containing processed matrices and statistics, or None if no data
     """
     if not frames:
-        click.echo("No frame data to visualize.")
-        return
+        return None
 
     if not all_track_ids:
-        click.echo("No track IDs found in the data.")
-        return
+        return None
 
     sorted_track_ids = sorted(list(all_track_ids))
     num_tracks = len(sorted_track_ids)
@@ -541,56 +571,13 @@ def create_heatmap(
 
     heatmap_matrix = _create_heatmap_matrix(frames, sorted_track_ids)
 
-    # Only create alarm matrix if user requested alarm visualization
-    if alarm_threshold != float("inf"):
-        alarm_matrix = _create_alarm_matrix(frames, sorted_track_ids, alarm_threshold)
-        ax, im = _setup_alarm_heatmap_plot(
-            heatmap_matrix, num_tracks, num_frames, alarm_matrix
-        )
-    else:
-        ax, im = _setup_alarm_heatmap_plot(heatmap_matrix, num_tracks, num_frames)
-
-    # Set y-axis labels (track IDs)
-    ax.set_yticks(range(num_tracks))
-    ax.set_yticklabels(sorted_track_ids)
-
-    # Set x-axis labels (timestamps)
-    step = max(1, num_frames // 20)  # Show ~20 labels max
-    x_ticks = range(0, num_frames, step)
-    # Format timestamps to show just time (HH:MM:SS)
-    x_labels = []
-    for i in x_ticks:
-        timestamp_str = frames[i].timestamp
-        # Parse ISO timestamp and format as HH:MM:SS
-        dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-        x_labels.append(dt.strftime("%H:%M:%S"))
-    ax.set_xticks(x_ticks)
-    ax.set_xticklabels(x_labels, rotation=45)
-
-    # Add grid for better readability
-    ax.set_xticks(np.arange(-0.5, num_frames, 1), minor=True)
-    ax.set_yticks(np.arange(-0.5, num_tracks, 1), minor=True)
-    ax.grid(which="minor", color="white", linestyle="-", linewidth=0.5)
-
-    # Add colorbar legend
-    cbar = plt.colorbar(im, ax=ax, shrink=0.6)
-    if alarm_threshold != float("inf"):
-        cbar.set_ticks([0.33, 1.0, 1.67])
-        cbar.set_ticklabels(["Absent", "Present", "Alarm"])
-    else:
-        cbar.set_ticks([0.25, 0.75])
-        cbar.set_ticklabels(["Absent", "Present"])
-
-    # Calculate statistics
-    frames_with_activity = np.sum(np.sum(heatmap_matrix, axis=0) >= 1)
-    activity_percentage = (
-        (frames_with_activity / num_frames) * 100 if num_frames > 0 else 0
-    )
-
-    # Calculate alarm statistics if alarm matrix exists
+    # Only create alarm matrix if user requested alarm calculation
+    alarm_matrix = None
     alarm_tracks = set()
     if alarm_threshold != float("inf"):
-        # Find tracks that have at least one alarm (red box)
+        alarm_matrix = _create_alarm_matrix(frames, sorted_track_ids, alarm_threshold)
+
+        # Find tracks that have at least one alarm
         for track_idx, track_id in enumerate(sorted_track_ids):
             if np.any(alarm_matrix[track_idx, :] > 0):
                 alarm_tracks.add(track_id)
@@ -603,13 +590,90 @@ def create_heatmap(
         else:
             print(f"\nNo tracks exceeded alarm threshold of {alarm_threshold}s")
 
+    # Calculate statistics
+    frames_with_activity = np.sum(np.sum(heatmap_matrix, axis=0) >= 1)
+    activity_percentage = (
+        (frames_with_activity / num_frames) * 100 if num_frames > 0 else 0
+    )
+
+    return HeatmapData(
+        frames=frames,
+        sorted_track_ids=sorted_track_ids,
+        heatmap_matrix=heatmap_matrix,
+        alarm_matrix=alarm_matrix,
+        alarm_tracks=alarm_tracks,
+        alarm_threshold=alarm_threshold,
+        num_tracks=num_tracks,
+        num_frames=num_frames,
+        frames_with_activity=frames_with_activity,
+        activity_percentage=activity_percentage,
+    )
+
+
+def render_heatmap(heatmap_data: HeatmapData) -> None:
+    """
+    Render the heatmap visualization using matplotlib.
+
+    Args:
+        heatmap_data: Processed heatmap data and statistics
+    """
+    # Set up the plot
+    if heatmap_data.alarm_matrix is not None:
+        ax, im = _setup_alarm_heatmap_plot(
+            heatmap_data.heatmap_matrix,
+            heatmap_data.num_tracks,
+            heatmap_data.num_frames,
+            heatmap_data.alarm_matrix,
+        )
+    else:
+        ax, im = _setup_alarm_heatmap_plot(
+            heatmap_data.heatmap_matrix,
+            heatmap_data.num_tracks,
+            heatmap_data.num_frames,
+        )
+
+    # Set y-axis labels (track IDs)
+    ax.set_yticks(range(heatmap_data.num_tracks))
+    ax.set_yticklabels(heatmap_data.sorted_track_ids)
+
+    # Set x-axis labels (timestamps)
+    step = max(1, heatmap_data.num_frames // 20)  # Show ~20 labels max
+    x_ticks = range(0, heatmap_data.num_frames, step)
+    # Format timestamps to show just time (HH:MM:SS)
+    x_labels = []
+    for i in x_ticks:
+        timestamp_str = heatmap_data.frames[i].timestamp
+        # Parse ISO timestamp and format as HH:MM:SS
+        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        x_labels.append(dt.strftime("%H:%M:%S"))
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels(x_labels, rotation=45)
+
+    # Add grid for better readability
+    ax.set_xticks(np.arange(-0.5, heatmap_data.num_frames, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, heatmap_data.num_tracks, 1), minor=True)
+    ax.grid(which="minor", color="white", linestyle="-", linewidth=0.5)
+
+    # Add colorbar legend
+    cbar = plt.colorbar(im, ax=ax, shrink=0.6)
+    if heatmap_data.alarm_threshold != float("inf"):
+        cbar.set_ticks([0.33, 1.0, 1.67])
+        cbar.set_ticklabels(["Absent", "Present", "Alarm"])
+    else:
+        cbar.set_ticks([0.25, 0.75])
+        cbar.set_ticklabels(["Absent", "Present"])
+
     # Render statistics text overlay
-    alarm_count = len(alarm_tracks)
-    alarm_stats = f" | Alarms: {alarm_count}" if alarm_threshold != float("inf") else ""
+    alarm_count = len(heatmap_data.alarm_tracks)
+    alarm_stats = (
+        f" | Alarms: {alarm_count}"
+        if heatmap_data.alarm_threshold != float("inf")
+        else ""
+    )
 
     stats_text = (
-        f"Tracks: {num_tracks} | Frames: {num_frames} | "
-        f"Activity: {activity_percentage:.1f}%{alarm_stats}"
+        f"Tracks: {heatmap_data.num_tracks} | Frames: {heatmap_data.num_frames} | "
+        f"Activity: {heatmap_data.activity_percentage:.1f}%{alarm_stats}"
     )
     ax.text(
         0.02,
@@ -640,7 +704,12 @@ def create_heatmap(
     default=float("inf"),
     help="Time threshold in seconds for alarm visualization (tracks exceeding this show in red).",
 )
-def main(input_file: str, verbose: bool, alarm_threshold: float):
+@click.option(
+    "--no-ui",
+    is_flag=True,
+    help="Disable matplotlib GUI display (useful for CI/CD and headless environments).",
+)
+def main(input_file: str, verbose: bool, alarm_threshold: float, no_ui: bool):
     """
     Create a heatmap visualization of track activity over time.
 
@@ -648,6 +717,7 @@ def main(input_file: str, verbose: bool, alarm_threshold: float):
         input_file: Path to JSONL file containing frame data with track IDs
         verbose: Enable verbose output with detailed statistics
         alarm_threshold: Time threshold in seconds for alarm visualization
+        no_ui: Disable matplotlib GUI display (useful for CI/CD and headless environments)
 
     INPUT_FILE should be a JSONL file containing frame data with track IDs,
     such as the output from FixedIT Data Agent analytics or test data files.
@@ -661,6 +731,9 @@ def main(input_file: str, verbose: bool, alarm_threshold: float):
 
         # Show alarms for tracks exceeding 5 seconds
         python track_heatmap_viewer.py test_files/simple_tracks.jsonl --alarm-threshold 5.0
+
+        # Run in headless mode (no GUI display)
+        python track_heatmap_viewer.py test_files/simple_tracks.jsonl --alarm-threshold 2.0 --no-ui
     """
     try:
         click.echo(f"Loading track data from: {input_file}")
@@ -683,10 +756,17 @@ def main(input_file: str, verbose: bool, alarm_threshold: float):
             if all_track_ids:
                 click.echo(f"  Track IDs: {', '.join(sorted(all_track_ids))}")
 
-        # Create the heatmap
-        create_heatmap(frames, all_track_ids, alarm_threshold)
+        # Process the heatmap data
+        heatmap_data = process_heatmap_data(frames, all_track_ids, alarm_threshold)
 
-        click.echo("\nClose the plot window to exit.")
+        if heatmap_data is None:
+            click.echo("No data available for visualization.")
+            return
+
+        # Render the heatmap if UI is enabled
+        if not no_ui:
+            render_heatmap(heatmap_data)
+            click.echo("\nClose the plot window to exit.")
 
     except (OSError, ValueError) as e:
         click.echo(f"Error: {e}", err=True)

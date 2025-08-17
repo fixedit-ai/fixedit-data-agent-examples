@@ -411,7 +411,7 @@ jobs:
             All tests completed successfully:
 
             ✅ **Track Heatmap Viewer** - All alarm detection scenarios passed
-            ✅ **Telegraf Pipeline** - All time-in-area calculations verified
+            ✅ **Telegraf Pipeline** - All time-in-area calculations verified`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,

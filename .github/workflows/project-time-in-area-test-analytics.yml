@@ -130,7 +130,7 @@ jobs:
 
   test-telegraf-pipeline:
     name: Test Telegraf Pipeline
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -138,13 +138,20 @@ jobs:
 
       - name: Install Telegraf
         run: |
-          # Add InfluxDB repository
-          wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo apt-key add -
-          echo "deb https://repos.influxdata.com/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+          # Install jq (needed for parsing JSON output)
+          sudo apt-get update
+          sudo apt-get install -y jq wget gnupg
+
+          # Add InfluxDB repository using jammy (22.04) for compatibility with ubuntu-24
+          wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo gpg --dearmor -o /usr/share/keyrings/influxdata-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/influxdata-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
 
           # Install Telegraf
           sudo apt-get update
-          sudo apt-get install -y telegraf jq
+          sudo apt-get install -y telegraf
+
+          # Verify installation
+          telegraf --version
 
       - name: Test Telegraf pipeline - No alarms (threshold 15s)
         run: |

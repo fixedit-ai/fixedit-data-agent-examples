@@ -70,6 +70,9 @@ class Frame:
         """
         Get all track IDs present in this frame, sorted alphabetically.
 
+        Returns:
+            List[str]: Sorted list of unique track IDs in this frame.
+
         Examples:
             >>> bbox1 = BoundingBox(0.1, 0.2, 0.3, 0.4)
             >>> bbox2 = BoundingBox(0.2, 0.3, 0.4, 0.5)
@@ -376,6 +379,9 @@ def _create_alarm_matrix(  # pylint: disable=too-many-locals
 
     Returns:
         2D numpy array: 1 where track exceeds threshold, 0 otherwise
+
+    Raises:
+        ValueError: If timestamp parsing fails or data is invalid
 
     Examples:
         >>> # Create test data - track_001 exceeds 2-second threshold

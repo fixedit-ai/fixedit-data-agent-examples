@@ -11,13 +11,13 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Optional, Protocol, Iterator, Dict, Any
+from typing import Any, Dict, Iterator, Optional, Protocol
 
 import click
 import paramiko
 
 
-class CommandRunner(Protocol):
+class CommandRunner(Protocol):  # pylint: disable=too-few-public-methods
     """Protocol for running commands and returning output."""
 
     def run_command(self, command: str, timeout_seconds: int) -> Iterator[str]:
@@ -28,15 +28,12 @@ class CommandRunner(Protocol):
             timeout_seconds: Maximum time to wait for command completion
 
         """
-        ...
 
 
 class SSHCommandRunner:
     """SSH implementation of CommandRunner."""
 
-    def __init__(
-        self, host: str, username: str, password: Optional[str] = None
-    ):
+    def __init__(self, host: str, username: str, password: Optional[str] = None):
         """Initialize SSH connection parameters.
 
         Args:
@@ -60,14 +57,10 @@ class SSHCommandRunner:
                 hostname=self.host,
                 username=self.username,
                 password=self.password,
-                timeout=10
+                timeout=10,
             )
         else:
-            self.client.connect(
-                hostname=self.host,
-                username=self.username,
-                timeout=10
-            )
+            self.client.connect(hostname=self.host, username=self.username, timeout=10)
 
     def run_command(self, command: str, timeout_seconds: int) -> Iterator[str]:
         """Run command via SSH and yield output lines with timeout.
@@ -85,7 +78,7 @@ class SSHCommandRunner:
         if not self.client:
             raise RuntimeError("Not connected to device")
 
-        stdin, stdout, stderr = self.client.exec_command(command)
+        _, stdout, _ = self.client.exec_command(command)
 
         # Use threading for timeout instead of signals
         lines = []
@@ -108,15 +101,13 @@ class SSHCommandRunner:
 
         # Wait for timeout or completion
         start_time = time.time()
-        while (time.time() - start_time < timeout_seconds
-               and not finished.is_set()):
+        while time.time() - start_time < timeout_seconds and not finished.is_set():
             time.sleep(0.1)
 
         finished.set()  # Signal thread to stop
         reader_thread.join(timeout=1)  # Give thread time to finish
 
-        for line in lines:
-            yield line
+        yield from lines
 
     def close(self):
         """Close the SSH connection."""
@@ -171,7 +162,7 @@ class DataRecorder:
             {'nested': {'data': [1, 2, 3]}}
         """
         # Find the first '{' character to locate potential JSON
-        json_start = line.find('{')
+        json_start = line.find("{")
         if json_start == -1:
             # No JSON found in this line
             return None
@@ -185,8 +176,9 @@ class DataRecorder:
             # The extracted part isn't valid JSON
             return None
 
-    def record_data(self, topic: str, source: str, output_file: Path,
-                    timeout_seconds: int) -> int:
+    def record_data(
+        self, topic: str, source: str, output_file: Path, timeout_seconds: int
+    ) -> int:
         """
         Record data from message broker.
 
@@ -202,7 +194,7 @@ class DataRecorder:
         command = f'message-broker-cli consume "{topic}" "{source}"'
 
         line_count = 0
-        with output_file.open('w') as f:
+        with output_file.open("w") as f:
             for line in self.runner.run_command(command, timeout_seconds):
                 json_obj = self.extract_json_from_line(line)
                 if json_obj is not None:
@@ -210,7 +202,7 @@ class DataRecorder:
                     # separators=(',', ':') removes spaces after commas and
                     # colons
                     # for smaller file size and consistent JSONL format
-                    f.write(json.dumps(json_obj, separators=(',', ':')) + '\n')
+                    f.write(json.dumps(json_obj, separators=(",", ":")) + "\n")
                     f.flush()  # Ensure data is written immediately
                     line_count += 1
 
@@ -218,29 +210,38 @@ class DataRecorder:
 
 
 @click.command()
-@click.option('--host', '-h', default='192.168.1.2',
-              help='Device IP address or hostname')
-@click.option('--username', '-u', default='acap-fixeditdataagent',
-              help='SSH username')
-@click.option('--password', '-p', default=None,
-              help='SSH password (if not provided, will try key auth first, '
-                   'then prompt)')
 @click.option(
-    '--topic',
-    default='com.axis.analytics_scene_description.v0.beta',
-    help='Message broker topic to consume'
+    "--host", "-h", default="192.168.1.2", help="Device IP address or hostname"
 )
-@click.option('--source', default='1',
-              help='Message broker source')
+@click.option("--username", "-u", default="acap-fixeditdataagent", help="SSH username")
 @click.option(
-    '--output-file', '-o',
-    default='test_files/real_device_data.jsonl',
-    help='Output file path'
+    "--password",
+    "-p",
+    default=None,
+    help="SSH password (if not provided, will try key auth first, " "then prompt)",
 )
-@click.option('--duration', '-d', default=30,
-              help='Recording duration in seconds')
-def main(host: str, username: str, password: Optional[str], topic: str,
-         source: str, output_file: str, duration: int):
+@click.option(
+    "--topic",
+    default="com.axis.analytics_scene_description.v0.beta",
+    help="Message broker topic to consume",
+)
+@click.option("--source", default="1", help="Message broker source")
+@click.option(
+    "--output-file",
+    "-o",
+    default="test_files/real_device_data.jsonl",
+    help="Output file path",
+)
+@click.option("--duration", "-d", default=30, help="Recording duration in seconds")
+def main(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements
+    host: str,
+    username: str,
+    password: Optional[str],
+    topic: str,
+    source: str,
+    output_file: str,
+    duration: int,
+):
     r"""
     Record real analytics scene description data from Axis device.
 
@@ -273,9 +274,7 @@ def main(host: str, username: str, password: Optional[str], topic: str,
     - AXIS OS 12+: SSH as root is disabled, use FixedIT Data Agent user in
       dev mode
     """
-    click.echo(
-        "Recording real analytics scene description data from device..."
-    )
+    click.echo("Recording real analytics scene description data from device...")
     click.echo(f"Device: {username}@{host}")
     click.echo(f"Topic: {topic}")
     click.echo(f"Source: {source}")
@@ -303,12 +302,12 @@ def main(host: str, username: str, password: Optional[str], topic: str,
                 ssh_runner = SSHCommandRunner(host, username, password)
                 ssh_runner.connect()
                 click.echo("✅ Connected using password authentication")
-            except KeyboardInterrupt:
+            except KeyboardInterrupt as exc:
                 click.echo("\n❌ Cancelled by user")
-                raise click.Abort()
-        except KeyboardInterrupt:
+                raise click.Abort() from exc
+        except KeyboardInterrupt as exc:
             click.echo("\n❌ Cancelled by user")
-            raise click.Abort()
+            raise click.Abort() from exc
     else:
         ssh_runner = SSHCommandRunner(host, username, password)
         ssh_runner.connect()
@@ -323,8 +322,7 @@ def main(host: str, username: str, password: Optional[str], topic: str,
 
         if line_count > 0:
             click.echo(
-                f"✅ Successfully recorded {line_count} lines of real device "
-                f"data"
+                f"✅ Successfully recorded {line_count} lines of real device " f"data"
             )
             click.echo(f"📁 Saved to: {output_file}")
             click.echo("")
@@ -346,10 +344,8 @@ def main(host: str, username: str, password: Optional[str], topic: str,
     click.echo("")
     click.echo("🧪 To test with this real data, use:")
     click.echo(f'export SAMPLE_FILE="{output_file}"')
-    click.echo(
-        "Then run your telegraf test commands as documented in README.md"
-    )
+    click.echo("Then run your telegraf test commands as documented in README.md")
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    main()  # pylint: disable=no-value-for-parameter

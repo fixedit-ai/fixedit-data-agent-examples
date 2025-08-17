@@ -350,6 +350,7 @@ The tests use `test_files/simple_tracks.jsonl` which contains simplified track d
 - `track_002`: Continuous presence for 2.22s
 - `track_003`: Continuous presence for 2.22s
 - `track_004`: Single appearance (0s)
+- `track_005`: Long duration track for 2.5 minutes (150s)
 
 ![Example data visualized](./.images/track-heatmap-simple.png)
 

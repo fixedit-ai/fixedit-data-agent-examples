@@ -1,6 +1,6 @@
 # Time-in-Area Analytics
 
-This project demonstrates how to implement time-in-area analytics for Axis fisheye cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). While AXIS Object Analytics natively supports time-in-area detection for traditional cameras, fisheye cameras lack this capability. This solution bridges that gap by consuming real-time object detection metadata from fisheye cameras and implementing custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs from [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) to track objects within a defined rectangular area, measures time in area, and triggers both warning (TODO) and alert notifications via MQTT when objects remain in the monitored zone beyond configured thresholds.
+This project demonstrates how to implement time-in-area analytics for Axis fisheye cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). While AXIS Object Analytics natively supports time-in-area detection for traditional cameras, fisheye cameras lack this capability. This solution bridges that gap by consuming real-time object detection metadata from fisheye cameras and implementing custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs from [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) to track objects within a defined rectangular area, measures time in area, and triggers both warning (TODO) and alert notifications via MQTT (TODO) when objects remain in the monitored zone beyond configured thresholds.
 
 ## How It Works
 
@@ -83,13 +83,13 @@ flowchart TD
 
 ### AXIS OS Compatibility
 
-- **Minimum AXIS OS version**:
-- **Required tools**:
+- **Minimum AXIS OS version**: TODO
+- **Required tools**: TODO
 
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: 1.0
-- **Required features**:
+- **Required features**: TODO
 
 ## Quick Setup
 
@@ -126,7 +126,7 @@ Helper script that simulates camera metadata stream by reading `simple_tracks.js
 
 ## Future Enhancements
 
-This example implements a minimal viable solution and can be easily extended:
+This example should implement a minimal viable solution and can be easily extended:
 
 - **Warning Threshold**: Add a warning level before the main alert threshold
 - **Deactivation Messages**: Send alerts when objects leave the area after being alerted
@@ -149,12 +149,12 @@ You can test the processing logic locally using Telegraf before deploying to you
 **Works on Host:**
 
 - Starlark processor logic testing with sample data
-- MQTT output configuration validation
+- MQTT output configuration validation (TODO)
 - Alert threshold configuration testing
 
 **Only works in the Axis Device:**
 
-- Real object detection metadata consumption (camera-specific message broker)
+- Real object detection metadata consumption (camera-specific message broker) - in host testing, you can use the `sample_data_feeder.sh` script to simulate the camera metadata stream using pre-recorded data in the `test_files/simple_tracks.jsonl` or `test_files/real_device_data.jsonl` files.
 
 ### Test Commands
 

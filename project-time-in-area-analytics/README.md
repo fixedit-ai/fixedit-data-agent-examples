@@ -346,9 +346,9 @@ Both tools now behave identically, calculating total time-in-area including brie
 
 The tests use `test_files/simple_tracks.jsonl` which contains simplified track data with:
 
-- `track_001`: Appears twice with 8s gap (total time: 11s)
-- `track_002`: Continuous presence for 2s
-- `track_003`: Continuous presence for 2s
+- `track_001`: Appears twice with 8s gap (total time: 11.33s)
+- `track_002`: Continuous presence for 2.22s
+- `track_003`: Continuous presence for 2.22s
 - `track_004`: Single appearance (0s)
 
 ![Example data visualized](./.images/track-heatmap-simple.png)

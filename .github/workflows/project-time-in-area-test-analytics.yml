@@ -166,19 +166,23 @@ jobs:
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
-          # Expected: 0 alarms
-          EXPECTED_ALARMS=0
+          # Expected: 0 unique tracks, 0 alarm detections
+          EXPECTED_UNIQUE_TRACKS=0
+          EXPECTED_ALARM_DETECTIONS=0
 
-          # Count unique track IDs in detection_frame outputs
-          ACTUAL_ALARMS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | wc -l)
+          # Count unique track IDs and alarm detections in detection_frame outputs
+          ACTUAL_UNIQUE_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | wc -l)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
-          echo "Expected alarms: $EXPECTED_ALARMS"
-          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
+          echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"
+          echo "Actual unique tracks: $ACTUAL_UNIQUE_TRACKS"
+          echo "Actual alarm detections: $ACTUAL_ALARM_DETECTIONS"
 
-          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ]; then
-            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_ALARMS alarms for threshold 15s"
+          if [ "$ACTUAL_UNIQUE_TRACKS" -eq "$EXPECTED_UNIQUE_TRACKS" ] && [ "$ACTUAL_ALARM_DETECTIONS" -eq "$EXPECTED_ALARM_DETECTIONS" ]; then
+            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_UNIQUE_TRACKS unique tracks and $ACTUAL_ALARM_DETECTIONS alarm detections for threshold 15s"
           else
-            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms but found $ACTUAL_ALARMS for threshold 15s"
+            echo "❌ FAIL: Expected $EXPECTED_UNIQUE_TRACKS unique tracks and $EXPECTED_ALARM_DETECTIONS alarm detections, but found $ACTUAL_UNIQUE_TRACKS unique tracks and $ACTUAL_ALARM_DETECTIONS alarm detections for threshold 15s"
             exit 1
           fi
 
@@ -202,23 +206,29 @@ jobs:
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
-          # Expected: 3 alarms (track_001, track_002, track_003)
-          EXPECTED_ALARMS=3
+          # Expected: 3 unique tracks, 5 alarm detections
+          # Note: Once a track exceeds the threshold, ALL subsequent detections for that track
+          # trigger alarms (i.e., get output by the threshold filter)
+          EXPECTED_UNIQUE_TRACKS=3
+          EXPECTED_ALARM_DETECTIONS=5
           EXPECTED_TRACKS="track_001 track_002 track_003"
 
-          # Extract unique track IDs from detection_frame outputs
+          # Extract unique track IDs and count alarm detections from detection_frame outputs
           ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
-          ACTUAL_ALARMS=$(echo "$ACTUAL_TRACKS" | wc -w)
+          ACTUAL_UNIQUE_TRACKS=$(echo "$ACTUAL_TRACKS" | wc -w)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
-          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
+          echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"
           echo "Expected tracks: $EXPECTED_TRACKS"
-          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Actual unique tracks: $ACTUAL_UNIQUE_TRACKS"
+          echo "Actual alarm detections: $ACTUAL_ALARM_DETECTIONS"
           echo "Actual tracks: $ACTUAL_TRACKS"
 
-          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
-            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_ALARMS alarms with correct track IDs for threshold 1.9s"
+          if [ "$ACTUAL_UNIQUE_TRACKS" -eq "$EXPECTED_UNIQUE_TRACKS" ] && [ "$ACTUAL_ALARM_DETECTIONS" -eq "$EXPECTED_ALARM_DETECTIONS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_UNIQUE_TRACKS unique tracks and $ACTUAL_ALARM_DETECTIONS alarm detections with correct track IDs for threshold 2s"
           else
-            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms ($EXPECTED_TRACKS) but found $ACTUAL_ALARMS alarms ($ACTUAL_TRACKS) for threshold 1.9s"
+            echo "❌ FAIL: Expected $EXPECTED_UNIQUE_TRACKS unique tracks and $EXPECTED_ALARM_DETECTIONS alarm detections ($EXPECTED_TRACKS) but found $ACTUAL_UNIQUE_TRACKS unique tracks and $ACTUAL_ALARM_DETECTIONS alarm detections ($ACTUAL_TRACKS) for threshold 2s"
             exit 1
           fi
 
@@ -242,23 +252,29 @@ jobs:
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
-          # Expected: 4 alarms (all tracks: track_001, track_002, track_003, track_004)
-          EXPECTED_ALARMS=4
+          # Expected: 4 unique tracks, 12 alarm detections (all tracks: track_001, track_002, track_003, track_004)
+          # Note: Once a track exceeds the threshold, ALL subsequent detections for that track
+          # trigger alarms (i.e., get output by the threshold filter)
+          EXPECTED_UNIQUE_TRACKS=4
+          EXPECTED_ALARM_DETECTIONS=12
           EXPECTED_TRACKS="track_001 track_002 track_003 track_004"
 
-          # Extract unique track IDs from detection_frame outputs
+          # Extract unique track IDs and count alarm detections from detection_frame outputs
           ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
-          ACTUAL_ALARMS=$(echo "$ACTUAL_TRACKS" | wc -w)
+          ACTUAL_UNIQUE_TRACKS=$(echo "$ACTUAL_TRACKS" | wc -w)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
-          echo "Expected alarms: $EXPECTED_ALARMS"
+          echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
+          echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"
           echo "Expected tracks: $EXPECTED_TRACKS"
-          echo "Actual alarms: $ACTUAL_ALARMS"
+          echo "Actual unique tracks: $ACTUAL_UNIQUE_TRACKS"
+          echo "Actual alarm detections: $ACTUAL_ALARM_DETECTIONS"
           echo "Actual tracks: $ACTUAL_TRACKS"
 
-          if [ "$ACTUAL_ALARMS" -eq "$EXPECTED_ALARMS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
-            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_ALARMS alarms with correct track IDs for threshold 0s"
+          if [ "$ACTUAL_UNIQUE_TRACKS" -eq "$EXPECTED_UNIQUE_TRACKS" ] && [ "$ACTUAL_ALARM_DETECTIONS" -eq "$EXPECTED_ALARM_DETECTIONS" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Telegraf pipeline correctly found $ACTUAL_UNIQUE_TRACKS unique tracks and $ACTUAL_ALARM_DETECTIONS alarm detections with correct track IDs for threshold 0s"
           else
-            echo "❌ FAIL: Expected $EXPECTED_ALARMS alarms ($EXPECTED_TRACKS) but found $ACTUAL_ALARMS alarms ($ACTUAL_TRACKS) for threshold 0s"
+            echo "❌ FAIL: Expected $EXPECTED_UNIQUE_TRACKS unique tracks and $EXPECTED_ALARM_DETECTIONS alarm detections ($EXPECTED_TRACKS) but found $ACTUAL_UNIQUE_TRACKS unique tracks and $ACTUAL_ALARM_DETECTIONS alarm detections ($ACTUAL_TRACKS) for threshold 0s"
             exit 1
           fi
 

@@ -26,20 +26,24 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
-# Process all frames at once with a single jq call for optimal performance
-# This approach scales much better with large datasets than per-line processing
-jq -c '
-.frame as $frame |
-if ($frame.observations | length) > 0 then
-  $frame.observations[] |
-  {
-    "frame": $frame.timestamp,
-    "timestamp": .timestamp,
-    "track_id": .track_id,
-    "object_type": (.class.type // "null"),
-    "bounding_box": .bounding_box
-  }
-else
-  empty
-end
-' "$HELPER_FILES_DIR/$SAMPLE_FILE"
+# Process data line by line and output it as pure json.
+while IFS= read -r line; do
+    # Skip empty lines
+    if [ -n "$line" ]; then
+        # Process this frame with jq
+        echo "$line" | jq -c '
+        .frame as $frame |
+        if ($frame.observations | length) > 0 then
+          $frame.observations[] |
+          {
+            "frame": $frame.timestamp,
+            "timestamp": .timestamp,
+            "track_id": .track_id,
+            "object_type": (.class.type // "null"),
+            "bounding_box": .bounding_box
+          }
+        else
+          empty
+        end'
+    fi
+done < "$HELPER_FILES_DIR/$SAMPLE_FILE"

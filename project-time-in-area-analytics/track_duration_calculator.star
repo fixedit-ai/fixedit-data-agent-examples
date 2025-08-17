@@ -67,13 +67,9 @@ def cleanup_stale_tracks(current_seconds, track_state, max_stale_seconds):
         current_seconds: Current timestamp in Unix seconds
         track_state: State dictionary for tracking objects
         max_stale_seconds: Maximum time since last seen before removing track
-
-    Returns:
-        List of debug metrics for removed tracks
     """
     # Find tracks to remove (can't modify dict while iterating)
     tracks_to_remove = []
-    debug_metrics = []
 
     for track_id, track_data in track_state.items():
         last_seen_seconds = track_data["last_seen_seconds"]
@@ -82,21 +78,21 @@ def cleanup_stale_tracks(current_seconds, track_state, max_stale_seconds):
         if time_since_seen > max_stale_seconds:
             tracks_to_remove.append(track_id)
 
-            # Create debug metric for this removal
-            debug_metric = Metric("track_cleanup_debug")
-            debug_metric.fields["track_id"] = track_id
-            debug_metric.fields["time_since_seen"] = time_since_seen
-            debug_metric.fields["max_stale_seconds"] = max_stale_seconds
-            debug_metric.fields["action"] = "removed_stale_track"
-            debug_metrics.append(debug_metric)
-
     # Remove stale tracks
     for track_id in tracks_to_remove:
         track_state.pop(track_id)
 
-    return debug_metrics
-
 def apply(metric):
+    """Calculate the time in area for each metric.
+
+    This function will be called for each metric in the pipeline,
+    the function will keep a state of all the track IDs and their
+    first and last seen times. The function will calculate the time
+    in area for each track ID and add it to the metric.
+
+    Returns:
+        The input metric but with the time in area added.
+    """
     # Get track_id and timestamp from the metric
     track_id = metric.fields.get("track_id", "")
     timestamp = metric.fields.get("timestamp", "")
@@ -112,8 +108,8 @@ def apply(metric):
     if "track_state" not in state:
         state["track_state"] = {}
 
-    # Clean up stale tracks (not seen for 60 seconds) and get debug metrics
-    debug_metrics = cleanup_stale_tracks(current_seconds, state["track_state"], 60)
+    # Clean up stale tracks (not seen for 60 seconds)
+    cleanup_stale_tracks(current_seconds, state["track_state"], 60)
 
     # Get the time in area for this track ID
     time_in_area = get_time_in_area_seconds(track_id, current_seconds, state["track_state"])
@@ -121,14 +117,5 @@ def apply(metric):
     # Add the time in area to the metric (always add it, filtering happens in next processor)
     metric.fields["time_in_area_seconds"] = time_in_area
 
-    # Prepare results list
-    results = []
-
-    # Add debug metrics first (if any)
-    results.extend(debug_metrics)
-
-    # Always add the main metric with dwell time
-    results.append(metric)
-
-    # Return list of metrics
-    return results
+    # Return the same metric with the time in area added
+    return metric

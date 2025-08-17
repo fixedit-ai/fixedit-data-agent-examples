@@ -370,7 +370,7 @@ jobs:
             if (telegrafResult !== 'success') {
               comment += `
             **Telegraf Pipeline Issues:**
-            - The time-in-area calculation or threshold filtering may not be working correctly  
+            - The time-in-area calculation or threshold filtering may not be working correctly
             - Check the Starlark processor in \`track_duration_calculator.star\` and threshold filter configuration
             `;
             }

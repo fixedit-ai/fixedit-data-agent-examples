@@ -1,14 +1,37 @@
 load("time.star", "time")
 
-def parse_timestamp_to_seconds(timestamp_str):
-    """Parse ISO 8601 timestamp string to Unix seconds
+def parse_timestamp_to_float_seconds(timestamp_str):
+    """Parse ISO 8601 timestamp string to Unix seconds as float
 
-    Note: Starlark uses 32-bit signed integers (max: 2,147,483,647).
-    Unix timestamps will overflow after year 2038.
+    Returns the timestamp as seconds since Unix epoch (float with microsecond precision).
+
+    Args:
+        timestamp_str: ISO 8601 timestamp string (e.g., "2024-01-15T10:00:03.345678Z")
+
+    Returns:
+        Float representing seconds since Unix epoch with microsecond precision
     """
+    if "." in timestamp_str:
+        # Split timestamp into seconds and fractional parts
+        parts = timestamp_str.split(".")
+        seconds_part = parts[0]
+        fractional_part = parts[1].rstrip("Z")
+
+        # Parse microseconds (pad to at least 6 digits, then truncate to exactly 6)
+        fractional_part = (fractional_part + "000000")[:6]
+
+        microseconds_fraction = int(fractional_part)
+        timestamp_str = seconds_part + "Z"
+    else:
+        microseconds_fraction = 0
+
     time_format = "2006-01-02T15:04:05Z"
     time_obj = time.parse_time(timestamp_str, format=time_format)
-    return int(time_obj.unix)
+
+    # Convert to float seconds: seconds + (microseconds / 1,000,000)
+    unix_float_seconds = float(time_obj.unix) + float(microseconds_fraction) / 1000000.0
+
+    return unix_float_seconds
 
 def get_time_in_area_seconds(track_id, current_seconds, track_state):
     """Get the time in area for a track ID and update its last seen time
@@ -19,10 +42,10 @@ def get_time_in_area_seconds(track_id, current_seconds, track_state):
         track_state: State dictionary for tracking objects
 
     Returns:
-        Time in area in seconds for this track ID
+        Time in area as a float (seconds with microsecond precision)
     """
     if track_id not in track_state:
-        # First time seeing this track ID - initialize with current timestamp in seconds
+        # First time seeing this track ID - initialize with current timestamp
         track_state[track_id] = {
             "first_seen_seconds": current_seconds,
             "last_seen_seconds": current_seconds
@@ -53,8 +76,9 @@ def cleanup_stale_tracks(current_seconds, track_state, max_stale_seconds):
     debug_metrics = []
 
     for track_id, track_data in track_state.items():
-        last_seen = track_data["last_seen_seconds"]
-        time_since_seen = current_seconds - last_seen
+        last_seen_seconds = track_data["last_seen_seconds"]
+        time_since_seen = current_seconds - last_seen_seconds
+
         if time_since_seen > max_stale_seconds:
             tracks_to_remove.append(track_id)
 
@@ -81,8 +105,8 @@ def apply(metric):
     if track_id == "" or timestamp == "":
         return metric
 
-    # Parse timestamp to seconds
-    current_seconds = parse_timestamp_to_seconds(timestamp)
+    # Parse timestamp to float seconds since Unix epoch
+    current_seconds = parse_timestamp_to_float_seconds(timestamp)
 
     # Initialize track state subdict if it doesn't exist
     if "track_state" not in state:

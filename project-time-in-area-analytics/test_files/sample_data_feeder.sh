@@ -26,31 +26,20 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
-# Process each frame and output one observation per message
-while IFS= read -r line; do
-    # Extract frame timestamp
-    frame_timestamp=$(echo "$line" | jq -r '.frame.timestamp')
-
-    # Get number of observations (handle null/empty cases)
-    observation_count=$(echo "$line" | jq '.frame.observations | length // 0')
-
-    # Only output messages if there are observations
-    if [ "$observation_count" -gt 0 ] 2>/dev/null; then
-        # Output each observation as a separate message
-        i=0
-        while [ $i -lt "$observation_count" ]; do
-            observation=$(echo "$line" | jq ".frame.observations[$i]")
-            track_id=$(echo "$observation" | jq -r '.track_id')
-            object_type=$(echo "$observation" | jq -r '.class.type')
-            timestamp=$(echo "$observation" | jq -r '.timestamp')
-
-            # Extract bounding box data
-            bounding_box=$(echo "$observation" | jq -c '.bounding_box')
-
-            # Output individual detection with frame context
-            echo "{\"frame\": \"$frame_timestamp\", \"timestamp\": \"$timestamp\", \"track_id\": \"$track_id\", \"object_type\": \"$object_type\", \"bounding_box\": $bounding_box}"
-
-            i=$((i + 1))
-        done
-    fi
-done < "$HELPER_FILES_DIR/$SAMPLE_FILE"
+# Process all frames at once with a single jq call for optimal performance
+# This approach scales much better with large datasets than per-line processing
+jq -c '
+.frame as $frame |
+if ($frame.observations | length) > 0 then
+  $frame.observations[] |
+  {
+    "frame": $frame.timestamp,
+    "timestamp": .timestamp,
+    "track_id": .track_id,
+    "object_type": (.class.type // "null"),
+    "bounding_box": .bounding_box
+  }
+else
+  empty
+end
+' "$HELPER_FILES_DIR/$SAMPLE_FILE"

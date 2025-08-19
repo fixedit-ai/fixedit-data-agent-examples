@@ -72,6 +72,7 @@ flowchart TD
   - [Data Behavior](#data-behavior)
   - [Data Transformation for Telegraf](#data-transformation-for-telegraf)
 - [Track Activity Visualization](#track-activity-visualization)
+- [Recording Real Device Data](#recording-real-device-data)
 - [Automated Testing](#automated-testing)
   - [GitHub Workflow](#github-workflow)
   - [Test Data](#test-data)
@@ -298,7 +299,7 @@ This transformation:
 - **Simplifies** object classification to just the type
 - **Skips** frames with no observations entirely
 
-**Recording Real Device Data:**
+## Recording Real Device Data
 
 You can record real analytics scene description data from your Axis camera for deterministic testing and analysis. This allows you to run the analytics pipeline on your host machine with reproducible results.
 

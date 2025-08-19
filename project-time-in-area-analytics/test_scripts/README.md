@@ -93,6 +93,10 @@ The script supports multiple authentication methods in this order:
 - **Data Analysis**: Use recorded data with visualization tools like `track_heatmap_viewer.py`
 - **Debugging**: Capture problematic scenarios for investigation
 
+### Troubleshooting
+
+**Message Broker Connection Errors**: If you encounter errors like `❌ Command error: Failed to create data connection` when running the recording script, this typically indicates that the SSH user does not have sufficient privileges to subscribe to the message broker. This is a known limitation in **AXIS OS 12+** where SSH access as root is disabled and regular users may not have the necessary permissions to access the message broker service. See the [AXIS OS Compatibility](#axis-os-compatibility) section above for more details.
+
 ## Track Heatmap Visualization
 
 The `track_heatmap_viewer.py` script creates heatmap visualizations showing track activity over time. This helps visualize when different track IDs are active across frames, making it easy to understand track lifecycles and identify patterns in object detection data.

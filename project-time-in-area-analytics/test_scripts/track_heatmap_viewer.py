@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+# pylint: disable=too-many-lines
 """
 Track Heatmap Viewer.
 
-This script creates a heatmap visualization showing when different track IDs are active over time.
+This script creates a heatmap visualization showing when different track IDs are
+active over time.
 The visualization displays:
 - X-axis: Time (timestamps of frames with observations)
 - Y-axis: Track IDs
@@ -10,7 +12,8 @@ The visualization displays:
 - Gray cells: Track is not present in that frame
 
 Note: Only frames with observations are shown. Gaps in time are not represented.
-This helps visualize track lifecycles and identify patterns in object detection data.
+This helps visualize track lifecycles and identify patterns in object detection
+data.
 """
 
 import json
@@ -18,7 +21,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Union
 
 import click
 import matplotlib.pyplot as plt
@@ -26,7 +29,8 @@ import numpy as np
 
 # Color constants for heatmap visualization
 COLOR_ABSENT = "#CCCCCC"  # Gray - track is absent
-COLOR_PRESENT = "#4CAF50"  # Green - track is present
+COLOR_PRESENT = "#4CAF50"  # Green - track is present (classified)
+COLOR_UNCLASSIFIED = "#000000"  # Black - track is present but unclassified
 COLOR_ALARM = "#F44336"  # Red - track exceeds alarm threshold
 
 
@@ -66,12 +70,12 @@ class Frame:
     detections: List[Detection]
 
     @property
-    def track_ids(self) -> List[str]:
+    def track_ids(self) -> Set[str]:
         """
-        Get all track IDs present in this frame, sorted alphabetically.
+        Get all unique track IDs present in this frame.
 
         Returns:
-            List[str]: Sorted list of unique track IDs in this frame.
+            Set[str]: Set of unique track IDs in this frame.
 
         Examples:
             >>> bbox1 = BoundingBox(0.1, 0.2, 0.3, 0.4)
@@ -83,10 +87,46 @@ class Frame:
             ...     "track_002", "2024-01-15T10:00:01Z", bbox2, ObjectClass("Vehicle")
             ... )
             >>> frame = Frame(1, "2024-01-15T10:00:01Z", [detection1, detection2])
-            >>> frame.track_ids
+            >>> sorted(frame.track_ids)
             ['track_001', 'track_002']
         """
-        return sorted({detection.track_id for detection in self.detections})
+        return {detection.track_id for detection in self.detections}
+
+    @property
+    def class_names(self) -> Dict[str, str]:
+        """
+        Get mapping of track IDs to class names for this frame.
+
+        Returns:
+            Dict[str, str]: Mapping from track_id to class name. Keys are ordered
+            to match `track_ids` for deterministic representation.
+
+        Examples:
+            >>> bbox1 = BoundingBox(0.1, 0.2, 0.3, 0.4)
+            >>> bbox2 = BoundingBox(0.2, 0.3, 0.4, 0.5)
+            >>> detection1 = Detection(
+            ...     "track_001", "2024-01-15T10:00:01Z", bbox1, ObjectClass("Human")
+            ... )
+            >>> detection2 = Detection(
+            ...     "track_002", "2024-01-15T10:00:02Z", bbox2, ObjectClass("Vehicle")
+            ... )
+            >>> frame = Frame(1, "2024-01-15T10:00:01Z", [detection1, detection2])
+            >>> frame.class_names
+            {'track_001': 'Human', 'track_002': 'Vehicle'}
+        """
+        seen: Dict[str, str] = {}
+        for detection in self.detections:
+            track_id = detection.track_id
+            class_type = detection.class_info.type
+
+            # Only update if we don't have this track_id yet, or if the new
+            # class_type is not "Unknown"
+            if track_id not in seen or (
+                class_type != "Unknown" and seen[track_id] == "Unknown"
+            ):
+                seen[track_id] = class_type
+
+        return {track_id: seen[track_id] for track_id in sorted(seen.keys())}
 
 
 @dataclass
@@ -94,7 +134,79 @@ class TrackData:
     """Container for parsed track data from JSONL file."""
 
     frames: List[Frame]
-    all_track_ids: Set[str]
+
+    @property
+    def all_track_ids(self) -> Set[str]:
+        """
+        Get all unique track IDs found across all frames.
+
+        Returns:
+            Set of all unique track IDs.
+
+        Examples:
+            >>> # Create test data - 2 tracks
+            >>> bbox = BoundingBox(0.1, 0.2, 0.3, 0.4)
+            >>> human_class = ObjectClass("Human")
+            >>> vehicle_class = ObjectClass("Vehicle")
+            >>>
+            >>> # Frame 1: track_001 (Human)
+            >>> det1 = Detection("track_001", "2024-01-01T00:00:01Z", bbox, human_class)
+            >>> frame1 = Frame(1, "2024-01-01T00:00:01Z", [det1])
+            >>>
+            >>> # Frame 2: track_002 (Vehicle)
+            >>> det2 = Detection("track_002", "2024-01-01T00:00:02Z", bbox, vehicle_class)
+            >>> frame2 = Frame(2, "2024-01-01T00:00:02Z", [det2])
+            >>>
+            >>> frames = [frame1, frame2]
+            >>> track_data = TrackData(frames=frames)
+            >>> sorted(track_data.all_track_ids)
+            ['track_001', 'track_002']
+        """
+        all_ids = set()
+        for frame in self.frames:
+            all_ids.update(frame.track_ids)
+        return all_ids
+
+    @property
+    def track_class_map(self) -> Dict[str, str]:
+        """
+        Get mapping of all track IDs to their class types.
+
+        Returns:
+            Dict mapping track_id to class type for all tracks found in frames.
+
+        Examples:
+            >>> # Create test data - 2 tracks with different classes
+            >>> bbox = BoundingBox(0.1, 0.2, 0.3, 0.4)
+            >>> human_class = ObjectClass("Human")
+            >>> vehicle_class = ObjectClass("Vehicle")
+            >>>
+            >>> # Frame 1: track_001 (Human)
+            >>> det1 = Detection("track_001", "2024-01-01T00:00:01Z", bbox, human_class)
+            >>> frame1 = Frame(1, "2024-01-01T00:00:01Z", [det1])
+            >>>
+            >>> # Frame 2: track_002 (Vehicle)
+            >>> det2 = Detection("track_002", "2024-01-01T00:00:02Z", bbox, vehicle_class)
+            >>> frame2 = Frame(2, "2024-01-01T00:00:02Z", [det2])
+            >>>
+            >>> frames = [frame1, frame2]
+            >>> track_data = TrackData(frames=frames)
+            >>> track_data.track_class_map
+            {'track_001': 'Human', 'track_002': 'Vehicle'}
+        """
+        track_class_map: Dict[str, str] = {}
+
+        # Collect class information from all frames, prioritizing non-"Unknown" values
+        for frame in self.frames:
+            for track_id, class_name in frame.class_names.items():
+                # Only update if we don't have this track_id yet, or if the new
+                # class_name is not "Unknown"
+                if track_id not in track_class_map or (
+                    class_name != "Unknown" and track_class_map[track_id] == "Unknown"
+                ):
+                    track_class_map[track_id] = class_name
+
+        return track_class_map
 
 
 def _parse_observation_to_detection(obs: Dict) -> Detection:
@@ -164,7 +276,7 @@ def _parse_observation_to_detection(obs: Dict) -> Detection:
     )
 
 
-def _parse_frame_data(frame_data: Dict, line_num: int) -> Tuple[Frame, Set[str]]:
+def _parse_frame_data(frame_data: Dict, line_num: int) -> Frame:
     """
     Parse a single frame data dictionary into a Frame object.
 
@@ -173,7 +285,7 @@ def _parse_frame_data(frame_data: Dict, line_num: int) -> Tuple[Frame, Set[str]]
         line_num: Line number to use as frame number
 
     Returns:
-        Tuple of (Frame object, set of track IDs found in this frame)
+        Frame object
 
     Raises:
         ValueError: If required frame fields are missing
@@ -189,13 +301,11 @@ def _parse_frame_data(frame_data: Dict, line_num: int) -> Tuple[Frame, Set[str]]
 
     # Parse observations into Detection objects
     detections = []
-    frame_track_ids = set()
 
     for obs in observations:
         if "track_id" in obs:
             detection = _parse_observation_to_detection(obs)
             detections.append(detection)
-            frame_track_ids.add(obs["track_id"])
 
     # Create Frame object
     frame = Frame(
@@ -204,10 +314,10 @@ def _parse_frame_data(frame_data: Dict, line_num: int) -> Tuple[Frame, Set[str]]
         detections=detections,
     )
 
-    return frame, frame_track_ids
+    return frame
 
 
-def _parse_jsonl_line(line: str, line_num: int) -> Tuple[Frame, Set[str]]:
+def _parse_jsonl_line(line: str, line_num: int) -> Frame:
     """
     Parse a single line from a JSONL file into a Frame object.
 
@@ -233,15 +343,13 @@ def _parse_jsonl_line(line: str, line_num: int) -> Tuple[Frame, Set[str]]:
         ...         }]
         ...     }
         ... }'''
-        >>> frame, track_ids = _parse_jsonl_line(line, 1)
+        >>> frame = _parse_jsonl_line(line, 1)
         >>> frame.frame_number
         1
         >>> frame.timestamp
         '2024-01-15T10:00:01Z'
         >>> len(frame.detections)
         1
-        >>> track_ids
-        {'track_001'}
     """
     try:
         data = json.loads(line)
@@ -258,18 +366,19 @@ def _parse_jsonl_line(line: str, line_num: int) -> Tuple[Frame, Set[str]]:
             f'Expected format: {{"frame": {{...}}}} but got keys: {list(data.keys())}'
         )
 
-    return _parse_frame_data(data["frame"], line_num)
+    frame = _parse_frame_data(data["frame"], line_num)
+    return frame
 
 
 def parse_jsonl_file(file_path: Path) -> TrackData:
     """
-    Parse JSONL file and extract frame data and all unique track IDs.
+    Parse JSONL file and extract frame data.
 
     Args:
         file_path: Path to the JSONL file
 
     Returns:
-        TrackData containing frames and all unique track IDs
+        TrackData containing all frames
 
     Raises:
         FileNotFoundError: If the input file doesn't exist
@@ -277,7 +386,6 @@ def parse_jsonl_file(file_path: Path) -> TrackData:
         ValueError: If JSON is invalid or missing expected 'frame' key
     """
     frames = []
-    all_track_ids = set()
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -287,9 +395,8 @@ def parse_jsonl_file(file_path: Path) -> TrackData:
                     continue
 
                 try:
-                    frame, frame_track_ids = _parse_jsonl_line(line, line_num)
+                    frame = _parse_jsonl_line(line, line_num)
                     frames.append(frame)
-                    all_track_ids.update(frame_track_ids)
 
                 except ValueError as e:
                     raise ValueError(f"Error parsing line {line_num}: {e}") from e
@@ -299,38 +406,71 @@ def parse_jsonl_file(file_path: Path) -> TrackData:
     except OSError as e:
         raise OSError(f"Error reading file {file_path}: {e}") from e
 
-    return TrackData(frames=frames, all_track_ids=all_track_ids)
+    return TrackData(frames=frames)
+
+
+def _combine_heatmap_and_alarm_matrices(
+    heatmap_matrix: np.ndarray, alarm_matrix: np.ndarray
+) -> np.ndarray:
+    """
+    Combine heatmap and alarm matrices, ensuring alarms override classification status.
+
+    Args:
+        heatmap_matrix: Matrix with values 0=absent, 1=unclassified, 2=classified
+        alarm_matrix: Matrix with values 0=no alarm, 1=alarm
+
+    Returns:
+        Combined matrix with values 0=absent, 1=unclassified, 2=classified, 3=alarm
+
+    Examples:
+        >>> # Test data: 2 tracks, 3 frames
+        >>> # track1: unclassified, unclassified, classified
+        >>> # track2: absent, unclassified, unclassified
+        >>> heatmap = np.array([[1, 1, 2], [0, 1, 1]])
+        >>> # track1: no alarm, no alarm, alarm
+        >>> # track2: no alarm, no alarm, alarm
+        >>> alarm = np.array([[0, 0, 1], [0, 0, 1]])
+        >>> combined = _combine_heatmap_and_alarm_matrices(heatmap, alarm)
+        >>> combined.tolist()
+        [[1, 1, 3], [0, 1, 3]]
+    """
+    combined_matrix = heatmap_matrix.copy()
+    # Any track with an alarm gets value 3 (red), regardless of classification
+    combined_matrix[alarm_matrix > 0] = 3
+    return combined_matrix
 
 
 def _create_heatmap_matrix(
     frames: List[Frame], sorted_track_ids: List[str]
 ) -> np.ndarray:
     """
-    Create the heatmap matrix from frame data.
+    Create the heatmap matrix from frame data, distinguishing classified vs unclassified tracks.
 
     Args:
         frames: List of Frame objects
-        sorted_track_ids: Sorted list of track IDs
+        sorted_track_ids: Sorted list of track IDs. The order determines the row positions
+            in the returned matrix - track_ids[0] maps to row 0, track_ids[1] to row 1, etc.
+            This ensures consistent visual ordering in the heatmap.
 
     Returns:
-        2D numpy array representing track presence over time
+        2D numpy array: 0=absent, 1=unclassified, 2=classified. Rows correspond to
+        track IDs in the same order as sorted_track_ids.
 
     Examples:
         >>> # Create test data - 3 frames, 2 tracks
         >>> bbox = BoundingBox(0.1, 0.2, 0.3, 0.4)
-        >>> obj_class = ObjectClass("Human")
         >>>
-        >>> # Frame 1: only track_001
-        >>> det1 = Detection("track_001", "2024-01-01T00:00:01Z", bbox, obj_class)
+        >>> # Frame 1: only track_001 (unclassified)
+        >>> det1 = Detection("track_001", "2024-01-01T00:00:01Z", bbox, ObjectClass("Unknown"))
         >>> frame1 = Frame(1, "2024-01-01T00:00:01Z", [det1])
         >>>
-        >>> # Frame 2: both tracks
-        >>> det2a = Detection("track_001", "2024-01-01T00:00:02Z", bbox, obj_class)
-        >>> det2b = Detection("track_002", "2024-01-01T00:00:02Z", bbox, obj_class)
+        >>> # Frame 2: both tracks (track_001 now classified, track_002 unclassified)
+        >>> det2a = Detection("track_001", "2024-01-01T00:00:02Z", bbox, ObjectClass("Human"))
+        >>> det2b = Detection("track_002", "2024-01-01T00:00:02Z", bbox, ObjectClass("Unknown"))
         >>> frame2 = Frame(2, "2024-01-01T00:00:02Z", [det2a, det2b])
         >>>
-        >>> # Frame 3: only track_002
-        >>> det3 = Detection("track_002", "2024-01-01T00:00:03Z", bbox, obj_class)
+        >>> # Frame 3: only track_002 (still unclassified)
+        >>> det3 = Detection("track_002", "2024-01-01T00:00:03Z", bbox, ObjectClass("Unknown"))
         >>> frame3 = Frame(3, "2024-01-01T00:00:03Z", [det3])
         >>>
         >>> frames = [frame1, frame2, frame3]
@@ -339,7 +479,7 @@ def _create_heatmap_matrix(
         >>> matrix.shape
         (2, 3)
         >>> matrix.tolist()
-        [[1.0, 1.0, 0.0], [0.0, 1.0, 1.0]]
+        [[1.0, 2.0, 0.0], [0.0, 1.0, 1.0]]
     """
     num_tracks = len(sorted_track_ids)
     num_frames = len(frames)
@@ -349,7 +489,12 @@ def _create_heatmap_matrix(
         frame_track_ids = set(frame.track_ids)
         for track_idx, track_id in enumerate(sorted_track_ids):
             if track_id in frame_track_ids:
-                heatmap_matrix[track_idx, frame_idx] = 1
+                # Check if track has class info in this specific frame
+                class_type = frame.class_names.get(track_id, "Unknown")
+                if class_type != "Unknown":
+                    heatmap_matrix[track_idx, frame_idx] = 2  # Classified
+                else:
+                    heatmap_matrix[track_idx, frame_idx] = 1  # Unclassified
 
     return heatmap_matrix
 
@@ -374,11 +519,15 @@ def _create_alarm_matrix(  # pylint: disable=too-many-locals
 
     Args:
         frames: List of Frame objects with timestamps and detections
-        sorted_track_ids: Sorted list of track IDs for consistent matrix ordering
+        sorted_track_ids: Sorted list of track IDs for consistent matrix ordering. The order
+            determines the row positions in the returned matrix - track_ids[0] maps to row 0,
+            track_ids[1] to row 1, etc. This ensures the alarm matrix rows align with the
+            heatmap matrix rows for proper combination.
         alarm_threshold: Time threshold in seconds for alarm conditions
 
     Returns:
-        2D numpy array: 1 where track exceeds threshold, 0 otherwise
+        2D numpy array: 1 where track exceeds threshold, 0 otherwise. Rows correspond to
+        track IDs in the same order as sorted_track_ids, ensuring alignment with the heatmap matrix.
 
     Raises:
         ValueError: If timestamp parsing fails or data is invalid
@@ -471,7 +620,85 @@ def _create_alarm_matrix(  # pylint: disable=too-many-locals
     return alarm_matrix
 
 
-def _setup_alarm_heatmap_plot(
+def _create_heatmap_imshow(
+    ax: plt.Axes, combined_matrix: np.ndarray, show_alarm_colors: bool
+) -> tuple[plt.matplotlib.image.AxesImage, str, list, list]:
+    """
+    Create imshow plot with appropriate colormap configuration and return title.
+
+    This function handles different color schemes:
+    1. Alarm colors (4 discrete values): 0=absent, 1=unclassified, 2=classified, 3=alarm
+    2. Basic colors (3 discrete values): 0=absent, 1=unclassified, 2=classified
+
+    Both use BoundaryNorm for consistent discrete color boundaries, ensuring exact
+    value-to-color mapping.
+
+    Args:
+        ax: Matplotlib axes to plot on
+        combined_matrix: 2D numpy array with track presence/alarm data
+        show_alarm_colors: Whether to include alarm colors (4-color scheme) or basic colors
+            (3-color scheme)
+
+    Returns:
+        Tuple of (matplotlib image object from imshow, title string, tick positions, tick labels)
+
+    Examples:
+        >>> import matplotlib.pyplot as plt
+        >>> fig, ax = plt.subplots()
+        >>> matrix = np.array([[0, 1], [2, 0]])
+                >>> im, title, ticks, labels = _create_heatmap_imshow(ax, matrix, False)
+        >>> im is not None
+        True
+        >>> "Classified" in title
+        True
+        >>> len(ticks) == 3
+        True
+
+        >>> im, title, ticks, labels = _create_heatmap_imshow(ax, matrix, True)
+        >>> "Alarm" in title
+        True
+        >>> len(ticks) == 4
+        True
+    """
+    if show_alarm_colors:
+        # 4-class case: 0=absent, 1=unclassified, 2=classified, 3=alarm
+        colors = [COLOR_ABSENT, COLOR_UNCLASSIFIED, COLOR_PRESENT, COLOR_ALARM]
+        title = (
+            "Track Activity Heatmap\n"
+            "(Gray = Absent, Black = Unclassified, Green = Classified, Red = Alarm)"
+        )
+        bounds = [0, 1, 2, 3, 4]
+        num_colors = 4
+        tick_positions = [0.5, 1.5, 2.5, 3.5]
+        tick_labels = ["Absent", "Unclassified", "Classified", "Alarm"]
+    else:
+        # 3-class case: 0=absent, 1=unclassified, 2=classified
+        colors = [COLOR_ABSENT, COLOR_UNCLASSIFIED, COLOR_PRESENT]
+        title = (
+            "Track Activity Heatmap\n"
+            "(Gray = Absent, Black = Unclassified, Green = Classified)"
+        )
+        bounds = [0, 1, 2, 3]
+        num_colors = 3
+        tick_positions = [0.5, 1.5, 2.5]
+        tick_labels = ["Absent", "Unclassified", "Classified"]
+
+    # Create colormap and imshow
+    cmap = plt.matplotlib.colors.ListedColormap(colors, N=num_colors)
+    norm = plt.matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+    im = ax.imshow(
+        combined_matrix,
+        cmap=cmap,
+        aspect="auto",
+        interpolation="nearest",
+        norm=norm,
+    )
+
+    return im, title, tick_positions, tick_labels
+
+
+def _setup_heatmap_plot(
     heatmap_matrix: np.ndarray,
     num_tracks: int,
     num_frames: int,
@@ -487,53 +714,40 @@ def _setup_alarm_heatmap_plot(
         alarm_matrix: Optional 2D numpy array with alarm data. If provided, uses 3-color scheme.
 
     Returns:
-        Tuple of (axes, image) from matplotlib
+        Tuple of (axes, image, tick positions, tick labels) from matplotlib
     """
-    _, ax = plt.subplots(figsize=(max(12, num_frames * 0.1), max(6, num_tracks * 0.3)))
+    height = max(8, num_tracks * 0.4)
+    width = max(12, num_frames * 0.1)
+    _, ax = plt.subplots(figsize=(width, height))
 
-    # Create combined matrix: 0=absent, 1=present, 2=alarm (if alarm_matrix provided)
+    # Create combined matrix: 0=absent, 1=present&unclassified, 2=present&classified, 3=alarm
+    # (if alarm_matrix provided)
     if alarm_matrix is not None:
-        combined_matrix = heatmap_matrix + alarm_matrix
+        combined_matrix = _combine_heatmap_and_alarm_matrices(
+            heatmap_matrix, alarm_matrix
+        )
         show_alarm_colors = True
     else:
         combined_matrix = heatmap_matrix
         show_alarm_colors = False
 
-    if show_alarm_colors:
-        # Three-color colormap: gray, green, red
-        colors = [COLOR_ABSENT, COLOR_PRESENT, COLOR_ALARM]
-        title = "Track Activity Heatmap\n(Gray = Absent, Green = Present, Red = Alarm)"
-        vmax = 2
-    else:
-        # Two-color colormap: gray, green
-        colors = [COLOR_ABSENT, COLOR_PRESENT]
-        title = "Track Activity Heatmap\n(Green = Track Present, Gray = Track Absent)"
-        vmax = 1
-
-    cmap = plt.matplotlib.colors.ListedColormap(colors)
-
-    im = ax.imshow(
-        combined_matrix,
-        cmap=cmap,
-        aspect="auto",
-        interpolation="nearest",
-        vmin=0,
-        vmax=vmax,
+    # Create the imshow plot with appropriate colormap settings and get title + tick info
+    im, title, tick_positions, tick_labels = _create_heatmap_imshow(
+        ax, combined_matrix, show_alarm_colors
     )
 
     ax.set_xlabel("Time (Frames with Observations)")
     ax.set_ylabel("Track ID")
     ax.set_title(title)
 
-    return ax, im
+    return ax, im, tick_positions, tick_labels
 
 
 @dataclass
 class HeatmapData:  # pylint: disable=too-many-instance-attributes
     """Container for processed heatmap data and statistics."""
 
-    frames: List[Frame]
-    sorted_track_ids: List[str]
+    track_data: TrackData
     heatmap_matrix: np.ndarray
     alarm_matrix: Optional[np.ndarray]
     alarm_tracks: Set[str]
@@ -545,8 +759,7 @@ class HeatmapData:  # pylint: disable=too-many-instance-attributes
 
 
 def process_heatmap_data(
-    frames: List[Frame],
-    all_track_ids: Set[str],
+    track_data: TrackData,
     alarm_threshold: float = float("inf"),
 ) -> Optional[HeatmapData]:
     """
@@ -558,41 +771,49 @@ def process_heatmap_data(
     3. Statistics: Activity percentages and alarm counts
 
     Args:
-        frames: List of Frame objects with timestamps and detections
-        all_track_ids: Set of all unique track IDs found in the data
+        track_data: TrackData object containing frames and track information
         alarm_threshold: Time threshold in seconds for alarm calculation (default: inf = no alarms)
 
     Returns:
         HeatmapData object containing processed matrices and statistics, or None if no data
     """
-    if not frames:
+    if not track_data.frames:
         return None
 
-    if not all_track_ids:
+    if not track_data.all_track_ids:
         return None
 
-    sorted_track_ids = sorted(list(all_track_ids))
+    sorted_track_ids = sorted(track_data.all_track_ids)
     num_tracks = len(sorted_track_ids)
-    num_frames = len(frames)
+    num_frames = len(track_data.frames)
 
-    heatmap_matrix = _create_heatmap_matrix(frames, sorted_track_ids)
+    heatmap_matrix = _create_heatmap_matrix(track_data.frames, sorted_track_ids)
 
     # Only create alarm matrix if user requested alarm calculation
     alarm_matrix = None
     alarm_tracks = set()
     if alarm_threshold != float("inf"):
-        alarm_matrix = _create_alarm_matrix(frames, sorted_track_ids, alarm_threshold)
+        alarm_matrix = _create_alarm_matrix(
+            track_data.frames, sorted_track_ids, alarm_threshold
+        )
 
         # Find tracks that have at least one alarm
         for track_idx, track_id in enumerate(sorted_track_ids):
             if np.any(alarm_matrix[track_idx, :] > 0):
                 alarm_tracks.add(track_id)
 
-        # Print alarm tracks to stdout for Telegraf comparison
+        # Print alarm tracks to stdout for Telegraf comparison with class info and observation count
         if alarm_tracks:
             print(f"\nTracks with alarms (>= {alarm_threshold}s):")
             for track_id in sorted(alarm_tracks):
+                class_type = track_data.track_class_map.get(track_id, "Unknown")
+                # Count alarm occurrences for this track
+                track_idx = sorted_track_ids.index(track_id)
+                alarm_count = int(np.sum(alarm_matrix[track_idx, :] > 0))
+                # Print track ID on its own line
                 print(f"  {track_id}")
+                # Print additional info on next line
+                print(f"    Class: {class_type}, Alarms: {alarm_count}")
         else:
             print(f"\nNo tracks exceeded alarm threshold of {alarm_threshold}s")
 
@@ -603,8 +824,7 @@ def process_heatmap_data(
     )
 
     return HeatmapData(
-        frames=frames,
-        sorted_track_ids=sorted_track_ids,
+        track_data=track_data,
         heatmap_matrix=heatmap_matrix,
         alarm_matrix=alarm_matrix,
         alarm_tracks=alarm_tracks,
@@ -616,42 +836,110 @@ def process_heatmap_data(
     )
 
 
-def render_heatmap(heatmap_data: HeatmapData) -> None:
+def _format_track_labels_for_yaxis(
+    track_ids: List[str], track_class_map: Dict[str, str]
+) -> List[str]:
+    """
+    Format track IDs with shortened class names for y-axis labels.
+
+    Args:
+        track_ids: List of track IDs to format
+        track_class_map: Dictionary mapping track IDs to class names
+
+    Returns:
+        List of formatted track labels in "track_id (class)" format
+
+    Examples:
+        >>> track_ids = ["track_001", "track_002", "track_003"]
+        >>> class_map = {"track_001": "Human", "track_002": "Vehicle", "track_003": "Unknown"}
+        >>> _format_track_labels_for_yaxis(track_ids, class_map)
+        ['track_001 (Huma.)', 'track_002 (Vehi.)', 'track_003 (Unkn.)']
+
+        >>> _format_track_labels_for_yaxis(["track_001"], {"track_001": "Cat"})
+        ['track_001 (Cat)']
+
+        >>> _format_track_labels_for_yaxis(["track_001"], {})
+        ['track_001 (Unkn.)']
+    """
+    y_labels = []
+    for track_id in track_ids:
+        class_type = track_class_map.get(track_id, "Unknown")
+        if len(class_type) > 4:
+            class_short = class_type[:4] + "."
+        else:
+            class_short = class_type
+        y_labels.append(f"{track_id} ({class_short})")
+    return y_labels
+
+
+def _format_timestamps_for_xaxis(frames: List[Frame], x_ticks: range) -> List[str]:
+    """
+    Format timestamps from frames to show just time (HH:MM:SS) for x-axis labels.
+
+    Args:
+        frames: List of Frame objects with timestamp data
+        x_ticks: Range of frame indices to format
+
+    Returns:
+        List of formatted time strings in HH:MM:SS format
+
+        Examples:
+        >>> from datetime import datetime
+        >>> frames = [
+        ...     Frame(1, "2024-01-01T10:30:00.123Z", []),
+        ...     Frame(2, "2024-01-01T10:31:00.456Z", []),
+        ...     Frame(3, "2024-01-01T10:32:00.789Z", [])
+        ... ]
+        >>> _format_timestamps_for_xaxis(frames, range(0, 3))
+        ['10:30:00', '10:31:00', '10:32:00']
+
+        >>> _format_timestamps_for_xaxis(frames, range(0, 3, 2))
+        ['10:30:00', '10:32:00']
+
+        >>> _format_timestamps_for_xaxis(frames, range(1, 2))
+        ['10:31:00']
+    """
+    x_labels = []
+    for i in x_ticks:
+        timestamp_str = frames[i].timestamp
+        # Parse ISO timestamp and format as HH:MM:SS
+        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        x_labels.append(dt.strftime("%H:%M:%S"))
+    return x_labels
+
+
+def render_heatmap(
+    heatmap_data: HeatmapData,
+) -> None:
     """
     Render the heatmap visualization using matplotlib.
 
     Args:
         heatmap_data: Processed heatmap data and statistics
     """
-    # Set up the plot
-    if heatmap_data.alarm_matrix is not None:
-        ax, im = _setup_alarm_heatmap_plot(
-            heatmap_data.heatmap_matrix,
-            heatmap_data.num_tracks,
-            heatmap_data.num_frames,
-            heatmap_data.alarm_matrix,
-        )
-    else:
-        ax, im = _setup_alarm_heatmap_plot(
-            heatmap_data.heatmap_matrix,
-            heatmap_data.num_tracks,
-            heatmap_data.num_frames,
-        )
+    # Set up heatmap image the plot
+    ax, im, tick_positions, tick_labels = _setup_heatmap_plot(
+        heatmap_data.heatmap_matrix,
+        heatmap_data.num_tracks,
+        heatmap_data.num_frames,
+        heatmap_data.alarm_matrix,
+    )
 
-    # Set y-axis labels (track IDs)
+    # Set y-axis labels (track IDs with class information)
     ax.set_yticks(range(heatmap_data.num_tracks))
-    ax.set_yticklabels(heatmap_data.sorted_track_ids)
+    sorted_track_ids = sorted(heatmap_data.track_data.all_track_ids)
+    y_labels = _format_track_labels_for_yaxis(
+        sorted_track_ids, heatmap_data.track_data.track_class_map
+    )
+    ax.set_yticklabels(y_labels)
+
+    ax.tick_params(axis="y", labelsize=9)  # Smaller font size for better fit
+    plt.setp(ax.get_yticklabels(), ha="right")  # Right-align labels
 
     # Set x-axis labels (timestamps)
     step = max(1, heatmap_data.num_frames // 20)  # Show ~20 labels max
     x_ticks = range(0, heatmap_data.num_frames, step)
-    # Format timestamps to show just time (HH:MM:SS)
-    x_labels = []
-    for i in x_ticks:
-        timestamp_str = heatmap_data.frames[i].timestamp
-        # Parse ISO timestamp and format as HH:MM:SS
-        dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-        x_labels.append(dt.strftime("%H:%M:%S"))
+    x_labels = _format_timestamps_for_xaxis(heatmap_data.track_data.frames, x_ticks)
     ax.set_xticks(x_ticks)
     ax.set_xticklabels(x_labels, rotation=45)
 
@@ -660,26 +948,20 @@ def render_heatmap(heatmap_data: HeatmapData) -> None:
     ax.set_yticks(np.arange(-0.5, heatmap_data.num_tracks, 1), minor=True)
     ax.grid(which="minor", color="white", linestyle="-", linewidth=0.5)
 
-    # Add colorbar legend
+    # Add colorbar legend using tick information from setup function
     cbar = plt.colorbar(im, ax=ax, shrink=0.6)
-    if heatmap_data.alarm_threshold != float("inf"):
-        cbar.set_ticks([0.33, 1.0, 1.67])
-        cbar.set_ticklabels(["Absent", "Present", "Alarm"])
-    else:
-        cbar.set_ticks([0.25, 0.75])
-        cbar.set_ticklabels(["Absent", "Present"])
+    cbar.set_ticks(tick_positions)
+    cbar.set_ticklabels(tick_labels)
 
     # Render statistics text overlay
-    alarm_count = len(heatmap_data.alarm_tracks)
-    alarm_stats = (
-        f" | Alarms: {alarm_count}"
-        if heatmap_data.alarm_threshold != float("inf")
-        else ""
-    )
-
     stats_text = (
         f"Tracks: {heatmap_data.num_tracks} | Frames: {heatmap_data.num_frames} | "
-        f"Activity: {heatmap_data.activity_percentage:.1f}%{alarm_stats}"
+        f"Activity: {heatmap_data.activity_percentage:.1f}%"
+        + (
+            f" | Alarms: {len(heatmap_data.alarm_tracks)}"
+            if heatmap_data.alarm_threshold != float("inf")
+            else ""
+        )
     )
     ax.text(
         0.02,
@@ -691,7 +973,8 @@ def render_heatmap(heatmap_data: HeatmapData) -> None:
         fontsize=10,
     )
 
-    plt.tight_layout()
+    # Adjust layout to ensure Y-axis labels are fully visible with more padding
+    plt.subplots_adjust(left=0.15, right=0.85, top=0.92, bottom=0.15)
     plt.show()
 
 
@@ -708,7 +991,8 @@ def render_heatmap(heatmap_data: HeatmapData) -> None:
     "-a",
     type=float,
     default=float("inf"),
-    help="Time threshold in seconds for alarm visualization (tracks exceeding this show in red).",
+    help="Time threshold in seconds for alarm visualization "
+    "(tracks exceeding this show in red).",
 )
 @click.option(
     "--no-ui",
@@ -763,7 +1047,7 @@ def main(input_file: str, verbose: bool, alarm_threshold: float, no_ui: bool):
                 click.echo(f"  Track IDs: {', '.join(sorted(all_track_ids))}")
 
         # Process the heatmap data
-        heatmap_data = process_heatmap_data(frames, all_track_ids, alarm_threshold)
+        heatmap_data = process_heatmap_data(track_data, alarm_threshold)
 
         if heatmap_data is None:
             click.echo("No data available for visualization.")

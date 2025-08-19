@@ -57,7 +57,7 @@ python record_real_data.py \
 
 ### Parameters
 
-- `--host, -h`: Device IP address or hostname (default: 192.168.1.2)
+- `--host, -h`: Device IP address or hostname (required)
 - `--username, -u`: SSH username (default: acap-fixeditdataagent)
 - `--password, -p`: SSH password (optional, will prompt if needed)
 - `--duration, -d`: Recording duration in seconds (default: 30)

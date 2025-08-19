@@ -104,6 +104,17 @@ Enable the `Debug` option in the FixedIT Data Agent for detailed logs. Debug fil
 
 This project uses several configuration files that work together to create a time-in-area analytics pipeline:
 
+### config_input_scene_detections.conf and axis_scene_detection_consumer.sh
+
+Configuration and script pair that work together to consume real-time object detection data from the camera's analytics scene description stream. The configuration file (`config_input_scene_detections.conf`) uses the consumer script (`axis_scene_detection_consumer.sh`) to connect directly to the camera's internal message broker and transform the raw analytics data into individual detection messages.
+
+Can also be used for reproducible testing on host systems by setting `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"` to use a file reader that simulates the camera's detection data output. This allows you to test the processing pipeline using pre-recorded sample data without needing live camera hardware.
+
+**Environment Variables:**
+- `HELPER_FILES_DIR`: Directory containing project files (required)
+- `CONSUMER_SCRIPT`: Path to consumer script (defaults to `axis_scene_detection_consumer.sh`)
+- `SAMPLE_FILE`: Path to sample data file (required when using `sample_data_feeder.sh`)
+
 ### config_process_track_duration.conf and track_duration_calculator.star
 
 Calculates time in area for each detected object using the external Starlark script `track_duration_calculator.star`. This processor:
@@ -123,7 +134,7 @@ Outputs processed metrics to stdout in JSON format for testing and debugging.
 
 ### test_files/sample_data_feeder.sh
 
-Helper script that simulates camera metadata stream by reading `simple_tracks.jsonl` line by line.
+Helper script that simulates camera metadata stream by reading sample JSON files line by line. This script is used for host testing to simulate the output of the live camera's message broker without requiring actual camera hardware.
 
 ## Future Enhancements
 
@@ -166,17 +177,42 @@ Test the time in area calculator without threshold filtering to see all detectio
 ```bash
 # Set up test environment
 export HELPER_FILES_DIR="$(pwd)"
+export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/simple_tracks.jsonl"
 
 # Test time in area calculation only (shows all detections + debug messages)
-telegraf --config test_files/config_input_sample_data.conf \
+telegraf --config config_input_scene_detections.conf \
          --config config_process_track_duration.conf \
          --config test_files/config_output_stdout.conf \
          --once
 ```
 
+**How it works:** By setting `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"`, we override the default live camera script with a file reader that simulates the camera's message broker output by reading from the file specified in `SAMPLE_FILE`. This allows us to test the processing pipeline on the host using pre-recorded sample data instead of connecting to the live camera infrastructure.
+
 **Expected Output:**
-All detections with `time_in_area_seconds` field plus debug messages when stale tracks are cleaned up.
+All detections with `time_in_area_seconds` field.
+
+Example output:
+```json
+{
+  "fields": {
+    "bounding_box_bottom": 0.62,
+    "bounding_box_left": 0.22,
+    "bounding_box_right": 0.32,
+    "bounding_box_top": 0.42,
+    "frame": "2024-01-15T10:00:02.789012Z",
+    "object_type": "Human",
+    "timestamp": "2024-01-15T10:00:02.789012Z",
+    "track_id": "track_001",
+    "time_in_area_seconds": 1.67
+  },
+  "name": "detection_frame",
+  "tags": {"host": "test-host"},
+  "timestamp": 1755677033
+}
+```
+
+The `time_in_area_seconds` field is added by the time-in-area processor, showing how long this object has been tracked in the monitored area.
 
 #### Test Complete Alert Pipeline
 
@@ -185,19 +221,22 @@ Test the complete alert generation pipeline with threshold filtering:
 ```bash
 # Set up test environment
 export HELPER_FILES_DIR="$(pwd)"
+export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/simple_tracks.jsonl"
 export ALERT_THRESHOLD_SECONDS="2"  # Alert threshold in seconds
 
 # Test time in area calculation + threshold filtering
-telegraf --config test_files/config_input_sample_data.conf \
+telegraf --config config_input_scene_detections.conf \
          --config config_process_track_duration.conf \
          --config config_process_threshold_filter.conf \
          --config test_files/config_output_stdout.conf \
          --once
 ```
 
+**How it works:** Same as above - we use the file reader script to simulate camera data on the host by reading from the file specified in `SAMPLE_FILE`, allowing us to test the complete pipeline including threshold filtering without needing live camera hardware.
+
 **Expected Output:**
-Only detections with time in area (`time_in_area_seconds`) > `ALERT_THRESHOLD_SECONDS` plus debug messages for track cleanup.
+Only detections with time in area (`time_in_area_seconds`) > `ALERT_THRESHOLD_SECONDS`.
 
 #### Test with Real Device Data
 
@@ -206,16 +245,17 @@ You can also test with real analytics scene description data recorded from an Ax
 ```bash
 # Set up test environment with real device data
 export HELPER_FILES_DIR="$(pwd)"
+export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/real_device_data.jsonl"
 
 # Test time in area calculation with real data
-telegraf --config test_files/config_input_sample_data.conf \
+telegraf --config config_input_scene_detections.conf \
          --config config_process_track_duration.conf \
          --config test_files/config_output_stdout.conf \
          --once
 ```
 
-**Note:** The `real_device_data.jsonl` file contains actual analytics scene description data recorded from an Axis device. This provides more realistic testing with real track IDs, timestamps, and object detection patterns.
+**How it works:** We set `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"` to use a file reader that simulates the camera's message broker output. This allows us to test on the host using pre-recorded real device data instead of connecting to the live camera infrastructure. The `real_device_data.jsonl` file contains actual analytics scene description data recorded from an Axis device, providing realistic testing with real track IDs, timestamps, and object detection patterns.
 
 ## Analytics Data Structure
 
@@ -320,7 +360,7 @@ python test_scripts/track_heatmap_viewer.py test_files/simple_tracks.jsonl
 For installation, usage details, and examples, see the [test_scripts README](test_scripts/README.md).
 
 ![Track Heatmap Example](.images/track-heatmap-120s.png)
-_Example heatmap showing track activity over time with labeled components_
+_Example heatmap showing track activity over time with labeled components (10s alarm threshold)_
 
 ## Automated Testing
 

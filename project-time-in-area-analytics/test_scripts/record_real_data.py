@@ -78,7 +78,8 @@ class SSHCommandRunner:
         if not self.client:
             raise RuntimeError("Not connected to device")
 
-        _, stdout, _ = self.client.exec_command(command)
+        # Execute the command and capture both stdout and stderr
+        _, stdout, stderr = self.client.exec_command(command)
 
         # Use threading for timeout instead of signals
         lines = []
@@ -95,17 +96,31 @@ class SSHCommandRunner:
             finally:
                 finished.set()
 
-        reader_thread = threading.Thread(target=read_output)
-        reader_thread.daemon = True
-        reader_thread.start()
+        def read_errors():
+            try:
+                for line in stderr:
+                    if finished.is_set():
+                        break
+                    if line.strip():  # Only log non-empty error lines
+                        print(f"\033[31m❌ Command error: {line.strip()}\033[0m")
+            except (paramiko.SSHException, OSError, EOFError):
+                pass
+            finally:
+                finished.set()
 
-        # Wait for timeout or completion
+        reader_thread = threading.Thread(target=read_output)
+        error_thread = threading.Thread(target=read_errors)
+        reader_thread.start()
+        error_thread.start()
+
+        # Wait for the timeout or completion
         start_time = time.time()
         while time.time() - start_time < timeout_seconds and not finished.is_set():
             time.sleep(0.1)
 
-        finished.set()  # Signal thread to stop
-        reader_thread.join(timeout=1)  # Give thread time to finish
+        finished.set()  # Signal threads to stop
+        reader_thread.join(timeout=1)
+        error_thread.join(timeout=1)
 
         yield from lines
 
@@ -210,15 +225,13 @@ class DataRecorder:
 
 
 @click.command()
-@click.option(
-    "--host", "-h", default="192.168.1.2", help="Device IP address or hostname"
-)
+@click.option("--host", "-h", required=True, help="Device IP address or hostname")
 @click.option("--username", "-u", default="acap-fixeditdataagent", help="SSH username")
 @click.option(
     "--password",
     "-p",
     default=None,
-    help="SSH password (if not provided, will try key auth first, " "then prompt)",
+    help="SSH password (if not provided, will try key auth first, then prompt)",
 )
 @click.option(
     "--topic",
@@ -322,7 +335,7 @@ def main(  # pylint: disable=too-many-arguments,too-many-positional-arguments,to
 
         if line_count > 0:
             click.echo(
-                f"✅ Successfully recorded {line_count} lines of real device " f"data"
+                f"✅ Successfully recorded {line_count} lines of real device data"
             )
             click.echo(f"📁 Saved to: {output_file}")
             click.echo("")

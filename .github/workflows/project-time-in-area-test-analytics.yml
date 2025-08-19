@@ -180,12 +180,119 @@ jobs:
           wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo gpg --dearmor -o /usr/share/keyrings/influxdata-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/influxdata-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
 
-          # Install Telegraf
+          # Install Telegraf and bc (for floating point math)
           sudo apt-get update
-          sudo apt-get install -y telegraf
+          sudo apt-get install -y telegraf bc
 
           # Verify installation
           telegraf --version
+
+      - name: Test Telegraf pipeline - Time-in-area calculation only
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing Telegraf pipeline time-in-area calculation"
+
+          # Set up environment variables
+          export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
+          export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+
+          # Run Telegraf pipeline with ONLY time-in-area calculation (no threshold filtering)
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                    --config config_process_track_duration.conf \
+                                    --config test_files/config_output_stdout.conf \
+                                    --once 2>/dev/null)
+
+          echo "Telegraf output: $TELEGRAF_OUTPUT"
+
+          # Check that time_in_area_seconds fields are present
+          echo "Checking time_in_area_seconds field values..."
+
+          # Verify all detections have time_in_area_seconds field
+          MISSING_FIELD_COUNT=$(echo "$TELEGRAF_OUTPUT" | \
+            jq -r 'select(.name == "detection_frame" and (.fields.time_in_area_seconds == null or .fields.time_in_area_seconds == "")) | .fields.track_id' 2>/dev/null | wc -l)
+
+          if [ "$MISSING_FIELD_COUNT" -gt 0 ]; then
+            echo "❌ FAIL: Found $MISSING_FIELD_COUNT detections without time_in_area_seconds field"
+            exit 1
+          fi
+
+          # Check specific time_in_area_seconds values against hard-coded expectations
+          echo "Verifying time_in_area_seconds values against expected calculations..."
+
+          # Hard-coded expected values for key detections from simple_tracks.jsonl
+          # Format: track_id:timestamp:expected_time_in_area_seconds
+          declare -A EXPECTED_VALUES=(
+            # track_001: starts at 10:00:01, increases over time
+            ["track_001:2024-01-15T10:00:01.123456Z"]="0.0"
+            ["track_001:2024-01-15T10:00:02.789012Z"]="1.7"
+            ["track_001:2024-01-15T10:00:03.345678Z"]="2.2"
+            ["track_001:2024-01-15T10:00:04.901234Z"]="3.8"
+
+            # track_002: starts at 10:00:03, increases over time
+            ["track_002:2024-01-15T10:00:03.345678Z"]="0.0"
+            ["track_002:2024-01-15T10:00:04.901234Z"]="1.6"
+            ["track_002:2024-01-15T10:00:05.567890Z"]="2.2"
+
+            # track_003: starts at 10:00:10, increases over time
+            ["track_003:2024-01-15T10:00:10.234567Z"]="0.0"
+            ["track_003:2024-01-15T10:00:11.890123Z"]="1.7"
+            ["track_003:2024-01-15T10:00:12.456789Z"]="2.2"
+
+            # track_005: starts at 10:00:30, increases every 30s
+            ["track_005:2024-01-15T10:00:30.000000Z"]="0.0"
+            ["track_005:2024-01-15T10:01:00.000000Z"]="30.0"
+            ["track_005:2024-01-15T10:01:30.000000Z"]="60.0"
+            ["track_005:2024-01-15T10:02:00.000000Z"]="90.0"
+            ["track_005:2024-01-15T10:02:30.000000Z"]="120.0"
+            ["track_005:2024-01-15T10:03:00.000000Z"]="150.0"
+          )
+
+          # Count mismatches
+          MISMATCH_COUNT=0
+          for key in "${!EXPECTED_VALUES[@]}"; do
+            IFS=':' read -r track_id timestamp <<< "$key"
+            expected_time="${EXPECTED_VALUES[$key]}"
+
+            # Find corresponding actual value
+            actual_time=$(echo "$TELEGRAF_OUTPUT" | \
+              jq -r "select(.name == \"detection_frame\" and .fields.track_id == \"$track_id\" and .fields.timestamp == \"$timestamp\") | .fields.time_in_area_seconds" 2>/dev/null)
+
+            if [ -n "$actual_time" ] && [ "$actual_time" != "null" ]; then
+              # Simple string comparison for expected values (within tolerance)
+              # For 0.0, expect exactly 0
+              if [ "$expected_time" = "0.0" ] || [ "$expected_time" = "0" ]; then
+                if [ "$actual_time" != "0" ] && [ "$(echo "$actual_time > 0.1" | bc -l)" -eq 1 ]; then
+                  echo "  Mismatch: $track_id at $timestamp"
+                  echo "    Expected: $expected_time, Actual: $actual_time"
+                  MISMATCH_COUNT=$((MISMATCH_COUNT + 1))
+                fi
+              # For other values, check if they're in reasonable range
+              else
+                # Convert to integers for comparison (multiply by 10 to handle 1 decimal)
+                # Use rounding to handle floating point precision issues
+                expected_int=$(echo "$expected_time * 10 + 0.5" | bc -l | cut -d. -f1)
+                actual_int=$(echo "$actual_time * 10 + 0.5" | bc -l | cut -d. -f1)
+
+                if [ "$expected_int" != "$actual_int" ]; then
+                  echo "  Mismatch: $track_id at $timestamp"
+                  echo "    Expected: $expected_time (~$expected_int), Actual: $actual_time (~$actual_int)"
+                  MISMATCH_COUNT=$((MISMATCH_COUNT + 1))
+                fi
+              fi
+            else
+              echo "  Missing: $track_id at $timestamp (expected: $expected_time)"
+              MISMATCH_COUNT=$((MISMATCH_COUNT + 1))
+            fi
+          done
+
+          if [ "$MISMATCH_COUNT" -gt 0 ]; then
+            echo "❌ FAIL: Found $MISMATCH_COUNT time_in_area_seconds value mismatches"
+            exit 1
+          fi
+
+          echo "✅ PASS: All time_in_area_seconds values match expected calculations"
 
       - name: Test Telegraf pipeline - No alarms (threshold 200s)
         run: |
@@ -195,11 +302,12 @@ jobs:
 
           # Set up environment variables
           export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="200"
 
           # Run Telegraf pipeline
-          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
                                     --config config_process_track_duration.conf \
                                     --config config_process_threshold_filter.conf \
                                     --config test_files/config_output_stdout.conf \
@@ -235,11 +343,12 @@ jobs:
 
           # Set up environment variables
           export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="2"
 
           # Run Telegraf pipeline
-          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
                                     --config config_process_track_duration.conf \
                                     --config config_process_threshold_filter.conf \
                                     --config test_files/config_output_stdout.conf \
@@ -281,11 +390,12 @@ jobs:
 
           # Set up environment variables
           export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="0"
 
           # Run Telegraf pipeline
-          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
                                     --config config_process_track_duration.conf \
                                     --config config_process_threshold_filter.conf \
                                     --config test_files/config_output_stdout.conf \
@@ -327,11 +437,12 @@ jobs:
 
           # Set up environment variables
           export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="120"
 
           # Run Telegraf pipeline
-          TELEGRAF_OUTPUT=$(telegraf --config test_files/config_input_sample_data.conf \
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
                                     --config config_process_track_duration.conf \
                                     --config config_process_threshold_filter.conf \
                                     --config test_files/config_output_stdout.conf \

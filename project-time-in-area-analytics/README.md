@@ -53,8 +53,14 @@ flowchart TD
   - [AXIS OS Compatibility](#axis-os-compatibility)
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
 - [Quick Setup](#quick-setup)
+  - [TODO](#todo)
   - [Troubleshooting](#troubleshooting)
+    - [Make sure AXIS Object Analytics is enabled](#make-sure-axis-object-analytics-is-enabled)
+    - [Verbose Logging](#verbose-logging)
+    - [Gradual Testing](#gradual-testing)
+    - [Common Error Messages](#common-error-messages)
 - [Configuration Files](#configuration-files)
+  - [config_input_scene_detections.conf and axis_scene_detection_consumer.sh](#config_input_scene_detectionsconf-and-axis_scene_detection_consumersh)
   - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
   - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
   - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
@@ -71,8 +77,8 @@ flowchart TD
   - [Data Format](#data-format)
   - [Data Behavior](#data-behavior)
   - [Data Transformation for Telegraf](#data-transformation-for-telegraf)
-- [Track Activity Visualization](#track-activity-visualization)
 - [Recording Real Device Data](#recording-real-device-data)
+- [Track Activity Visualization](#track-activity-visualization)
 - [Automated Testing](#automated-testing)
   - [GitHub Workflow](#github-workflow)
   - [Test Data](#test-data)
@@ -84,21 +90,54 @@ flowchart TD
 
 ### AXIS OS Compatibility
 
-- **Minimum AXIS OS version**: TODO
-- **Required tools**: TODO
+- **Minimum AXIS OS version**: AXIS OS 12+
+- **Required tools**: Uses `message-broker-cli` which was not stable before AXIS OS 12. Uses `jq` for JSON processing which was not available in older AXIS OS versions, `sed` for text filtering, and standard Unix utilities (`sh`). Uses the analytics scene description message broker topic `com.axis.analytics_scene_description.v0.beta` which is available in AXIS OS 12.
 
 ### FixedIT Data Agent Compatibility
 
-- **Minimum Data Agent version**: 1.0
-- **Required features**: TODO
+- **Minimum Data Agent version**: 1.1
+- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. It is recommended to use version 1.1 or higher since the load order of config files was not visible in the web user interface in version 1.0.
 
 ## Quick Setup
 
+### TODO
+
 ### Troubleshooting
+
+#### Make sure AXIS Object Analytics is enabled
+
+This project is making use of scene detection data from AXIS Object Analytics. Make sure the AXIS Object Analytics app is running in the camera. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
+
+#### Verbose Logging
 
 Enable the `Debug` option in the FixedIT Data Agent for detailed logs. Debug files will appear in the `Uploaded helper files` section (refresh page to see updates).
 
 **Note**: Don't leave debug enabled long-term as it creates large log files.
+
+#### Gradual Testing
+
+You can test the logic gradually in the camera by adding more and more complexity:
+
+1. **Basic Detection**: Upload `config_input_scene_detections.conf`, `axis_scene_detection_consumer.sh` and `config_output_stdout.conf` to see if the camera is sending out detection messages
+
+   ![Camera Detections Configuration](.images/camera-detections-config.png)
+   _Configuration files uploaded to the camera_
+
+   ![Camera Detections Log](.images/camera-detections.png)
+   _Log messages showing detection data from the camera_
+
+2. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
+3. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
+
+#### Common Error Messages
+
+- **Unresolved variable error**: If you see an error like this:
+
+  ```
+  [2025-08-20 11:43:40] 2025-08-20T09:43:40Z E! [telegraf] Error running agent: could not initialize processor processors.starlark: :6:23: unexpected input character '$'
+  ```
+
+  It usually means an environment variable (like `ALERT_THRESHOLD_SECONDS`) is not set correctly as an `Extra Env` variable.
 
 ## Configuration Files
 
@@ -111,6 +150,7 @@ Configuration and script pair that work together to consume real-time object det
 Can also be used for reproducible testing on host systems by setting `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"` to use a file reader that simulates the camera's detection data output. This allows you to test the processing pipeline using pre-recorded sample data without needing live camera hardware.
 
 **Environment Variables:**
+
 - `HELPER_FILES_DIR`: Directory containing project files (required)
 - `CONSUMER_SCRIPT`: Path to consumer script (defaults to `axis_scene_detection_consumer.sh`)
 - `SAMPLE_FILE`: Path to sample data file (required when using `sample_data_feeder.sh`)
@@ -193,6 +233,7 @@ telegraf --config config_input_scene_detections.conf \
 All detections with `time_in_area_seconds` field.
 
 Example output:
+
 ```json
 {
   "fields": {
@@ -207,7 +248,7 @@ Example output:
     "time_in_area_seconds": 1.67
   },
   "name": "detection_frame",
-  "tags": {"host": "test-host"},
+  "tags": { "host": "test-host" },
   "timestamp": 1755677033
 }
 ```

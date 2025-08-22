@@ -73,6 +73,7 @@ flowchart TD
     - [Test Time in Area Calculation Only](#test-time-in-area-calculation-only)
     - [Test Complete Alert Pipeline](#test-complete-alert-pipeline)
     - [Test with Real Device Data](#test-with-real-device-data)
+    - [Test Overlay Functionality Only](#test-overlay-functionality-only)
 - [Analytics Data Structure](#analytics-data-structure)
   - [Data Format](#data-format)
   - [Data Behavior](#data-behavior)
@@ -172,6 +173,20 @@ Filters detection frames based on the configured alert threshold. Only detection
 
 Outputs processed metrics to stdout in JSON format for testing and debugging.
 
+### config_process_overlay_transform.conf
+
+Transforms analytics data into the format expected by the overlay manager (e.g. center coordinates in -1 ... 1 range and box size).
+
+### config_output_overlay.conf and overlay_manager.sh
+
+Displays text overlays on the video. This configuration:
+
+- Uses Telegraf's exec output plugin to trigger the `overlay_manager.sh` script
+- Shows overlay text at the center of detected objects using the VAPIX overlay API
+- Displays time in area, object class, and size information
+- Positions overlays using pre-calculated coordinates from the Starlark processor
+- Automatically removes overlays after 1 second for clean video display
+
 ### test_files/sample_data_feeder.sh
 
 Helper script that simulates camera metadata stream by reading sample JSON files line by line. This script is used for host testing to simulate the output of the live camera's message broker without requiring actual camera hardware.
@@ -207,6 +222,7 @@ You can test the processing logic locally using Telegraf before deploying to you
 **Only works in the Axis Device:**
 
 - Real object detection metadata consumption (camera-specific message broker) - in host testing, you can use the `sample_data_feeder.sh` script to simulate the camera metadata stream using pre-recorded data in the `test_files/simple_tracks.jsonl` or `test_files/real_device_data.jsonl` files.
+- The VAPIX overlay API requires direct access to the Axis device and cannot be tested on host systems.
 
 ### Test Commands
 
@@ -298,12 +314,51 @@ telegraf --config config_input_scene_detections.conf \
 
 **How it works:** We set `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"` to use a file reader that simulates the camera's message broker output. This allows us to test on the host using pre-recorded real device data instead of connecting to the live camera infrastructure. The `real_device_data.jsonl` file contains actual analytics scene description data recorded from an Axis device, providing realistic testing with real track IDs, timestamps, and object detection patterns.
 
+#### Test Overlay Functionality Only
+
+Test just the overlay functionality with a single detection from a static file. To run this, you need to have access to an Axis device which will show the overlay on the video.
+
+```bash
+# Set up camera info
+export VAPIX_USERNAME="your-username"
+export VAPIX_PASSWORD="your-password"
+export VAPIX_IP="your-device-ip"
+
+# Set up test environment for overlay testing only
+export HELPER_FILES_DIR="$(pwd)"
+export SAMPLE_FILE="test_files/single_overlay_test.jsonl"
+export TELEGRAF_DEBUG="true"
+
+# Test overlay functionality with single detection
+telegraf --config test_files/config_input_overlay_test.conf --config config_process_overlay_transform.conf --config config_output_overlay.conf --once
+```
+
+**How it works:**
+1. `config_input_overlay_test.conf` reads a single detection from `single_overlay_test.jsonl`
+2. `config_process_overlay_transform.conf` transforms coordinates and standardizes fields
+3. `config_output_overlay.conf` receives the transformed data and executes the overlay manager
+4. Creates an overlay on the video showing the object information
+5. Removes the overlay after 1 second
+
+**Expected Result:** A red text overlay will appear on the video showing:
+```
+← ID: overlay_test_001
+Class: Human
+Time: 45.2sec
+Size: 1.00%
+```
+
+The overlay text will appear at 25% from the left of the video and vertically centered.
+
 ## Analytics Data Structure
 
 The analytics scene description data follows a specific format and behavior:
 
 ### Data Format
 
+The analytics data goes through three formats:
+
+#### Raw Analytics Data (from camera)
 Each line contains a JSON object with this structure:
 
 ```json
@@ -379,6 +434,10 @@ This transformation:
 - **Preserves** object bounding box coordinates
 - **Simplifies** object classification to just the type
 - **Skips** frames with no observations entirely
+
+### Data Transformation for Overlay
+
+The overlay manager transforms coordinates from the analytics system (0.0 to 1.0) to the VAPIX API system (-1.0 to 1.0) and formats the object data for display. Note that the coordinate for the text indicates the top-left corner of the text box.
 
 ## Recording Real Device Data
 

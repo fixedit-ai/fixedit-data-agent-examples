@@ -2,3 +2,5 @@ env.*
 vars.*
 .env*
 *.debug
+*.log
+__pycache__

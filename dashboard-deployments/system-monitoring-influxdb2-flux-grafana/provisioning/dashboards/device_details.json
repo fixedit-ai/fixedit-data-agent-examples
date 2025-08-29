@@ -1032,6 +1032,46 @@
       {
         "allowCustomValue": false,
         "current": {
+          "text": "InfluxDB",
+          "value": "InfluxDB"
+        },
+        "hide": 2,
+        "name": "datasource",
+        "options": [],
+        "query": "influxdb",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "cameras",
+          "value": "cameras"
+        },
+        "description": "Case insensitive prefix for filtering buckets",
+        "hide": 2,
+        "name": "bucket_prefix",
+        "query": "cameras",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "allowCustomValue": false,
+        "definition": "import \"strings\"\n\nbuckets()\n|> filter(fn: (r) => strings.hasPrefix(v: strings.toLower(v: r.name), prefix: \"${bucket_prefix}\"))\n|> sort(columns: [\"name\"])",
+        "hide": 0,
+        "label": "Source Bucket",
+        "name": "bucket",
+        "options": [],
+        "query": {
+          "query": "import \"strings\"\n\nbuckets()\n|> filter(fn: (r) => strings.hasPrefix(v: strings.toLower(v: r.name), prefix: \"${bucket_prefix}\"))\n|> sort(columns: [\"name\"])"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
           "text": [],
           "value": []
         },
@@ -1063,33 +1103,6 @@
         "query": "host",
         "skipUrlSync": true,
         "type": "constant"
-      },
-      {
-        "allowCustomValue": false,
-        "current": {
-          "text": "InfluxDB",
-          "value": "InfluxDB"
-        },
-        "hide": 2,
-        "name": "datasource",
-        "options": [],
-        "query": "influxdb",
-        "refresh": 1,
-        "regex": "",
-        "type": "datasource"
-      },
-      {
-        "allowCustomValue": false,
-        "definition": "buckets()",
-        "hide": 2,
-        "name": "bucket",
-        "options": [],
-        "query": {
-          "query": "buckets()"
-        },
-        "refresh": 1,
-        "regex": "",
-        "type": "query"
       }
     ]
   },

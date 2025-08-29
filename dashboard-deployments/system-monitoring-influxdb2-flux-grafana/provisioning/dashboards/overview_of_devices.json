@@ -1035,7 +1035,33 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")",
+        "description": "top-most level (e.g., Europe)",
+        "includeAll": true,
+        "label": "Area",
+        "multi": true,
+        "name": "area",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
         "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")",
+        "description": "sub division of Area (e.g., Sweden)",
         "includeAll": true,
         "label": "Geography",
         "multi": true,
@@ -1060,7 +1086,7 @@
           "uid": "${datasource}"
         },
         "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")",
-        "description": "",
+        "description": "Subdivision of Geography (e.g., Stockholm)",
         "includeAll": true,
         "label": "Region",
         "multi": true,
@@ -1084,33 +1110,8 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")",
-        "description": "",
-        "includeAll": true,
-        "label": "Area",
-        "multi": true,
-        "name": "area",
-        "options": [],
-        "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")"
-        },
-        "refresh": 1,
-        "regex": "",
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "allowCustomValue": false,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "influxdb",
-          "uid": "${datasource}"
-        },
         "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")",
-        "description": "",
+        "description": "bottom-most level (e.g., Friends Arena)",
         "includeAll": true,
         "label": "Site",
         "multi": true,

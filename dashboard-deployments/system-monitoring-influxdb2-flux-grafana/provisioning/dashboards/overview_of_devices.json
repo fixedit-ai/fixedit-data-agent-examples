@@ -81,7 +81,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "host"
+              "options": "${unique_identifier}"
             },
             "properties": [
               {
@@ -180,7 +180,7 @@
       "targets": [
         {
           "hide": false,
-          "query": "// Get cameras with reported data in the selected interval\r\nfrom(bucket: \"${bucket}\")\r\n  // Filter on time\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  // Filter using variable selectors (supports All and multi-select)\r\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\r\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\r\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\r\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\r\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\r\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\r\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\r\n  // We cant flatten if the values are of different types, so we just\r\n  // filter for an arbitrary value that we know exists...\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"cpu\" and\r\n    r[\"cpu\"] == \"cpu-total\" and\r\n    r[\"_field\"] == \"usage_idle\"\r\n  )\r\n  // Group by device to merge to one time series per device\r\n  |> group(columns: [\"${unique_identifier}\"])\r\n  // Get the last data point for each device\r\n  |> last()\r\n  // Ungroup to prepare a flat output\r\n  |> group()\r\n  // Keep only timestamp and device identifier\r\n  |> keep(columns: [\"_time\", \"${unique_identifier}\"])\r\n  // Rename _time to seen\r\n  |> rename(columns: {_time: \"seen\"})",
+          "query": "// Get devices with reported data in the selected interval\r\nfrom(bucket: \"${bucket}\")\r\n  // Filter on time\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  // Filter using variable selectors (supports All and multi-select)\r\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\r\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\r\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\r\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\r\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\r\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\r\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\r\n  // We cant flatten if the values are of different types, so we just\r\n  // filter for an arbitrary value that we know exists...\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"cpu\" and\r\n    r[\"cpu\"] == \"cpu-total\" and\r\n    r[\"_field\"] == \"usage_idle\"\r\n  )\r\n  // Group by device to merge to one time series per device\r\n  |> group(columns: [\"${unique_identifier}\"])\r\n  // Get the last data point for each device. Note that last() does not work after\r\n  // group, so we use sort+limit instead.\r\n  |> sort(columns: [\"_time\"], desc: true)\r\n  |> limit(n: 1)\r\n  // Ungroup to prepare a flat output\r\n  |> group()\r\n  // Keep only timestamp and device identifier\r\n  |> keep(columns: [\"_time\", \"${unique_identifier}\"])\r\n  // Rename _time to seen\r\n  |> rename(columns: {_time: \"seen\"})",
           "refId": "Get last time stamp"
         },
         {
@@ -189,7 +189,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "// Get latest external IP per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on external IP measurement\n  |> filter(fn: (r) => r[\"_measurement\"] == \"external_ip\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported external IP\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"external ip\"})\n  |> keep(columns: [\"${unique_identifier}\", \"external ip\"])\n",
+          "query": "// Get latest external IP per device in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on external IP measurement\n  |> filter(fn: (r) => r[\"_measurement\"] == \"external_ip\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported external IP. Note that last() does not work after\n  // group, so we use sort+limit instead.\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"external ip\"})\n  |> keep(columns: [\"${unique_identifier}\", \"external ip\"])\n",
           "refId": "Get external IPs"
         },
         {
@@ -198,7 +198,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "// Get latest local IP per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on local IP measurement\n  |> filter(fn: (r) => r[\"_measurement\"] == \"local_ip_addresses\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported local IP\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"local ip\"})\n  |> keep(columns: [\"${unique_identifier}\", \"local ip\"])\n",
+          "query": "// Get latest local IP per device in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on local IP measurement\n  |> filter(fn: (r) => r[\"_measurement\"] == \"local_ip_addresses\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported local IP. Note that last() does not work after\n  // group, so we use sort+limit instead.\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"local ip\"})\n  |> keep(columns: [\"${unique_identifier}\", \"local ip\"])\n",
           "refId": "Get internal IPs"
         },
         {
@@ -207,7 +207,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "// Get latest internet latency per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on internet connectivity measurement and field\n  |> filter(fn: (r) => r[\"_measurement\"] == \"internet_connectivity\")\n  |> filter(fn: (r) => r[\"_field\"] == \"response_time\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported response time\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"internet latency\"})\n  |> keep(columns: [\"${unique_identifier}\", \"internet latency\"])\n",
+          "query": "// Get latest internet latency per device in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on internet connectivity measurement and field\n  |> filter(fn: (r) => r[\"_measurement\"] == \"internet_connectivity\")\n  |> filter(fn: (r) => r[\"_field\"] == \"response_time\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last reported response time. Note that last() does not work after\n  // group, so we use sort+limit instead.\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  // Ungroup to flatten result set\n  |> group()\n  // Rename the value column and keep only relevant fields\n  |> rename(columns: {_value: \"internet latency\"})\n  |> keep(columns: [\"${unique_identifier}\", \"internet latency\"])\n",
           "refId": "Internet response time"
         },
         {
@@ -216,7 +216,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "// Get latest local IP per camera in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on a single meaurement to make the schema aligned\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last report\n  |> last()\n  // Ungroup to flatten result set\n  |> group()\n  // Keep only host and device model\n  |> keep(columns: [\"${unique_identifier}\", \"product_full_name\"])\n  |> rename(columns: {\n    product_full_name: \"product full name\"\n  })",
+          "query": "// Get latest device model per device in the selected interval\nfrom(bucket: \"${bucket}\")\n  // Filter on time\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  // Filter using variable selectors (supports All and multi-select)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  // Filter on a single meaurement to make the schema aligned\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  // Group by device to isolate each host\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the last report. Note that last() does not work after\n  // group, so we use sort+limit instead.\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  // Ungroup to flatten result set\n  |> group()\n  // Keep only host and device model\n  |> keep(columns: [\"${unique_identifier}\", \"product_full_name\"])\n  |> rename(columns: {\n    product_full_name: \"product full name\"\n  })",
           "refId": "Get camera model name"
         },
         {
@@ -225,7 +225,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> group(columns: [\"${unique_identifier}\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"${unique_identifier}\", \"firmware_version\"])\n  |> rename(columns: {\n    \"${unique_identifier}\": \"host\",\n    firmware_version: \"firmware version\"\n  })\n",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"area\"] =~ /${area:regex}/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /${geography:regex}/)\n  |> filter(fn: (r) => r[\"region\"] =~ /${region:regex}/)\n  |> filter(fn: (r) => r[\"site\"] =~ /${site:regex}/)\n  |> filter(fn: (r) => r[\"type\"] =~ /${type:regex}/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /${device:regex}/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /${model:regex}/)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> group(columns: [\"${unique_identifier}\"])\n  // Note that last() does not work after group, so we use sort+limit instead.\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  |> group()\n  |> keep(columns: [\"${unique_identifier}\", \"firmware_version\"])\n  |> rename(columns: {\n    firmware_version: \"firmware version\"\n  })\n",
           "refId": "A"
         }
       ],
@@ -234,7 +234,7 @@
         {
           "id": "joinByField",
           "options": {
-            "byField": "host",
+            "byField": "$unique_identifier",
             "mode": "outer"
           }
         },
@@ -246,7 +246,7 @@
             "indexByName": {
               "external ip": 3,
               "firmware version": 2,
-              "host": 0,
+              "${unique_identifier}": 0,
               "local ip": 4,
               "product full name": 1,
               "seen": 5
@@ -254,7 +254,7 @@
             "renameByName": {
               "external ip": "External IP",
               "firmware version": "AXIS OS",
-              "host": "Device",
+              "${unique_identifier}": "Device",
               "local ip": "Local IPs",
               "product full name": "Product Name",
               "seen": "Last Seen"
@@ -405,7 +405,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "host"
+              "options": "${unique_identifier}"
             },
             "properties": [
               {
@@ -496,7 +496,7 @@
             "renameByName": {
               "Trend #cpu": "CPU Usage",
               "Trend #ram": "RAM Usage",
-              "host": "Device"
+              "${unique_identifier}": "Device"
             }
           }
         }

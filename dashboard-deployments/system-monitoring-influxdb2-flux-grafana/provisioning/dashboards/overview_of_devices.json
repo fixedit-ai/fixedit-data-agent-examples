@@ -90,7 +90,7 @@
                   {
                     "targetBlank": true,
                     "title": "Device detail link",
-                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                    "url": "/d/${device_details_uid:raw}/device-details?var-bucket=${bucket}&var-device=${__value.text}"
                   }
                 ]
               }
@@ -414,7 +414,7 @@
                   {
                     "targetBlank": true,
                     "title": "Device detail link",
-                    "url": "/d/${device_details_uid:raw}/device-details?var-device=${__value.text}"
+                    "url": "/d/${device_details_uid:raw}/device-details?var-bucket=${bucket}&var-device=${__value.text}"
                   }
                 ]
               },
@@ -971,17 +971,29 @@
         "type": "datasource"
       },
       {
+        "current": {
+          "text": "cameras",
+          "value": "cameras"
+        },
+        "description": "Case insensitive prefix for filtering buckets",
+        "hide": 2,
+        "name": "bucket_prefix",
+        "query": "cameras",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
         "datasource": {
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "buckets()",
-        "hide": 2,
-        "label": "Database",
+        "definition": "import \"strings\"\n\nbuckets()\n|> filter(fn: (r) => strings.hasPrefix(v: strings.toLower(v: r.name), prefix: \"${bucket_prefix}\"))\n|> sort(columns: [\"name\"])",
+        "hide": 0,
+        "label": "Source Bucket",
         "name": "bucket",
         "options": [],
         "query": {
-          "query": "buckets()"
+          "query": "import \"strings\"\n\nbuckets()\n|> filter(fn: (r) => strings.hasPrefix(v: strings.toLower(v: r.name), prefix: \"${bucket_prefix}\"))\n|> sort(columns: [\"name\"])"
         },
         "refresh": 1,
         "regex": "",

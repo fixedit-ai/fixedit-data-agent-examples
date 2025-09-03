@@ -157,11 +157,9 @@
             },
             "includeByName": {},
             "indexByName": {
-              "_time": 7,
-              "area": 6,
-              "geography": 1,
               "host": 0,
-              "product_full_name": 2,
+              "area": 1,
+              "geography": 2,
               "region": 3,
               "site": 4,
               "type": 5

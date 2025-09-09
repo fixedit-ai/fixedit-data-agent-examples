@@ -81,7 +81,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "${unique_identifier}"
+              "options": "Device"
             },
             "properties": [
               {
@@ -405,7 +405,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "${unique_identifier}"
+              "options": "Device"
             },
             "properties": [
               {
@@ -1194,5 +1194,5 @@
   "timezone": "browser",
   "title": "Overview of Devices",
   "uid": "ceh7yyrnarj7kd",
-  "version": 30
+  "version": 31
 }

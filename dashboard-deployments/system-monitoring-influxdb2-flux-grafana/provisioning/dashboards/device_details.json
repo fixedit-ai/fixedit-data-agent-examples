@@ -1077,13 +1077,13 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"host\",\n)",
+        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"host\",\n  start: 1970-01-01T00:00:00Z\n)",
         "label": "Device",
         "multi": true,
         "name": "device",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"host\",\n)"
+          "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(\n  bucket: \"${bucket}\",\n  tag: \"host\",\n  start: 1970-01-01T00:00:00Z\n)"
         },
         "refresh": 1,
         "regex": "",
@@ -1112,5 +1112,5 @@
   "timezone": "browser",
   "title": "Device Details",
   "uid": "bekds38txl1j4c",
-  "version": 35
+  "version": 36
 }

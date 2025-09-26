@@ -914,7 +914,7 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\", start: 1970-01-01T00:00:00Z)",
         "description": "top-most level (e.g., Europe)",
         "includeAll": true,
         "label": "Area",
@@ -922,7 +922,7 @@
         "name": "area",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"area\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -939,7 +939,7 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\", start: 1970-01-01T00:00:00Z)",
         "description": "sub division of Area (e.g., Sweden)",
         "includeAll": true,
         "label": "Geography",
@@ -947,7 +947,7 @@
         "name": "geography",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"geography\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -964,7 +964,7 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\", start: 1970-01-01T00:00:00Z)",
         "description": "Subdivision of Geography (e.g., Stockholm)",
         "includeAll": true,
         "label": "Region",
@@ -972,7 +972,7 @@
         "name": "region",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"region\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -989,7 +989,7 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\", start: 1970-01-01T00:00:00Z)",
         "description": "bottom-most level (e.g., Friends Arena)",
         "includeAll": true,
         "label": "Site",
@@ -997,7 +997,7 @@
         "name": "site",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"site\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -1014,14 +1014,14 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\", start: 1970-01-01T00:00:00Z)",
         "includeAll": true,
         "label": "Type",
         "multi": true,
         "name": "type",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"type\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -1038,7 +1038,7 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\", start: 1970-01-01T00:00:00Z)",
         "description": "",
         "includeAll": true,
         "label": "Device",
@@ -1046,7 +1046,7 @@
         "name": "device",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"${unique_identifier}\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -1076,14 +1076,14 @@
           "type": "influxdb",
           "uid": "${datasource}"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")",
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\", start: 1970-01-01T00:00:00Z)",
         "includeAll": true,
         "label": "Model Name",
         "multi": true,
         "name": "model",
         "options": [],
         "query": {
-          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\")"
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"product_full_name\", start: 1970-01-01T00:00:00Z)"
         },
         "refresh": 1,
         "regex": "",
@@ -1159,5 +1159,5 @@
   "timezone": "browser",
   "title": "System Overview",
   "uid": "dsdsadfg3t3t3",
-  "version": 27
+  "version": 28
 }

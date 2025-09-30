@@ -1,0 +1,28 @@
+name: Python Code Quality Check for the time-in-area-analytics project
+
+on:
+  push:
+    paths:
+      - "project-time-in-area-analytics/test_scripts/**"
+  pull_request:
+    paths:
+      - "project-time-in-area-analytics/test_scripts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project-time-in-area-analytics/test_scripts
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Python Quality Check
+        uses: ./.github/actions/python-quality-check
+        with:
+          working-directory: project-time-in-area-analytics/test_scripts

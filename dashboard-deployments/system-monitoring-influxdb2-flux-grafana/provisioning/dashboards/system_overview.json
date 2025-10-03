@@ -71,7 +71,7 @@
       "pluginVersion": "12.0.2",
       "targets": [
         {
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n  |> count(column: \"_value\")\n  |> rename(columns: {_value: \"total\"})\n  |> yield(name: \"all\")\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n  |> count(column: \"_value\")\n  |> rename(columns: {_value: \"selected\"})\n  |> yield(name: \"filtered\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n  |> count(column: \"_value\")\n  |> rename(columns: {_value: \"total\"})\n  |> yield(name: \"all\")\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n  |> keep(columns: [\"host\"])\n  |> group()\n  |> distinct(column: \"host\")\n  |> count(column: \"_value\")\n  |> rename(columns: {_value: \"selected\"})\n  |> yield(name: \"filtered\")",
           "refId": "A"
         }
       ],
@@ -682,7 +682,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "metric_to_use = \"load1\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Apply metadata filters first (only if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n\n  // 2. Then filter for the metric of interest\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"system\" and\n    r[\"_field\"] == metric_to_use\n  )\n\n  // 3. Aggregate, format, and limit\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n  |> sort(columns: [metric_to_use], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "query": "metric_to_use = \"load1\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Apply metadata filters first (only if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n\n  // 2. Then filter for the metric of interest\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"system\" and\n    r[\"_field\"] == metric_to_use\n  )\n\n  // 3. Aggregate, format, and limit\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n  |> sort(columns: [metric_to_use], desc: true)\n  |> limit(n: ${outlier_count})\n",
           "refId": "load1"
         },
         {
@@ -691,7 +691,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "metric_to_use = \"load15\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (only if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n\n  // 2. Metric filtering\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"system\" and\n    r[\"_field\"] == metric_to_use\n  )\n\n  // 3. Aggregation and formatting\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_to_use], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "query": "metric_to_use = \"load15\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (only if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n\n  // 2. Metric filtering\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"system\" and\n    r[\"_field\"] == metric_to_use\n  )\n\n  // 3. Aggregation and formatting\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_to_use], desc: true)\n  |> limit(n: ${outlier_count})\n",
           "refId": "load15"
         },
         {
@@ -700,7 +700,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "metric_to_use = \"uptime\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (only apply if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n\n  // 2. Metric filter for uptime\n  |> filter(fn: (r) => r[\"_measurement\"] == \"system\" and r[\"_field\"] == metric_to_use)\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> last() // Last reported uptime during the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n  |> sort(columns: [metric_to_use], desc: false) // Ascending = lowest uptime\n  |> limit(n: ${outlier_count})\n",
+          "query": "metric_to_use = \"uptime\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (only apply if fields exist)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n\n  // 2. Metric filter for uptime\n  |> filter(fn: (r) => r[\"_measurement\"] == \"system\" and r[\"_field\"] == metric_to_use)\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> last() // Last reported uptime during the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_to_use})\n  |> keep(columns: [\"host\", metric_to_use])\n  |> sort(columns: [metric_to_use], desc: false) // Ascending = lowest uptime\n  |> limit(n: ${outlier_count})\n",
           "refId": "uptime"
         },
         {
@@ -709,7 +709,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (safe if tag missing)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n\n  // 2. Metric filter\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mem\" and r[\"_field\"] == \"used_percent\")\n\n  // 3. Aggregation and formatting\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: \"memory used\"})\n  |> keep(columns: [\"host\", \"memory used\"])\n\n  // 4. Sort by memory used (descending = highest usage)\n  |> sort(columns: [\"memory used\"], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters (safe if tag missing)\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n\n  // 2. Metric filter\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mem\" and r[\"_field\"] == \"used_percent\")\n\n  // 3. Aggregation and formatting\n  |> group(columns: [\"host\"])\n  |> mean()\n  |> group()\n  |> rename(columns: {_value: \"memory used\"})\n  |> keep(columns: [\"host\", \"memory used\"])\n\n  // 4. Sort by memory used (descending = highest usage)\n  |> sort(columns: [\"memory used\"], desc: true)\n  |> limit(n: ${outlier_count})\n",
           "refId": "memory"
         },
         {
@@ -718,7 +718,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "metric_name = \"flash used\"\ndisk_path = \"/usr/local\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n\n  // 2. Metric and path filter\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"disk\" and\n    r[\"_field\"] == \"used_percent\" and\n    r[\"path\"] == disk_path\n  )\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> mean() // Mean over the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_name})\n  |> keep(columns: [\"host\", metric_name])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_name], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "query": "metric_name = \"flash used\"\ndisk_path = \"/usr/local\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n\n  // 2. Metric and path filter\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"disk\" and\n    r[\"_field\"] == \"used_percent\" and\n    r[\"path\"] == disk_path\n  )\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> mean() // Mean over the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_name})\n  |> keep(columns: [\"host\", metric_name])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_name], desc: true)\n  |> limit(n: ${outlier_count})\n",
           "refId": "flash"
         },
         {
@@ -727,7 +727,7 @@
             "uid": "${datasource}"
           },
           "hide": false,
-          "query": "metric_name = \"sd card used\"\ndisk_path = \"/var/spool/storage/SD_DISK\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n\n  // 2. Metric and path filter\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"disk\" and\n    r[\"_field\"] == \"used_percent\" and\n    r[\"path\"] == disk_path\n  )\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> mean() // Mean over the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_name})\n  |> keep(columns: [\"host\", metric_name])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_name], desc: true)\n  |> limit(n: ${outlier_count})\n",
+          "query": "metric_name = \"sd card used\"\ndisk_path = \"/var/spool/storage/SD_DISK\"\n\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n\n  // 1. Metadata filters\n  |> filter(fn: (r) => r[\"area\"] =~ /^${area:regex}$/)\n  |> filter(fn: (r) => r[\"geography\"] =~ /^${geography:regex}$/)\n  |> filter(fn: (r) => r[\"region\"] =~ /^${region:regex}$/)\n  |> filter(fn: (r) => r[\"site\"] =~ /^${site:regex}$/)\n  |> filter(fn: (r) => r[\"type\"] =~ /^${type:regex}$/)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  |> filter(fn: (r) => r[\"product_full_name\"] =~ /^${model:regex}$/)\n  |> filter(fn: (r) => r[\"architecture\"] =~ /^${architecture:regex}$/)\n  |> filter(fn: (r) => r[\"soc\"] =~ /^${soc:regex}$/)\n\n  // 2. Metric and path filter\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"disk\" and\n    r[\"_field\"] == \"used_percent\" and\n    r[\"path\"] == disk_path\n  )\n\n  // 3. Aggregate and format\n  |> group(columns: [\"host\"])\n  |> mean() // Mean over the selected time span\n  |> group()\n  |> rename(columns: {_value: metric_name})\n  |> keep(columns: [\"host\", metric_name])\n\n  // 4. Sort and limit\n  |> sort(columns: [metric_name], desc: true)\n  |> limit(n: ${outlier_count})\n",
           "refId": "SD card"
         }
       ],
@@ -1138,6 +1138,56 @@
         "type": "custom"
       },
       {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"architecture\", start: 1970-01-01T00:00:00Z)",
+        "includeAll": true,
+        "label": "Architecture",
+        "multi": true,
+        "name": "architecture",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"architecture\", start: 1970-01-01T00:00:00Z)"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "text": "All",
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${datasource}"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"soc\", start: 1970-01-01T00:00:00Z)",
+        "includeAll": true,
+        "label": "System on Chip",
+        "multi": true,
+        "name": "soc",
+        "options": [],
+        "query": {
+          "query": "import \"influxdata/influxdb/schema\"\n\nschema.tagValues(bucket: \"${bucket}\", tag: \"soc\", start: 1970-01-01T00:00:00Z)"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
         "current": {
           "text": "bekds38txl1j4c",
           "value": "bekds38txl1j4c"
@@ -1159,5 +1209,5 @@
   "timezone": "browser",
   "title": "System Overview",
   "uid": "dsdsadfg3t3t3",
-  "version": 28
+  "version": 29
 }

@@ -8,10 +8,10 @@ The system consumes real-time object detection data from Axis fisheye cameras an
 
 ```mermaid
 flowchart TD
-    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] --> B["Filter by area & type (TODO)"]
+    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] -->|detection_frame| B["Filter by area & type (TODO)"]
     X0["Configuration variables: HELPER_FILES_DIR"] --> A
     X1["Configuration variables: TODO"] --> B
-    B --> C1
+    B -->|detection_frame| C1
 
     subgraph TimeLogic ["config_process_track_duration.conf:<br/>Time-in-area Logic Details"]
         C1{"First time seeing<br/>this object ID?"}
@@ -24,15 +24,15 @@ flowchart TD
         CX --> C3
     end
 
-    C5 --> D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
+    C5 -->|detection_frame| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
 
-    D --> E["🚨 MQTT Output<br/>Alert messages (TODO)"]
+    D -->|alerting_frame| E["🚨 MQTT Output<br/>Alert messages (TODO)"]
     X3["Configuration variables: TODO"] --> E
 
-    D --> E1["config_process_rate_limit.conf:<br/>Rate limit to 1 message per second<br/>using Starlark state"]
-    E1 --> F["config_process_overlay_transform.conf:<br/>Recalculate coordinates for overlay visualization"]
-    F --> G["📺 config_output_overlay.conf:<br/>Overlay Manager with the outputs.exec plugin and overlay_manager.sh"]
+    D -->|alerting_frame| E1["config_process_rate_limit.conf:<br/>Rate limit to 1 message per second<br/>using Starlark state"]
+    E1 -->|rate_limited_alert_frame| F["config_process_overlay_transform.conf:<br/>Recalculate coordinates for overlay visualization"]
+    F -->|overlay_frame| G["📺 config_output_overlay.conf:<br/>Overlay Manager with the outputs.exec plugin and overlay_manager.sh"]
     X4["Configuration variables:<br/>VAPIX_USERNAME<br/>VAPIX_PASSWORD<br/>HELPER_FILES_DIR<br/>VAPIX_IP<br/>TELEGRAF_DEBUG<br/>FONT_SIZE"] --> G
     G --> H["📺 VAPIX Overlay API"]
 
@@ -498,31 +498,53 @@ The raw analytics data needs transformation for Telegraf's JSON parser because m
 
 ```json
 {
-  "frame": "2024-01-15T10:00:01Z",
-  "timestamp": "2024-01-15T10:00:01Z",
-  "track_id": "track_001",
-  "object_type": "Human",
-  "bounding_box": {"bottom": 0.6, "left": 0.2, "right": 0.3, "top": 0.4}
+  "name": "detection_frame",
+  "fields": {
+    "frame": "2024-01-15T10:00:01Z",
+    "timestamp": "2024-01-15T10:00:01Z",
+    "track_id": "track_001",
+    "object_type": "Human",
+    "bounding_box_bottom": 0.6,
+    "bounding_box_left": 0.2,
+    "bounding_box_right": 0.3,
+    "bounding_box_top": 0.4
+  }
 }
 {
-  "frame": "2024-01-15T10:00:01Z",
-  "timestamp": "2024-01-15T10:00:01Z",
-  "track_id": "track_002",
-  "object_type": "Human",
-  "bounding_box": {"bottom": 0.58, "left": 0.14, "right": 0.20, "top": 0.38}
+  "name": "detection_frame",
+  "fields": {
+    "frame": "2024-01-15T10:00:01Z",
+    "timestamp": "2024-01-15T10:00:01Z",
+    "track_id": "track_002",
+    "object_type": "Human",
+    "bounding_box_bottom": 0.58,
+    "bounding_box_left": 0.14,
+    "bounding_box_right": 0.20,
+    "bounding_box_top": 0.38
+  }
 }
 ```
 
 This transformation:
 
-- **Flattens** nested observations into individual messages
-- **Preserves** object bounding box coordinates
+- **Splits** nested observations into individual messages
+- **Flattens** nested objects automatically (Telegraf's JSON parser adds the parent field name as prefix, e.g., `bounding_box_left`)
 - **Simplifies** object classification to just the type
 - **Skips** frames with no observations entirely
+- **Adds** metric name and fields structure for Telegraf
+- **Preserves** string fields like timestamps and IDs
 
 ### Data Transformed for Overlay
 
-The `config_process_overlay_transform.conf` processor transforms coordinates from the analytics system (0.0 to 1.0) to the VAPIX API system (-1.0 to 1.0). This processor also recalculates the coordinates from top, bottom left and right to center coordinates and object size.
+The `config_process_overlay_transform.conf` processor transforms the `detection_frame` into an `overlay_frame` intended to be more suitable for use with the VAPIX overlay API:
+
+1. **Coordinate Transformation**:
+   - Input: `bounding_box_left`, `bounding_box_right`, `bounding_box_top`, `bounding_box_bottom` (range 0.0 to 1.0)
+   - Output: `center_x`, `center_y` (range -1.0 to 1.0)
+
+2. **Field Preservation**:
+   - Copies `object_type`, `track_id`, `time_in_area_seconds`, and `timestamp`
+   - These fields are used for overlay text content
 
 Note that when we draw the overlay text in `overlay_manager.sh`, the coordinate for the text indicates the top-left corner of the text box. This is also where we place the arrow pointing to the object center.
 

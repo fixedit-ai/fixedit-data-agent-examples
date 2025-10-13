@@ -271,7 +271,7 @@ debug_log_file "Environment variables - VAPIX_USERNAME: $VAPIX_USERNAME, VAPIX_I
 #     "timestamp":"2025-10-13T14:47:13.252519Z",
 #     "track_id":"2923e6a2-920f-40a7-a7a8-f856b1a136cc"
 #   },
-#   "name":"overlay_metric",
+#   "name":"overlay_frame",
 #   "tags":{},
 #   "timestamp":1760366877
 # }

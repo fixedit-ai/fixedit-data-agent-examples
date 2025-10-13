@@ -8,38 +8,64 @@ The system consumes real-time object detection data from Axis fisheye cameras an
 
 ```mermaid
 flowchart TD
-    A["📹 Analytics Scene Description"] --> B["Filter by Area & Type (TODO)"]
-    X["Configuration variables"] --> B
+    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] --> B["Filter by area & type (TODO)"]
+    X0["Configuration variables: HELPER_FILES_DIR"] --> A
+    X1["Configuration variables: TODO"] --> B
     B --> C1
-    X --> C1
 
-    subgraph TimeLogic ["Time-in-area Logic Details"]
+    subgraph TimeLogic ["config_process_track_duration.conf:<br/>Time-in-area Logic Details"]
         C1{"First time seeing<br/>this object ID?"}
         C1 -->|Yes| C2["Save first timestamp<br/>object_id → now()"] --> C4
         C1 -->|No| C3["Get saved timestamp"]
         C3 --> C4["Calculate time diff<br/>now() - first_timestamp"]
         C4 --> C5["Append time in area<br/>to metric"]
 
-        C2 --> CX["Persistent state"]
+        C2 --> CX["💾 Persistent state"]
         CX --> C3
     end
 
-    C5 --> D["Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
-    X --> D
+    C5 --> D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
+    X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
 
-    D --> E["🚨 MQTT Output<br/>Alert messages"]
+    D --> E["🚨 MQTT Output<br/>Alert messages (TODO)"]
+    X3["Configuration variables: TODO"] --> E
 
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C1 fill:#e8f5e8
-    style C2 fill:#fff8e1
-    style C3 fill:#e8f5e8
-    style C4 fill:#e8f5e8
-    style C5 fill:#e8f5e8
-    style CX fill:#fff8e1
-    style D fill:#fff3e0
-    style E fill:#ffebee
+    D --> E1["config_process_rate_limit.conf:<br/>Rate limit to 1 message per second<br/>using Starlark state"]
+    E1 --> F["config_process_overlay_transform.conf:<br/>Recalculate coordinates for overlay visualization"]
+    F --> G["📺 config_output_overlay.conf:<br/>Overlay Manager with the outputs.exec plugin and overlay_manager.sh"]
+    X4["Configuration variables:<br/>VAPIX_USERNAME<br/>VAPIX_PASSWORD<br/>HELPER_FILES_DIR<br/>VAPIX_IP<br/>TELEGRAF_DEBUG<br/>FONT_SIZE"] --> G
+    G --> H["📺 VAPIX Overlay API"]
+
+    style A fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style TimeLogic fill:#f3e5f5,stroke:#8e24aa
+    style C1 fill:#ffffff,stroke:#673ab7
+    style C2 fill:#ffffff,stroke:#673ab7
+    style C3 fill:#ffffff,stroke:#673ab7
+    style C4 fill:#ffffff,stroke:#673ab7
+    style C5 fill:#ffffff,stroke:#673ab7
+    style CX fill:#fff3e0,stroke:#fb8c00
+    style D fill:#f3e5f5,stroke:#8e24aa
+    style E fill:#ffebee,stroke:#e53935
+    style E1 fill:#f3e5f5,stroke:#8e24aa
+    style F fill:#f3e5f5,stroke:#8e24aa
+    style G fill:#ffebee,stroke:#e53935
+    style H fill:#ffebee,stroke:#e53935
+    style X0 fill:#f5f5f5,stroke:#9e9e9e
+    style X1 fill:#f5f5f5,stroke:#9e9e9e
+    style X2 fill:#f5f5f5,stroke:#9e9e9e
+    style X3 fill:#f5f5f5,stroke:#9e9e9e
+    style X4 fill:#f5f5f5,stroke:#9e9e9e
 ```
+
+Color scheme:
+
+- Light green: Input nodes / data ingestion
+- Purple: Processing nodes / data processing and logic
+- Orange: Storage nodes / persistent data
+- Red: Output nodes / notifications
+- Light gray: Configuration data
+- White: Logical operations
 
 ## Why Choose This Approach?
 
@@ -58,11 +84,15 @@ flowchart TD
     - [Make sure AXIS Object Analytics is enabled](#make-sure-axis-object-analytics-is-enabled)
     - [Verbose Logging](#verbose-logging)
     - [Gradual Testing](#gradual-testing)
-    - [Common Error Messages](#common-error-messages)
+    - [Unresolved variable errors](#unresolved-variable-errors)
+    - ["Text area is too big!" in overlay](#text-area-is-too-big-in-overlay)
 - [Configuration Files](#configuration-files)
   - [config_input_scene_detections.conf and axis_scene_detection_consumer.sh](#config_input_scene_detectionsconf-and-axis_scene_detection_consumersh)
   - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
   - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
+  - [config_process_rate_limit.conf](#config_process_rate_limitconf)
+  - [config_process_overlay_transform.conf](#config_process_overlay_transformconf)
+  - [config_output_overlay.conf and overlay_manager.sh](#config_output_overlayconf-and-overlay_managersh)
   - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
   - [test_files/sample_data_feeder.sh](#test_filessample_data_feedersh)
 - [Future Enhancements](#future-enhancements)
@@ -71,13 +101,14 @@ flowchart TD
   - [Host Testing Limitations](#host-testing-limitations)
   - [Test Commands](#test-commands)
     - [Test Time in Area Calculation Only](#test-time-in-area-calculation-only)
-    - [Test Complete Alert Pipeline](#test-complete-alert-pipeline)
+    - [Test Alert Pipeline](#test-alert-pipeline)
+    - [Test Alert Pipeline with Rate Limit](#test-alert-pipeline-with-rate-limit)
     - [Test with Real Device Data](#test-with-real-device-data)
     - [Test Overlay Functionality Only](#test-overlay-functionality-only)
 - [Analytics Data Structure](#analytics-data-structure)
-  - [Data Format](#data-format)
-  - [Data Behavior](#data-behavior)
-  - [Data Transformation for Telegraf](#data-transformation-for-telegraf)
+  - [Raw Analytics Data (from camera)](#raw-analytics-data-from-camera)
+  - [Data Transformed for Telegraf](#data-transformed-for-telegraf)
+  - [Data Transformed for Overlay](#data-transformed-for-overlay)
 - [Recording Real Device Data](#recording-real-device-data)
 - [Track Activity Visualization](#track-activity-visualization)
 - [Automated Testing](#automated-testing)
@@ -102,6 +133,21 @@ flowchart TD
 ## Quick Setup
 
 ### TODO
+
+Create a combined file by running:
+
+```bash
+cat config_input_scene_detections.conf \
+    config_process_track_duration.conf \
+    config_process_threshold_filter.conf \
+    config_process_rate_limit.conf \
+    config_process_overlay_transform.conf \
+    config_output_overlay.conf > combined.conf
+```
+
+Then upload `combined.conf` as a config file and `overlay_manager.sh`, `axis_scene_detection_consumer.sh` and `track_duration_calculator.star` as helper files.
+
+Set `Extra Env` to `ALERT_THRESHOLD_SECONDS=30` and set valid credentials in the parameters `Vapix username` and `Vapix password`.
 
 ### Troubleshooting
 
@@ -129,16 +175,22 @@ You can test the logic gradually in the camera by adding more and more complexit
 
 2. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
 3. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
+4. **Rate Limiting**: Upload `config_process_rate_limit.conf` to protect the overlay API from being overloaded
+5. **Overlay Display**: Finally, upload `config_process_overlay_transform.conf` and `config_output_overlay.conf` to draw the overlays on the live video
 
-#### Common Error Messages
+#### Unresolved variable errors
 
-- **Unresolved variable error**: If you see an error like this:
+If you see an error like this:
 
-  ```
-  [2025-08-20 11:43:40] 2025-08-20T09:43:40Z E! [telegraf] Error running agent: could not initialize processor processors.starlark: :6:23: unexpected input character '$'
-  ```
+```
+[2025-08-20 11:43:40] 2025-08-20T09:43:40Z E! [telegraf] Error running agent: could not initialize processor processors.starlark: :6:23: unexpected input character '$'
+```
 
-  It usually means an environment variable (like `ALERT_THRESHOLD_SECONDS`) is not set correctly as an `Extra Env` variable.
+It usually means an environment variable (like `ALERT_THRESHOLD_SECONDS`) is not set correctly as an `Extra Env` variable.
+
+#### "Text area is too big!" in overlay
+
+If the only text you see in the overlay is "Text area is too big!", it means that too much text is being rendered or that the text size is too big. Try reducing the font size by setting `FONT_SIZE=32` in the `Extra Env` variable.
 
 ## Configuration Files
 
@@ -169,9 +221,14 @@ Calculates time in area for each detected object using the external Starlark scr
 
 Filters detection frames based on the configured alert threshold. Only detections where time in area (`time_in_area_seconds`) exceeds `ALERT_THRESHOLD_SECONDS` are passed through to the output stage.
 
-### test_files/config_output_stdout.conf
+### config_process_rate_limit.conf
 
-Outputs processed metrics to stdout in JSON format for testing and debugging.
+Rate limits messages to protect the overlay API from being overloaded. This processor:
+
+- Uses system time (not message timestamps) to enforce rate limiting
+- Only allows one message per second to pass through
+- Drops messages that arrive too soon after the last one
+- Maintains state using Starlark to track the last update time
 
 ### config_process_overlay_transform.conf
 
@@ -186,6 +243,10 @@ Displays text overlays on the video. This configuration:
 - Displays time in area, object class, and size information
 - Positions overlays using pre-calculated coordinates from the Starlark processor
 - Automatically removes overlays after 1 second for clean video display
+
+### test_files/config_output_stdout.conf
+
+Outputs processed metrics to stdout in JSON format for testing and debugging.
 
 ### test_files/sample_data_feeder.sh
 
@@ -271,9 +332,9 @@ Example output:
 
 The `time_in_area_seconds` field is added by the time-in-area processor, showing how long this object has been tracked in the monitored area.
 
-#### Test Complete Alert Pipeline
+#### Test Alert Pipeline
 
-Test the complete alert generation pipeline with threshold filtering:
+Test the alert generation pipeline with threshold filtering:
 
 ```bash
 # Set up test environment
@@ -294,6 +355,31 @@ telegraf --config config_input_scene_detections.conf \
 
 **Expected Output:**
 Only detections with time in area (`time_in_area_seconds`) > `ALERT_THRESHOLD_SECONDS`.
+
+#### Test Alert Pipeline with Rate Limit
+
+Test the complete pipeline including threshold filtering and rate limiting for overlay protection:
+
+```bash
+# Set up test environment
+export HELPER_FILES_DIR="$(pwd)"
+export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
+export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+export ALERT_THRESHOLD_SECONDS="2"  # Alert threshold in seconds
+
+# Test complete pipeline with rate limiting
+telegraf --config config_input_scene_detections.conf \
+         --config config_process_track_duration.conf \
+         --config config_process_threshold_filter.conf \
+         --config config_process_rate_limit.conf \
+         --config test_files/config_output_stdout.conf \
+         --once
+```
+
+**How it works:** Same as the alert pipeline test, but adds the rate limiting processor that ensures no more than one message per second is passed through to protect the overlay API from being overloaded.
+
+**Expected Output:**
+Only the first message with a `time_in_area_seconds` > `ALERT_THRESHOLD_SECONDS` is passed through, the other are suppressed.
 
 #### Test with Real Device Data
 
@@ -330,10 +416,14 @@ export SAMPLE_FILE="test_files/single_overlay_test.jsonl"
 export TELEGRAF_DEBUG="true"
 
 # Test overlay functionality with single detection
-telegraf --config test_files/config_input_overlay_test.conf --config config_process_overlay_transform.conf --config config_output_overlay.conf --once
+telegraf --config test_files/config_input_overlay_test.conf \
+         --config config_process_overlay_transform.conf \
+         --config config_output_overlay.conf \
+         --once
 ```
 
 **How it works:**
+
 1. `config_input_overlay_test.conf` reads a single detection from `single_overlay_test.jsonl`
 2. `config_process_overlay_transform.conf` transforms coordinates and standardizes fields
 3. `config_output_overlay.conf` receives the transformed data and executes the overlay manager
@@ -341,24 +431,22 @@ telegraf --config test_files/config_input_overlay_test.conf --config config_proc
 5. Removes the overlay after 1 second
 
 **Expected Result:** A red text overlay will appear on the video showing:
+
 ```
-← ID: overlay_test_001
-Class: Human
-Time: 45.2sec
-Size: 1.00%
+← ID: b1718a5c-0...
+  Type: Human
+  Time in area: 00:00:52
+  Last seen at: 2025-10-13 16:36:55 UTC
 ```
 
-The overlay text will appear at 25% from the left of the video and vertically centered.
+The overlay text will point at 55% from the left of the video and 76% from the top to the bottom of the video.
 
 ## Analytics Data Structure
 
-The analytics scene description data follows a specific format and behavior:
-
-### Data Format
-
 The analytics data goes through three formats:
 
-#### Raw Analytics Data (from camera)
+### Raw Analytics Data (from camera)
+
 Each line contains a JSON object with this structure:
 
 ```json
@@ -383,15 +471,12 @@ Each line contains a JSON object with this structure:
 }
 ```
 
-### Data Behavior
-
 - **Sparse Output**: Frames are primarily output when objects are detected, with occasional empty frames
 - **Time Gaps**: Periods with no activity result in no output (creating gaps in timestamps)
 - **Occasional Empty Frames**: Sporadically output with `"observations": []`, usually for cleanup operations or periodic heartbeats
-- **Operations Array**: May contain delete operations when tracks disappear
 - **Optional Classification**: The `class` field may be missing from observations, especially for short-lived tracks where classification hasn't completed yet
 
-### Data Transformation for Telegraf
+### Data Transformed for Telegraf
 
 The raw analytics data needs transformation for Telegraf's JSON parser because metrics must be flat - the contained list of detections would cause strange concatenations if parsed directly. Both the `sample_data_feeder.sh` script and the real `axis_metadata_consumer.sh` running on the camera perform this transformation.
 
@@ -435,9 +520,11 @@ This transformation:
 - **Simplifies** object classification to just the type
 - **Skips** frames with no observations entirely
 
-### Data Transformation for Overlay
+### Data Transformed for Overlay
 
-The overlay manager transforms coordinates from the analytics system (0.0 to 1.0) to the VAPIX API system (-1.0 to 1.0) and formats the object data for display. Note that the coordinate for the text indicates the top-left corner of the text box.
+The `config_process_overlay_transform.conf` processor transforms coordinates from the analytics system (0.0 to 1.0) to the VAPIX API system (-1.0 to 1.0). This processor also recalculates the coordinates from top, bottom left and right to center coordinates and object size.
+
+Note that when we draw the overlay text in `overlay_manager.sh`, the coordinate for the text indicates the top-left corner of the text box. This is also where we place the arrow pointing to the object center.
 
 ## Recording Real Device Data
 

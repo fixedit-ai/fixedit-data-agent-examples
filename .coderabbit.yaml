@@ -71,10 +71,26 @@ reviews:
         AXIS OS 9.80), it should be avoided unless the AXIS OS limitations are explicitly
         mentioned. If not using `local`, it can be good to use a function specific prefix
         for the variable names to avoid conflicts with other variables.
+
         Clearly document in the head of the file which environment variables they expect
         and if they are optional or required.
+
         It's normally good to use `set -eu` for stricter error handling, but `-o pipefail`
         is not supported in the Axis devices' shell.
+
+        When an error occurs in a helper script that is used with the exec or execd plugin of
+        Telegraf, then the script should at minimum log an descriptive error message to stderr
+        and exit with a non-zero error code. The exit code should be unique enough to identify
+        the problem type and the error codes should be documented in the top of the script.
+        When errors are logged to stderr, Telegraf will only show the first line that was logged
+        followed by three dots. Therefore, a longer line might make more sense than multiple
+        shorter lines. The error logs should not end with a newline.
+
+        It is also good if the script respects the `TELEGRAF_DEBUG` variable, and if this is set
+        to "true", then the script should log debug messages to a file in the `HELPER_FILES_DIR`
+        with the .debug suffix. This log can be more verbose and make use of multiple lines.
+        When TELEGRAF_DEBUG is not set, logging to file should not be enabled since it can fill
+        the flash storage or wear out the storage chip.
     - path: "**/*.md"
       instructions: >-
         Documentation files should clearly communicate the dual audience: (1) server-side

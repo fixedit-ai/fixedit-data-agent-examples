@@ -109,43 +109,44 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: 1.1
-- **Required features**: Uses the `input.http`, `processors.starlark`, `outputs.exec` plugins and the `HELPER_FILES_DIR` and `TELEGRAF_DEBUG` environment variables set by the FixedIT Data Agent (version 1.0). It is recommended to use version 1.1 or higher since the load order of config files was not visible in the web user interface in version 1.0.
+- **Required features**: Uses the `VAPIX_USERNAME` and `VAPIX_PASSWORD` environment variables which was added in FixedIT Data Agent v1.1. Depends on the load order of config files which was not visible in the web user interface in versions prior to 1.1.
 
 ## Quick Setup
 
 ### High-Level Steps
 
-1. **Create a GitHub repository with a workflow** (see instructions below)
+1. **Create a GitHub repository with a workflow** (see instructions below at [Creating the GitHub workflow](#creating-the-github-workflow))
 
-2. **Create a GitHub access token** with `workflow` scope (see instructions below)
+2. **Create a GitHub access token** with `workflow` scope (see instructions below at [Creating a GitHub access token](#creating-a-github-access-token))
 
-3. **Create color profiles in your Axis strobe** named `green`, `yellow`, and `red` (see instructions below)
+3. **Create color profiles in your Axis strobe** named `green`, `yellow`, and `red` (see instructions below at [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe))
 
 4. **Configure FixedIT Data Agent variables:**
 
    Set the custom environment variables in the `Extra env` parameter as a semicolon-separated list:
 
    ```txt
-   GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW=Your Workflow Name;VAPIX_USERNAME=your_vapix_user;VAPIX_PASSWORD=your_vapix_password;
+   GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW=Your Workflow Name
    ```
 
-   For the VAPIX username and password, it is recommended to create a new user with `operator` privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the `System` tab and click on the `Accounts` sub-tab. Then click on `Add account`.
+   Also set the `Vapix username` and `Vapix password` parameters. For increased security, it is recommended to create a new user with `operator` privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the `System` tab and click on the `Accounts` sub-tab. Then click on `Add account`. You can however use the default `root` user with the same password as you used to login to the device's web interface.
 
 5. **Upload the configuration files to the FixedIT Data Agent**
 
-6. **Enable the configuration files**
+   Upload all the `*.conf` files from this directory to the FixedIT Data Agent by pressing the `Upload Config` button in the top right corner of the UI. You should also upload the `trigger_strobe.sh` file as a helper file by pressing "Upload Helper File" and select the "Make executable" checkbox.
 
-   > [!IMPORTANT]
-   > In this project, order of the files matter!
-   > This project is making use of multiple processors stacked after each other,
-   > in Telegraf, this means that the first processor must already be defined when
-   > the second processor depending on the first processor is defined. This is
-   > handled by the load order which is visible in the configuration UI. Files enabled
-   > later will have a later load order. In this case it is important that you enable the
-   > `config_process_filter_by_name.conf` file before the `config_process_select_latest.conf` file, and that one before the `config_process_status_to_color.conf` file.
+6. **Disable the bundled configuration files and enable the configuration files you uploaded**
+
+   **In this project, order of the files matter!**
+   
+   This project is making use of multiple processors stacked after each other, in Telegraf, this means that the first processor must already be defined when the second processor depending on the first processor is defined. This is handled by the load order which is visible in the configuration UI. Files enabled later will have a later load order. In this case it is important that you enable the `config_process_filter_by_name.conf` file before the `config_process_select_latest.conf` file, and that one before the `config_process_status_to_color.conf` file.
 
    This can be seen in the configuration UI:
    ![Configuration UI](./.images/uploaded-files-with-order.png)
+
+> [!IMPORTANT]
+> Note that the load order of the files is visible in the configuration UI. Make sure that you enable the files in the correct order and verify that the load order is the same as in the screenshot above.
+> Also make sure that the uploaded helper file is marked as executable which is seen by the green color and the terminal icon.
 
 The strobe light should now change color based on the status of the latest workflow run on your specified branch.
 
@@ -217,16 +218,16 @@ Copy this token and use it in the `GITHUB_TOKEN` environment variable in the Fix
 
 The application workflow will set the strobe light based on the name of the color profile. The script ensures exclusive operation by automatically deactivating all other color profiles when activating a new one, which means you don't need to worry about profile priorities or overlapping durations. Before this works, you need to login to the Axis strobe and create three color profiles named `green`, `yellow`, and `red`.
 
-1. Go to the Axis device web interface
-1. Click on "Profiles"
-1. Click on "Create"
-1. Enter a name for the profile (e.g. "green")
-1. Choose the "Pattern" and "Intensity" based on your preference
-1. Set the "Color" to "Green"
-1. Set "Duration" to "Time" and select a duration that is at least as long as the sync interval specified in the `config_agent.conf` file. Since the script deactivates all other color profiles when activating a new one, the duration can be set generously (e.g., 60 seconds or more) without worrying about overlapping profiles.
-1. Leave "Priority" as is - since only one profile is active at a time, priority settings don't matter
-1. Click on "Save"
-1. Repeat for the other two profiles
+1. Go to the Axis device web interface.
+1. Click on "Profiles".
+1. Click on "Create".
+1. Enter a name for the profile (`green`, `yellow`, or `red`). Note that these must have exactly these names for the script to work.
+1. Choose the "Pattern" and "Intensity" based on your preference.
+1. Set the "Color" (e.g. "Green").
+1. Set "Duration" to "Continuous" or "Time" and select a duration that is at least as long as the sync interval specified in the `config_agent.conf` file. Since the script deactivates all other color profiles when activating a new one, the duration can be set generously (e.g., 60 seconds or more) without worrying about overlapping profiles. You might set it to "Continuous", but then it will not be visible if the application would stop running since the light will continue in the same color without a time limitation.
+1. Leave "Priority" as is. Since only one profile is active at a time, priority settings don't matter.
+1. Click on "Save".
+1. Repeat for the other two profiles.
 
 ![Axis strobe profile configuration](./.images/axis-strobe-profile-configuration.png)
 

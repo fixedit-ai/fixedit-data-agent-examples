@@ -74,11 +74,9 @@ reviews:
         should be easily understandable for a wide audience, and we should avoid using
         any jargon or technical terms that are not commonly used.
 
-        **Anchor Links**: For headings that contain Unicode characters (emojis, special
-        characters) or backticks, use HTML anchor tags to ensure consistent linking behavior
-        across different platforms (GitHub, VS Code, etc.). Add a separate line with
-        `<a id="anchor-name"></a>` before the heading, and update the table of contents to
-        reference this manual anchor.
+        Headings should not include special characters like emojis or backticks. The table
+        of contents should be generated with the `markdown-toc` tool, meaning that we should
+        use the `<!-- toc -->` and `<!-- tocstop -->` tags.
     - path: "**/*"
       instructions: >-
         This repository serves FixedIT Data Agent users across a spectrum from plug-and-play

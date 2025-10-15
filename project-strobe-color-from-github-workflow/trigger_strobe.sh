@@ -27,6 +27,14 @@
 # - 13: Invalid color value (not green/yellow/red)
 # - 14: VAPIX API call failed
 
+# Set stricter error handling
+set -eu
+
+# Color profile constants
+readonly COLOR_GREEN="green"
+readonly COLOR_YELLOW="yellow"
+readonly COLOR_RED="red"
+
 # Validate required environment variables for VAPIX API access
 # These credentials are needed to authenticate with the Axis device
 # and control the strobe light profiles via HTTP API calls
@@ -40,9 +48,11 @@ DEBUG="${TELEGRAF_DEBUG:-false}"
 
 # Function to log debug messages to a file
 debug_log_file() {
+    _dbg_log_message="$1"
     if [ "$DEBUG" = "true" ]; then
-        echo "DEBUG: $1" >> "${HELPER_FILES_DIR}/trigger_strobe.debug" 2>/dev/null || true
+        echo "DEBUG: $_dbg_log_message" >> "${HELPER_FILES_DIR}/trigger_strobe.debug" 2>/dev/null || true
     fi
+    return 0
 }
 
 debug_log_file "Starting trigger_strobe.sh script"
@@ -90,13 +100,13 @@ fi
 # Each color represents a different workflow state for visual monitoring
 debug_log_file "Validating color value: $color"
 case $color in
-    "green")   # Workflow success - all tests passed, deployment successful
+    "$COLOR_GREEN")   # Workflow success - all tests passed, deployment successful
         debug_log_file "Color validation successful: green (success)"
         ;;
-    "yellow")  # Workflow running - in progress, queued, or unknown state
+    "$COLOR_YELLOW")  # Workflow running - in progress, queued, or unknown state
         debug_log_file "Color validation successful: yellow (running)"
         ;;
-    "red")     # Workflow failure - tests failed, build errors, deployment issues
+    "$COLOR_RED")     # Workflow failure - tests failed, build errors, deployment issues
         debug_log_file "Color validation successful: red (failure)"
         ;;
     *)
@@ -112,10 +122,10 @@ esac
 # This function handles both starting and stopping of color profiles
 # Uses HTTP Digest authentication since the Axis devices requires that for HTTP
 control_profile() {
-    profile=$1    # Profile name (green, yellow, red)
-    action=$2     # Action to perform (start, stop)
+    _ctrl_profile="$1"    # Profile name (green, yellow, red)
+    _ctrl_action="$2"     # Action to perform (start, stop)
 
-    debug_log_file "Making VAPIX API call - Profile: $profile, Action: $action"
+    debug_log_file "Making VAPIX API call - Profile: $_ctrl_profile, Action: $_ctrl_action"
     debug_log_file "API endpoint: http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi"
     debug_log_file "Using credentials: $VAPIX_USERNAME:$(printf '%*s' ${#VAPIX_PASSWORD} '' | tr ' ' '*')"
 
@@ -123,27 +133,28 @@ control_profile() {
     # Endpoint: siren_and_light.cgi for controlling light patterns
     # Method: POST with JSON payload specifying action and profile
     # Auth: HTTP Digest authentication
-    api_response=$(curl --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
+    _ctrl_api_response=$(curl --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
         -X POST \
         -H "Content-Type: application/json" \
-        -d "{\"apiVersion\":\"1.0\",\"method\":\"$action\",\"params\":{\"profile\":\"$profile\"}}" 2>&1)
-    api_exit=$?
+        -d "{\"apiVersion\":\"1.0\",\"method\":\"$_ctrl_action\",\"params\":{\"profile\":\"$_ctrl_profile\"}}" 2>&1)
+    _ctrl_api_exit=$?
 
-    debug_log_file "API call exit code: $api_exit"
-    debug_log_file "API response: $api_response"
+    debug_log_file "API call exit code: $_ctrl_api_exit"
+    debug_log_file "API response: $_ctrl_api_response"
 
     # Check if the API call was successful
     # Non-zero exit code indicates network error, authentication failure,
     # or invalid profile/action parameters
-    if [ $api_exit -ne 0 ]; then
-        debug_log_file "ERROR: VAPIX API call failed - Profile: $profile, Action: $action"
-        debug_log_file "ERROR: Response: $api_response"
-        printf "Failed to %s profile '%s'\n" "$action" "$profile" >&2
+    if [ $_ctrl_api_exit -ne 0 ]; then
+        debug_log_file "ERROR: VAPIX API call failed - Profile: $_ctrl_profile, Action: $_ctrl_action"
+        debug_log_file "ERROR: Response: $_ctrl_api_response"
+        printf "Failed to %s profile '%s'\n" "$_ctrl_action" "$_ctrl_profile" >&2
         printf "Check network connectivity, credentials, and profile configuration\n" >&2
         exit 14
     else
-        debug_log_file "VAPIX API call successful - Profile: $profile, Action: $action"
+        debug_log_file "VAPIX API call successful - Profile: $_ctrl_profile, Action: $_ctrl_action"
     fi
+    return 0
 }
 
 # Activate the requested color profile
@@ -156,20 +167,27 @@ control_profile "$color" "start"
 # when creating them.
 debug_log_file "Deactivating other color profiles to ensure exclusive operation"
 case $color in
-    "green")   # Success state - stop running and failure indicators
+    "$COLOR_GREEN")   # Success state - stop running and failure indicators
         debug_log_file "Stopping yellow and red profiles"
-        control_profile "yellow" "stop"
-        control_profile "red" "stop"
+        control_profile "$COLOR_YELLOW" "stop"
+        control_profile "$COLOR_RED" "stop"
         ;;
-    "yellow")  # Running state - stop success and failure indicators
+    "$COLOR_YELLOW")  # Running state - stop success and failure indicators
         debug_log_file "Stopping green and red profiles"
-        control_profile "green" "stop"
-        control_profile "red" "stop"
+        control_profile "$COLOR_GREEN" "stop"
+        control_profile "$COLOR_RED" "stop"
         ;;
-    "red")     # Failure state - stop success and running indicators
+    "$COLOR_RED")     # Failure state - stop success and running indicators
         debug_log_file "Stopping green and yellow profiles"
-        control_profile "green" "stop"
-        control_profile "yellow" "stop"
+        control_profile "$COLOR_GREEN" "stop"
+        control_profile "$COLOR_YELLOW" "stop"
+        ;;
+    *)
+        debug_log_file "ERROR: Invalid color value: $color"
+        printf "Error: Invalid color '%s'\n" "$color" >&2
+        printf "Supported colors: green (success), yellow (running), red (failure)\n" >&2
+        printf "Ensure corresponding profiles are configured on the Axis device\n" >&2
+        exit 13
         ;;
 esac
 

@@ -138,7 +138,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 6. **Disable the bundled configuration files and enable the configuration files you uploaded**
 
    **In this project, order of the files matter!**
-   
+
    This project is making use of multiple processors stacked after each other, in Telegraf, this means that the first processor must already be defined when the second processor depending on the first processor is defined. This is handled by the load order which is visible in the configuration UI. Files enabled later will have a later load order. In this case it is important that you enable the `config_process_filter_by_name.conf` file before the `config_process_select_latest.conf` file, and that one before the `config_process_status_to_color.conf` file.
 
    This can be seen in the configuration UI:
@@ -202,7 +202,7 @@ jobs:
 
 ### Creating a GitHub access token
 
-1. Go to Github Settings by pressing your profile picture in the top right corner and select "Settings"
+1. Go to GitHub Settings by pressing your profile picture in the top right corner and select "Settings"
 1. Click on "Developer settings"
 1. Click on "Personal access tokens"
 1. Click on "Tokens (classic)"
@@ -466,7 +466,7 @@ telegraf --config config_agent.conf \
 - With valid credentials, you'll see the JSON result like the mock test above.
 - With invalid/expired credentials, you'll see:
 
-```
+```text
 Error in plugin: received status code 401 (Unauthorized)
 ```
 
@@ -505,7 +505,7 @@ This will process the sample GitHub API response and **actually control your str
 - With valid VAPIX credentials, you'll see the strobe light change to green.
 - With invalid credentials, you'll see:
 
-```
+```text
 Error: curl: (22) The requested URL returned error: 401
 Error: Failed to start profile 'green'
 ```

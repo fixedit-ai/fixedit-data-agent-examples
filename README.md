@@ -8,7 +8,7 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 
 - [Server-side Dashboards](#server-side-dashboards)
   - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
-- [Edge Device Customization](#edge-device-customization)
+- [Edge Device Customization Examples](#edge-device-customization-examples)
   - [Hello, World!](#hello-world)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
 
@@ -24,13 +24,15 @@ The dashboard stack in the image below is the system monitoring example for the 
 
 ![Grafana Dashboard Overview](./dashboard-deployments/system-monitoring-influxdb2-flux-grafana/.images/laptop-with-grafana-for-monitoring.png)
 
-## Edge Device Customization
+## Edge Device Customization Examples
 
 Project implementation examples that show how to extend and customize the FixedIT Data Agent by uploading custom configuration files and scripts. This makes it easy to create tailored edge applications for Axis devices without starting from scratch using the AXIS ACAP SDK.
 
 ### Hello, World!
 
-The [Hello, World!](./project-hello-world) project demonstrates how to use the FixedIT Data Agent to upload custom config files and print messages to the standard output of the Telegraf process which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+The [Hello, World!](./project-hello-world) project demonstrates how to use the FixedIT Data Agent to upload custom config files and print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+
+The following diagram shows the data flow of the "Hello, World!" project. For more details see the [README](./project-hello-world/README.md) in the `project-hello-world` directory.
 
 ```mermaid
 flowchart TD
@@ -58,6 +60,8 @@ The [Timelapse with AWS S3 Upload](./project-timelapse-s3) project demonstrates 
 [![Timelapse Preview](./project-timelapse-s3/.images/timelapse-preview.jpg)](https://youtu.be/mcw3iAlBOj8)
 
 _Click the image above to watch the timelapse video on YouTube_
+
+The following diagram shows the data flow of the "Timelapse with AWS S3 Upload" project. For more details see the [README](./project-timelapse-s3/README.md) in the `project-timelapse-s3` directory.
 
 ```mermaid
 flowchart TD

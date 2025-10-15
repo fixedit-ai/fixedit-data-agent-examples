@@ -1,10 +1,10 @@
 # Hello, World!
 
-This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
 
 ## How It Works
 
-This project defines two inputs that will run on an interval and produce a "Hello, World!" message. We make use of the `inputs.exec` plugin to run the `echo` command which will output the message. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+This project defines two inputs that will run on an interval and produce a "Hello, World!" message. We make use of the `inputs.exec` plugin to run the `echo` command which will output the message. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
 
 ```mermaid
 flowchart TD
@@ -33,7 +33,7 @@ Color scheme:
 
 ## Why Choose This Approach?
 
-With the FixedIT Data Agent, you can create your own edge-based workflows and automations that runs directly in the Axis devices. You can do this without knowing anything about the Axis ACAP SDK, C and C++ programming. This makes the edge available to a much wider audience of developers.
+With the FixedIT Data Agent, you can create your own edge-based workflows and automations that run directly in the Axis devices. You can do this without knowing anything about the Axis ACAP SDK, C and C++ programming. This makes the edge available to a much wider audience of developers, system integrators and IT professionals.
 
 This simple project demonstrates how to configure different inputs with different intervals in the FixedIT Data Agent and how to propagate that data to the logs tab of the FixedIT Data Agent. It's a great starting point for understanding the basics of the agent's configuration system.
 
@@ -64,7 +64,7 @@ This simple project demonstrates how to configure different inputs with differen
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: 1.1
-- **Required features**: `SYNC_INTERVAL_SECONDS` environment variable (added in version 1.1).
+- **Required features**: `SYNC_INTERVAL_SECONDS` environment variable (added in FixedIT Data Agent v1.1).
 
 ## Quick Setup
 
@@ -92,7 +92,7 @@ It might take a few seconds before Telegraf has been restarted with the new conf
 
 4. **Reconfigure the FixedIT Data Agent variables:**
 
-   The `config.conf` file is making use the the `SYNC_INTERVAL_SECONDS` and `TELEGRAF_DEBUG` environment variables. You can configure these in the "Settings" tab of the FixedIT Data Agent by going back to the camera web interface, going to the "Apps" section, pressing the three dots next to the FixedIT Data Agent and selecting "Settings". Try changing the "Sync interval seconds" to 10 seconds and the "Debug mode" to true.
+   The `config.conf` file is making use of the `SYNC_INTERVAL_SECONDS` and `TELEGRAF_DEBUG` environment variables. You can configure these in the "Settings" tab of the FixedIT Data Agent by going back to the camera web interface, going to the "Apps" section, pressing the three dots next to the FixedIT Data Agent and selecting "Settings". Try changing the "Sync interval seconds" to 10 seconds and the "Debug mode" to true.
 
    ![Plain settings](.images/settings.png)
 
@@ -107,21 +107,21 @@ It might take a few seconds before Telegraf has been restarted with the new conf
 The project uses the following components:
 
 1. **Input Configurations**
-   - Global interval input: Uses the exec input plugin to run an echo command
-   - Override interval input: Same as above but with a 5-second interval override
+   - Global interval input: Uses the exec input plugin to run an echo command every `SYNC_INTERVAL_SECONDS` seconds.
+   - Override interval input: Same as above, but every 5 seconds regardless of the value of the `SYNC_INTERVAL_SECONDS` variable.
 
 2. **Output Configuration**
    - Uses the file output plugin configured to write to stdout
    - Data format is set to "json"
 
 3. **Data Flow**
-   - By default, all intputs are connected to all outputs.
+   - By default, all inputs are connected to all outputs.
 
 ## Running the Example Together with the Default Config Files
 
 One of the steps in the quick setup was to disable the default config files. The reason for doing this is that the default behavior of Telegraf is to connect all inputs to all outputs. You can upload the same config file to the FixedIT Data Agent while having the bundled config files enabled. This will work assuming that you have already configured the InfluxDB variables according to the quick start guide for the FixedIT Data Agent.
 
-When doing this, you will see a lot of output in the "Logs" tab. This is beacuse your new "output everything to stdout" plugin will consume all metrics from all configuration files and print all of them to stdout. The same is true for the new inputs that you created, the "Hello, World!" messages will also be sent to InfluxDB using the output defined in the bundled config files.
+When doing this, you will see a lot of output in the "Logs" tab. This is because your new "output everything to stdout" plugin will consume all metrics from all configuration files and print all of them to stdout. The same is true for the new inputs that you created, the "Hello, World!" messages will also be sent to InfluxDB using the output defined in the bundled config files.
 
 ![The data explorer in InfluxDB](.images/influxdb.png)
 
@@ -163,7 +163,7 @@ You can test this project locally using Telegraf before deploying to your Axis d
 
 ### Test Commands
 
-First, set up the two environment variables (which are automatically set by the FixedIT Data Agent when running the project in the FixedIT Data Agent):
+First, set up the two environment variables (which are automatically set by the FixedIT Data Agent when running the project in the Axis device):
 
 ```bash
 export SYNC_INTERVAL_SECONDS="10"

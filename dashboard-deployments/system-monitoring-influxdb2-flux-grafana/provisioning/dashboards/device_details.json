@@ -251,12 +251,74 @@
       "type": "state-timeline"
     },
     {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "/.*/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${datasource}"
+          },
+          "query": "// Get latest architecture and SoC per device\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  // Use CPU measurement to access the tags\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n  // Group by device\n  |> group(columns: [\"${unique_identifier}\"])\n  // Get the latest entry\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  // Keep only the relevant columns\n  |> keep(columns: [\"${unique_identifier}\", \"architecture\", \"soc\"])\n  // Rename for clarity\n  |> rename(columns: {\n    architecture: \"Architecture\",\n    soc: \"System on Chip\"\n  })",
+          "refId": "A"
+        }
+      ],
+      "title": "Device Architecture & SoC",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 19
       },
       "id": 4,
       "panels": [],
@@ -298,7 +360,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 20
       },
       "id": 3,
       "options": {
@@ -399,7 +461,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 25
       },
       "id": 1,
       "options": {
@@ -498,7 +560,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 25
       },
       "id": 2,
       "options": {
@@ -613,7 +675,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 33
       },
       "id": 12,
       "options": {
@@ -728,7 +790,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 33
       },
       "id": 13,
       "options": {
@@ -764,7 +826,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 41
       },
       "id": 6,
       "panels": [],
@@ -801,7 +863,7 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 42
       },
       "id": 7,
       "options": {
@@ -826,7 +888,7 @@
             "type": "influxdb",
             "uid": "${datasource}"
           },
-          "query": "  // Get latest local and external IP per device in one query\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  // Select both relevant measurements\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"local_ip_addresses\" or\n    r[\"_measurement\"] == \"external_ip\"\n  )\n  // Group by device and measurement\n  |> group(columns: [\"${unique_identifier}\", \"_measurement\"])\n  // Get the latest entry for each\n  |> last()\n  // Reshape for clarity\n  |> pivot(\n    rowKey: [\"${unique_identifier}\"],\n    columnKey: [\"_measurement\"],\n    valueColumn: \"_value\"\n  )\n  // Optional: Rename columns for clarity\n  |> rename(columns: {\n    local_ip_addresses: \"Local IPs\",\n    external_ip: \"External IP\"\n  })\n  |> keep(columns: [\"${unique_identifier}\", \"Local IPs\", \"External IP\"])",
+          "query": "  // Get latest local and external IP per device in one query\nfrom(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"${unique_identifier}\"] =~ /^${device:regex}$/)\n  // Select both relevant measurements\n  |> filter(fn: (r) =>\n    r[\"_measurement\"] == \"local_ip_addresses\" or\n    r[\"_measurement\"] == \"external_ip\"\n  )\n  // Group by device and measurement\n  |> group(columns: [\"${unique_identifier}\", \"_measurement\"])\n  // Get the latest entry for each\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)\n  // Reshape for clarity\n  |> pivot(\n    rowKey: [\"${unique_identifier}\"],\n    columnKey: [\"_measurement\"],\n    valueColumn: \"_value\"\n  )\n  // Optional: Rename columns for clarity\n  |> rename(columns: {\n    local_ip_addresses: \"Local IPs\",\n    external_ip: \"External IP\"\n  })\n  |> keep(columns: [\"${unique_identifier}\", \"Local IPs\", \"External IP\"])",
           "refId": "A"
         }
       ],
@@ -897,7 +959,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 45
       },
       "id": 8,
       "options": {
@@ -991,7 +1053,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 55
       },
       "id": 9,
       "options": {
@@ -1112,5 +1174,5 @@
   "timezone": "browser",
   "title": "Device Details",
   "uid": "bekds38txl1j4c",
-  "version": 36
+  "version": 37
 }

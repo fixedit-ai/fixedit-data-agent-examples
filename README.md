@@ -4,12 +4,15 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 
 ## Table of Contents
 
-- [FixedIT Data Agent Examples](#fixedit-data-agent-examples)
-  - [Table of Contents](#table-of-contents)
-  - [📊 Server-side Dashboards](#server-side-dashboards)
-    - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
-  - [🛠️ Edge Device Customization](#edge-device-customization)
-    - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
+<!-- toc -->
+
+- [📊 Server-side Dashboards](#%F0%9F%93%8A-server-side-dashboards)
+  - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
+- [🛠️ Edge Device Customization](#%F0%9F%9B%A0%EF%B8%8F-edge-device-customization)
+  - [Hello, World!](#hello-world)
+  - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
+
+<!-- tocstop -->
 
 <a id="server-side-dashboards"></a>
 
@@ -28,6 +31,29 @@ The dashboard stack in the image below is the system monitoring example for the 
 ## 🛠️ Edge Device Customization
 
 Project implementation examples that show how to extend and customize the FixedIT Data Agent by uploading custom configuration files and scripts. This makes it easy to create tailored edge applications for Axis devices without starting from scratch using the AXIS ACAP SDK.
+
+### Hello, World!
+
+The [Hello, World!](./project-hello-world) project demonstrates how to use the FixedIT Data Agent to upload custom config files and print messages to the standard output of the Telegraf process which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+
+```mermaid
+flowchart TD
+    X0["⚙️ Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, TELEGRAF_DEBUG"] --> X1
+    X1["Telegraf Agent"]
+
+    X2["Configuration override:<br/>'interval'"] --> A2
+
+    A1["📥 Hello World Input 1<br/>Global Interval"] --> C
+    A2["📥 Hello World Input 2<br/>5s Override Interval"] --> C
+    C["📤 Output to stdout<br/>JSON format"]
+
+    style X0 fill:#f5f5f5,stroke:#9e9e9e
+    style X1 fill:#f5f5f5,stroke:#9e9e9e
+    style X2 fill:#f5f5f5,stroke:#9e9e9e
+    style A1 fill:#90EE90,stroke:#43a047
+    style A2 fill:#90EE90,stroke:#43a047
+    style C fill:#ffebee,stroke:#e53935
+```
 
 ### Creating a Timelapse with AWS S3 Upload
 

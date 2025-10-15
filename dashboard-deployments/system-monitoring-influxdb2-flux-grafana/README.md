@@ -4,6 +4,32 @@ This directory contains a complete system monitoring stack designed to work with
 
 ![Grafana Monitoring Overview](.images/laptop-with-grafana-for-monitoring.png)
 
+## Table of Contents
+
+<!-- toc -->
+
+- [What This Stack Provides](#what-this-stack-provides)
+- [The Database and Query Language](#the-database-and-query-language)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+  - [Option A: Simple Demo (Recommended for Testing)](#option-a-simple-demo-recommended-for-testing)
+  - [Option B: Production-Like Example](#option-b-production-like-example)
+  - [Port Configuration](#port-configuration)
+  - [Deployment Organization](#deployment-organization)
+- [Configure Your FixedIT Data Agent](#configure-your-fixedit-data-agent)
+- [Grafana Dashboards](#grafana-dashboards)
+  - [Accessing the Dashboards](#accessing-the-dashboards)
+  - [Pre-built Dashboard Overview](#pre-built-dashboard-overview)
+    - [1. System Overview Dashboard](#1-system-overview-dashboard)
+    - [2. Overview of Devices Dashboard](#2-overview-of-devices-dashboard)
+    - [3. Device Details Dashboard](#3-device-details-dashboard)
+  - [Integration with FixedIT Data Agent](#integration-with-fixedit-data-agent)
+- [Using an older version of the FixedIT Data Agent](#using-an-older-version-of-the-fixedit-data-agent)
+- [Known Issues and Limitations](#known-issues-and-limitations)
+- [Helper Scripts](#helper-scripts)
+
+<!-- tocstop -->
+
 ## What This Stack Provides
 
 This monitoring solution gives you comprehensive visibility into your Axis devices through three specialized dashboards:
@@ -178,6 +204,10 @@ Provides deep-dive analytics for individual devices, including detailed system m
 ### Integration with FixedIT Data Agent
 
 These dashboards are designed to work seamlessly with the default configuration of the FixedIT Data Agent. The agent automatically collects and sends system metrics to InfluxDB, which are then visualized through these Grafana dashboards. No additional configuration is needed beyond setting up the InfluxDB connection details in your FixedIT Data Agent settings.
+
+## Using an older version of the FixedIT Data Agent
+
+After a new release of the FixedIT Data Agent is made, the old versions of the dashboards should continue to work thanks to the backwards compatibility of the data model. In a subsequent release of the dashboard, we might add new visualizations or features that are only available if you update the FixedIT Data Agent. If you are using older versions of the FixedIT Data Agent and do not intend to update, then you can always browse the [tags](https://github.com/fixedit-ai/fixedit-data-agent-examples/tags) of the repository to find a snapshot of the dashboard at that time.
 
 ## Known Issues and Limitations
 

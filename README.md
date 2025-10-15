@@ -9,6 +9,7 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 - [Server-side Dashboards](#server-side-dashboards)
   - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
 - [Edge Device Customization Examples](#edge-device-customization-examples)
+  - [Older Examples](#older-examples)
   - [Hello, World!](#hello-world)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
 
@@ -27,6 +28,10 @@ The dashboard stack in the image below is the system monitoring example for the 
 ## Edge Device Customization Examples
 
 Project implementation examples that show how to extend and customize the FixedIT Data Agent by uploading custom configuration files and scripts. This makes it easy to create tailored edge applications for Axis devices without starting from scratch using the AXIS ACAP SDK.
+
+### Older Examples
+
+Looking for project examples for an older version of the FixedIT Data Agent? You can [browse the tags to find a snapshot](https://github.com/fixedit-ai/fixedit-data-agent-examples/tags) of the repository at that time. Examples will typically be compatible within the same major version and for the same or newer minor. E.g. a project compatible with FixedIT Data Agent v1.1 is compatible with v1.2, v1.3, etc. but not with v1.0 or v0.1. It might or might not work with v2.0 since a new major version typically introduces breaking changes.
 
 ### Hello, World!
 

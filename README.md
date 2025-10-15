@@ -6,17 +6,15 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 
 <!-- toc -->
 
-- [📊 Server-side Dashboards](#%F0%9F%93%8A-server-side-dashboards)
+- [Server-side Dashboards](#server-side-dashboards)
   - [System Monitoring with InfluxDB2 and Grafana](#system-monitoring-with-influxdb2-and-grafana)
-- [🛠️ Edge Device Customization](#%F0%9F%9B%A0%EF%B8%8F-edge-device-customization)
+- [Edge Device Customization](#edge-device-customization)
   - [Hello, World!](#hello-world)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
 
 <!-- tocstop -->
 
-<a id="server-side-dashboards"></a>
-
-## 📊 Server-side Dashboards
+## Server-side Dashboards
 
 The [dashboard-deployments](./dashboard-deployments) directory contains visualization dashboards that work with the FixedIT Data Agent. Some work directly with the bundled configurations (just spin them up and start visualizing), while others can be used as-is or customized for your needs. Advanced users often combine edge device customization with dashboard modifications to visualize new data types.
 
@@ -26,9 +24,7 @@ The dashboard stack in the image below is the system monitoring example for the 
 
 ![Grafana Dashboard Overview](./dashboard-deployments/system-monitoring-influxdb2-flux-grafana/.images/laptop-with-grafana-for-monitoring.png)
 
-<a id="edge-device-customization"></a>
-
-## 🛠️ Edge Device Customization
+## Edge Device Customization
 
 Project implementation examples that show how to extend and customize the FixedIT Data Agent by uploading custom configuration files and scripts. This makes it easy to create tailored edge applications for Axis devices without starting from scratch using the AXIS ACAP SDK.
 

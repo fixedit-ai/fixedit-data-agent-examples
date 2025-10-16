@@ -47,42 +47,42 @@ This example is perfect for **system integrators and IT professionals** who want
 
 ## Table of Contents
 
-- [Strobe Color From GitHub API](#strobe-color-from-github-api)
-  - [How It Works](#how-it-works)
-  - [Why Choose This Approach?](#why-choose-this-approach)
-  - [Table of Contents](#table-of-contents)
-  - [Demo Video](#demo-video)
-  - [Compatibility](#compatibility)
-    - [AXIS OS Compatibility](#axis-os-compatibility)
-    - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
-  - [Quick Setup](#quick-setup)
-    - [High-Level Steps](#high-level-steps)
-    - [Creating the GitHub workflow](#creating-the-github-workflow)
-    - [Creating a GitHub access token](#creating-a-github-access-token)
-    - [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe)
-  - [Troubleshooting](#troubleshooting)
-    - [Strobe doesn't change color](#strobe-doesnt-change-color)
-    - [No workflow data appears](#no-workflow-data-appears)
-    - [Workflow not found among recent runs](#workflow-not-found-among-recent-runs)
-    - [GitHub API issues](#github-api-issues)
-  - [Configuration Files](#configuration-files)
-    - [config_agent.conf](#config_agentconf)
-    - [config_input_github.conf](#config_input_githubconf)
-    - [config_process_filter_by_name.conf](#config_process_filter_by_nameconf)
-    - [config_process_select_latest.conf](#config_process_select_latestconf)
-    - [config_process_status_to_color.conf](#config_process_status_to_colorconf)
-    - [config_output_strobe.conf](#config_output_strobeconf)
-    - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
-    - [test_files/config_input_file.conf](#test_filesconfig_input_fileconf)
-  - [Local Testing on Host](#local-testing-on-host)
-    - [Prerequisites](#prerequisites)
-    - [Host Testing Limitations](#host-testing-limitations)
-    - [Test GitHub API data parsing using mock data](#test-github-api-data-parsing-using-mock-data)
-    - [Test latest workflow selection logic](#test-latest-workflow-selection-logic)
-    - [Test GitHub API integration](#test-github-api-integration)
-    - [Test strobe control using mock data](#test-strobe-control-using-mock-data)
-    - [Test complete workflow integration](#test-complete-workflow-integration)
-  - [License](#license)
+<!-- toc -->
+
+- [Demo Video](#demo-video)
+- [Compatibility](#compatibility)
+  - [AXIS OS Compatibility](#axis-os-compatibility)
+  - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
+- [Quick Setup](#quick-setup)
+  - [High-Level Steps](#high-level-steps)
+  - [Creating the GitHub workflow](#creating-the-github-workflow)
+  - [Creating a GitHub access token](#creating-a-github-access-token)
+  - [Creating the color profiles in the Axis strobe](#creating-the-color-profiles-in-the-axis-strobe)
+- [Troubleshooting](#troubleshooting)
+  - [Strobe doesn't change color](#strobe-doesnt-change-color)
+  - [No workflow data appears](#no-workflow-data-appears)
+  - [Workflow not found among recent runs](#workflow-not-found-among-recent-runs)
+  - [GitHub API issues](#github-api-issues)
+- [Configuration Files](#configuration-files)
+  - [config_agent.conf](#config_agentconf)
+  - [config_input_github.conf](#config_input_githubconf)
+  - [config_process_filter_by_name.conf](#config_process_filter_by_nameconf)
+  - [config_process_select_latest.conf](#config_process_select_latestconf)
+  - [config_process_status_to_color.conf](#config_process_status_to_colorconf)
+  - [config_output_strobe.conf](#config_output_strobeconf)
+  - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
+  - [test_files/config_input_file.conf](#test_filesconfig_input_fileconf)
+- [Local Testing on Host](#local-testing-on-host)
+  - [Prerequisites](#prerequisites)
+  - [Host Testing Limitations](#host-testing-limitations)
+  - [Test GitHub API data parsing using mock data](#test-github-api-data-parsing-using-mock-data)
+  - [Test latest workflow selection logic](#test-latest-workflow-selection-logic)
+  - [Test GitHub API integration](#test-github-api-integration)
+  - [Test strobe control using mock data](#test-strobe-control-using-mock-data)
+  - [Test complete workflow integration](#test-complete-workflow-integration)
+- [License](#license)
+
+<!-- tocstop -->
 
 ## Demo Video
 
@@ -129,6 +129,8 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
    GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW=Your Workflow Name
    ```
 
+   Replace `your_github_token` with the token you created in step 2 (as explained in [Creating a GitHub access token](#creating-a-github-access-token)), `your_github_username` with your GitHub username, `your_repo_name` with the name of the repository (you can see this from the repository URL, e.g. `https://github.com/your_github_username/your_repo_name`), `main` with the name of the branch you want to monitor unless it's the `main` branch, and `Your Workflow Name` with the precise name of the workflow (as explained in step 1, [Creating the GitHub workflow](#creating-the-github-workflow))
+
    Also set the `Vapix username` and `Vapix password` parameters. For increased security, it is recommended to create a new user with `operator` privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the `System` tab and click on the `Accounts` sub-tab. Then click on `Add account`. You can however use the default `root` user with the same password as you used to login to the device's web interface.
 
 5. **Upload the configuration files to the FixedIT Data Agent**
@@ -148,13 +150,13 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 > Note that the load order of the files is visible in the configuration UI. Make sure that you enable the files in the correct order and verify that the load order is the same as in the screenshot above.
 > Also make sure that the uploaded helper file is marked as executable which is seen by the green color and the terminal icon.
 
-The strobe light should now change color based on the status of the latest workflow run on your specified branch.
+The strobe light should now change color based on the status of the latest workflow run on your specified branch. If it does not, see the [Troubleshooting](#troubleshooting) section below. Try editing the file `data.json` file in your repository and you should see the strobe first change to yellow, then to green or red depending on the result of the workflow.
 
 ### Creating the GitHub workflow
 
 How to create a GitHub workflow is outside the scope of this project. However, here is one example.
 
-Adding this example file to the `<repo-root>/.github/workflows` folder will create a workflow for the repository. For more information about creating GitHub workflows, see the [GitHub Actions documentation](https://docs.github.com/en/actions).
+Adding this example file to the `<repo-root>/.github/workflows` folder will create a workflow for the repository. The name of the file does not matter, but the suffix `.yml` is required. You can name it e.g. `my-workflow.yml`. For more information about creating GitHub workflows, see the [GitHub Actions documentation](https://docs.github.com/en/actions).
 
 ```yml
 # This job will trigger when the data.json file is changed. It will then
@@ -198,7 +200,15 @@ jobs:
 > **Important notes about the `GITHUB_WORKFLOW` variable:**
 >
 > - Must be set to exactly the name of the workflow you want to monitor (the `name` field in the workflow YAML file).
-> - **Do NOT use quotes** around workflow names with spaces in the `Extra Env` parameter due to how the FixedIT Data Agent parses the variables. The FixedIT Data Agent preserves quotes as literal characters, so `GITHUB_WORKFLOW="Validate JSON"` would become `"Validate JSON"` (with quotes) instead of `Validate JSON`
+> - **Do NOT use quotes** around workflow names with spaces in the `Extra Env` parameter due to how the FixedIT Data Agent parses the variables. The FixedIT Data Agent preserves quotes as literal characters, so `GITHUB_WORKFLOW="Validate JSON"` would become `"Validate JSON"` (with quotes) instead of `Validate JSON`.
+
+Now you have created a GitHub workflow that will run whenever the `data.json` file is changed, but you still don't have any runs of the workflow. This can be seen by going to the "Actions" tab in the repository.
+
+![GitHub Actions tab with no workflow runs](.images/github-no-workflow-runs.png)
+
+Add the file `data.json` to the repository and you should see that there are historical runs with a successful or failed result.
+
+![GitHub Actions tab with workflow runs](.images/github-workflow-runs.png)
 
 ### Creating a GitHub access token
 
@@ -237,7 +247,13 @@ It should now look like this:
 
 ## Troubleshooting
 
-Enable the `Debug mode` option in the FixedIT Data Agent for detailed logs. This will also make the `trigger_strobe.sh` script output debug logs to the `trigger_strobe.debug` file in the helper files directory. You need to refresh the web UI to see the new file.
+The first step in troubleshooting is to go to the "Logs" page in the FixedIT Data Agent and check the logs for any errors.
+
+![Logs page with error messages](.images/logs-with-errors.png)
+
+In the image above, we can see that there are error messages being repeatedly logged. More specifically, we can see that there is an error on line 41 in the `trigger_strobe.sh` script and that the problem is that the `VAPIX_IP` variable is not set. If this is the case, take a look again at the [Quick Setup](#quick-setup) section above and make sure you specified the variables correctly in the `Extra env` parameter.
+
+If the problem is still not visible, enable the `Debug mode` option in the FixedIT Data Agent for detailed logs. This will also make the `trigger_strobe.sh` script output debug logs to the `trigger_strobe.debug` file in the helper files directory. You need to refresh the web UI to see the new file.
 
 ![Debug logs created by the script](./.images/debug-mode-script-logs.png)
 
@@ -247,8 +263,11 @@ In the example above, the debug log for the `trigger_strobe.sh` script shows tha
 
 **First, check if workflow data is being processed:**
 
-- Enable debug mode OR upload and enable `test_files/config_output_stdout.conf` to see if workflow_color metrics are being produced
-- If no data is being produced, see [No workflow data appears](#no-workflow-data-appears) section below
+Upload and enable `test_files/config_output_stdout.conf`. This will cause the Telegraf pipeline to show the internal messages in the Logs page of the FixedIT Data Agent. There you can look to see if `workflow_color` metrics are being produced.
+
+![Logs page with workflow color metrics](.images/output-messages-in-the-log.png)
+
+If no data is being produced, see [No workflow data appears](#no-workflow-data-appears) section below.
 
 **If workflow data is being processed, check strobe configuration:**
 
@@ -260,12 +279,15 @@ In the example above, the debug log for the `trigger_strobe.sh` script shows tha
 
 ### No workflow data appears
 
-This typically occurs when the system can't find your target workflow among the recent runs, or when there's a configuration issue. This would be indicated by FixedIT Data Agent showing "Buffer fullness: 0 / 10000 metrics" in debug logs (when `Debug mode` is enabled)
+This typically occurs when the system can't find your target workflow among the recent runs, or when there's a configuration issue. This would be indicated by FixedIT Data Agent showing messages like "Buffer fullness: 0 / 2 metrics" in debug logs (when `Debug mode` is enabled) which means that it is polling the GitHub API but does not find any jobs. If you see a line like `[processors.starlark] Workflow name matches target 'Validate JSON', passing through`, then it means that a job for the specified workflow was found, while if you see `[processors.starlark] Skipping workflow 'Validate JSON' (target is 'Validate JSONN')` then it means that if found a job but it did not match the specified workflow name and was thus dropped. In this example, the reason is an extra `N` at the end of the specified `GITHUB_WORKFLOW` environment variable (`Validate JSONN` instead of `Validate JSON`). Note that these messages are only visible when `Debug mode` is enabled.
 
-- **Workflow name mismatch**: `GITHUB_WORKFLOW` doesn't match exactly with the workflow name in your GitHub Actions YAML file
+![Workflow name mismatch](.images/logs-skipped-workflow.png)
+
+- **No jobs in the repository**: If the file `data.json` does not exist or your workflow configuration is not set up correctly, there will be no jobs in the repository. Check the [Creating the GitHub workflow](#creating-the-github-workflow) section above again.
+- **Workflow name mismatch**: `GITHUB_WORKFLOW` doesn't match exactly with the workflow name in your GitHub Actions YAML file. Check the [Creating the GitHub workflow](#creating-the-github-workflow) section above again.
 - **Quote parsing issue**: The FixedIT Data Agent's `Extra env` parameter handling (see below)
-- **Target workflow not in results**: Your target workflow is not among the fetched runs due to `per_page` being too small, see [Workflow not found among recent runs](#workflow-not-found-among-recent-runs) section below
-- **Invalid credentials**: GitHub token issues (you'll see 401 errors in logs)
+- **Target workflow not in results**: Your target workflow is not among the fetched runs due to `per_page` being too small, see [Workflow not found among recent runs](#workflow-not-found-among-recent-runs) section below.
+- **Invalid credentials**: GitHub token issues (you should see 401 errors in logs).
 
 **How the FixedIT Data Agent parses the `Extra env` parameter:**
 The FixedIT Data Agent preserves quotes as literal characters instead of treating them as string delimiters. When you set `GITHUB_WORKFLOW="Validate JSON"` in the `Extra env` parameter, the actual environment variable value becomes `"Validate JSON"` (with literal quotes), not `Validate JSON`.
@@ -279,6 +301,16 @@ If your target workflow isn't among the recent runs fetched by the API, no metri
 **The Solution:** Increase `per_page` in [config_input_github.conf](./config_input_github.conf) to at least the number of workflows in the repository.
 
 **Diagnose this issue:**
+
+Disable all config files except `config_agent.conf`, `config_input_github.conf`, and `config_output_stdout.conf`.
+
+![Debugging the GitHub API data](.images/debug_github_api_data.png)
+
+This should cause the raw metric parsed from the GitHub API input to be logged to the Logs page of the FixedIT Data Agent. The reason they will not be logged if other config files are enabled is that a metric consumed by another processor will not propagate to the output plugins unless explicitly specified.
+
+![Debug logs from GitHub API](.images/debug_logs_from_github_api.png)
+
+You can also try to run the API client command manually from your developer machine to see if you get the same result:
 
 ```bash
 curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -343,15 +375,15 @@ When enabled, this outputs all pipeline data to the FixedIT Data Agent logs. Use
 
 ### test_files/config_input_file.conf
 
-This file can be used together with the `sample.json` file to test the pipeline without having to wait for a GitHub Actions job to complete. This is intended primarily for on-host testing, but works well for testing in the FixedIT Data Agent too. Upload this file instead of the `config_input_github.conf` file, then upload the `sample.json` file as a helper file. You also need to set the `SAMPLE_FILE` environment variable to `sample.json` in the FixedIT Data Agent.
+This file can be used together with the `sample.json` file to test the pipeline without having to wait for a GitHub Actions job to complete. This is intended primarily for on-host testing, but works well for testing in the FixedIT Data Agent too. Upload this file instead of the `config_input_github.conf` file, then upload the `sample.json` file as a helper file. You also need to set the `SAMPLE_FILE` environment variable to `sample.json` in the FixedIT Data Agent's `Extra env` parameter.
 
 ## Local Testing on Host
 
-You can test the workflow on your development machine before deploying to your Axis device. This requires [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) to be installed locally.
+If using Linux (or Windows Subsystem for Linux), you can test the workflow on your developer machine before deploying to your Axis device. This requires [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) to be installed locally.
 
 ### Prerequisites
 
-- Install Telegraf on your development machine
+- Install Telegraf on your developer machine
 - Have `jq` installed for JSON processing (used by `trigger_strobe.sh`)
 - Clone this repository and navigate to the project directory
 
@@ -378,7 +410,8 @@ First, set up the environment variables:
 ```bash
 # Set up environment
 export HELPER_FILES_DIR=$(pwd)
-export SAMPLE_FILE=sample.json
+export SAMPLE_FILE=test_files/sample.json
+export GITHUB_WORKFLOW="Validate JSON"
 export TELEGRAF_DEBUG=true
 ```
 
@@ -395,7 +428,7 @@ telegraf --config config_agent.conf \
          --once
 ```
 
-**Expected output:** You'll see Telegraf load the configs and then output a JSON line like:
+**Expected output:** You'll see Telegraf load the configs and then output a single JSON line like:
 
 ```json
 {
@@ -406,11 +439,11 @@ telegraf --config config_agent.conf \
 }
 ```
 
-This shows the pipeline successfully converted the sample GitHub "success" status into "green" color output.
+This shows the pipeline successfully identified the latest workflow run and converted the sample GitHub "success" status into "green" color output.
 
 ### Test latest workflow selection logic
 
-Test only the latest workflow selection processor with out-of-order workflow data to verify it correctly selects the most recent run:
+Test only the latest workflow selection processor with intentionally out-of-order workflow data to verify it correctly selects the most recent run at each time:
 
 ```bash
 # Set up environment for latest selection test
@@ -432,7 +465,7 @@ telegraf --config config_agent.conf \
 
 - Let through run 16 (first metric)
 - Let through run 20 (higher number)
-- Let through run 20 again (same latest number)
+- Let through run 20 again (same, still the highest number)
 - Drop run 19 (lower than current state)
 
 **Expected output:** You'll see 3 JSON metrics (runs 16, 20, 20) with the original GitHub workflow data structure, demonstrating the latest selection logic works correctly.
@@ -485,7 +518,7 @@ export VAPIX_IP=your.axis.device.ip
 # Set helper files directory
 export HELPER_FILES_DIR=$(pwd)
 export TELEGRAF_DEBUG=true
-export SAMPLE_FILE=sample.json
+export SAMPLE_FILE=test_files/sample.json
 
 # Run with mock data but real strobe control
 telegraf --config config_agent.conf \

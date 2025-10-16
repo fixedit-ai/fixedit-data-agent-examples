@@ -15,10 +15,11 @@
 # Environment Variables Required:
 # - VAPIX_USERNAME: Device username
 # - VAPIX_PASSWORD: Device password
-# - VAPIX_IP: IP address of the Axis strobe device (should be 127.0.0.1 when
-#   the FixedIT Data Agent runs on the Axis strobe).
 # - TELEGRAF_DEBUG: Enable debug logging when set to "true"
 # - HELPER_FILES_DIR: Directory for debug log files
+#
+# Optional Environment Variables:
+# - VAPIX_IP: IP address of the Axis strobe device (defaults to 127.0.0.1)
 #
 # Error Codes:
 # - 10: Missing required environment variables
@@ -38,10 +39,14 @@ readonly COLOR_RED="red"
 # Validate required environment variables for VAPIX API access
 # These credentials are needed to authenticate with the Axis device
 # and control the strobe light profiles via HTTP API calls
-if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ] || [ -z "$VAPIX_IP" ]; then
-    printf "Error: VAPIX_USERNAME, VAPIX_PASSWORD, and VAPIX_IP must be set\n" >&2
+if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ]; then
+    printf "Error: VAPIX_USERNAME and VAPIX_PASSWORD must be set\n" >&2
     exit 10
 fi
+
+# Set default IP to localhost if not provided. This is what is needed when
+# running directly on the Axis strobe.
+VAPIX_IP="${VAPIX_IP:-127.0.0.1}"
 
 # Debug mode - use TELEGRAF_DEBUG environment variable
 DEBUG="${TELEGRAF_DEBUG:-false}"

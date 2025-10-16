@@ -40,7 +40,7 @@ readonly COLOR_RED="red"
 # These credentials are needed to authenticate with the Axis device
 # and control the strobe light profiles via HTTP API calls
 if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ]; then
-    printf "Error: VAPIX_USERNAME and VAPIX_PASSWORD must be set\n" >&2
+    printf "Error: VAPIX_USERNAME and VAPIX_PASSWORD must be set" >&2
     exit 10
 fi
 
@@ -74,8 +74,7 @@ debug_log_file "Received JSON input: $json_input"
 # Empty input indicates a problem with the Telegraf pipeline
 if [ -z "$json_input" ]; then
     debug_log_file "ERROR: Empty input received from Telegraf"
-    printf "Error: Empty input received from Telegraf\n" >&2
-    printf "Expected JSON format: {\"fields\":{\"color\":\"value\"}}\n" >&2
+    printf "Error: Empty input received from Telegraf. Expected JSON format: {\"fields\":{\"color\":\"value\"}}" >&2
     exit 11
 fi
 
@@ -84,21 +83,13 @@ fi
 # JSON structure: {"fields":{"color":"value"},"name":"workflow_color",...}
 # The .fields.color path extracts the color command from the metric
 # Note: If use_batch_format=true was used, we'd need '.metrics[0].fields.color'
-color=$(echo "$json_input" | jq -r '.fields.color')
+if ! color="$(printf '%s\n' "$json_input" | jq -re '.fields.color? // empty')"; then
+  debug_log_file "ERROR: jq failed to extract .fields.color from input:$json_input"
+  printf "Error: No color field found in JSON input:$json_input" >&2
+  exit 12
+fi
 
 debug_log_file "Extracted color value: $color"
-
-# Validate that color extraction was successful
-# jq returns 'null' as a string if the field doesn't exist
-# Empty result indicates JSON parsing failure or missing field
-if [ -z "$color" ] || [ "$color" = "null" ]; then
-    debug_log_file "ERROR: No color field found in JSON input"
-    debug_log_file "Input received: $json_input"
-    printf "Error: No color field found in JSON input\n" >&2
-    printf "Input received: %s\n" "$json_input" >&2
-    printf "Expected JSON with .fields.color field\n" >&2
-    exit 12
-fi
 
 # Validate color value against supported strobe profiles
 # Only these three colors have corresponding profiles configured on the device
@@ -116,9 +107,7 @@ case $color in
         ;;
     *)
         debug_log_file "ERROR: Invalid color value: $color"
-        printf "Error: Invalid color '%s'\n" "$color" >&2
-        printf "Supported colors: green (success), yellow (running), red (failure)\n" >&2
-        printf "Ensure corresponding profiles are configured on the Axis device\n" >&2
+        printf "Error: Invalid color '%s'. Supported colors: green ($COLOR_GREEN), yellow ($COLOR_YELLOW), red ($COLOR_RED)." "$color" >&2
         exit 13
         ;;
 esac
@@ -153,8 +142,7 @@ control_profile() {
     if [ $_ctrl_api_exit -ne 0 ]; then
         debug_log_file "ERROR: VAPIX API call failed - Profile: $_ctrl_profile, Action: $_ctrl_action"
         debug_log_file "ERROR: Response: $_ctrl_api_response"
-        printf "Failed to %s profile '%s'\n" "$_ctrl_action" "$_ctrl_profile" >&2
-        printf "Check network connectivity, credentials, and profile configuration\n" >&2
+        printf "Failed to %s profile '%s'" "$_ctrl_action" "$_ctrl_profile" >&2
         exit 14
     else
         debug_log_file "VAPIX API call successful - Profile: $_ctrl_profile, Action: $_ctrl_action"
@@ -189,9 +177,7 @@ case $color in
         ;;
     *)
         debug_log_file "ERROR: Invalid color value: $color"
-        printf "Error: Invalid color '%s'\n" "$color" >&2
-        printf "Supported colors: green (success), yellow (running), red (failure)\n" >&2
-        printf "Ensure corresponding profiles are configured on the Axis device\n" >&2
+        printf "Error: Invalid color '%s'. Supported colors: green ($COLOR_GREEN), yellow ($COLOR_YELLOW), red ($COLOR_RED)." "$color" >&2
         exit 13
         ;;
 esac

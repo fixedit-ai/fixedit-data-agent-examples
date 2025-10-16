@@ -131,7 +131,7 @@ Using a GitHub Actions job as an example input, we demonstrate how to:
 - Transform data using simple Starlark scripts to decide the color of the strobe light
 - Trigger a change of the strobe light color via standard HTTP API calls (VAPIX)
 
-This effectively shows how to transform an Axis strobe to an intelligent device that can poll third party APIs and set its color based on the API return status. This can easily be adapted to use any cloud-based or locally hosted API as an input. Whether you're building smart alerts, visual indicators, or edge-based automation pipelines—this is a glimpse of what FixedIT Data Agent makes possible.
+This effectively shows how to transform an Axis strobe to an intelligent device that can poll third-party APIs and set its color based on the API return status. This can easily be adapted to use any cloud-based or locally hosted API as an input. Whether you're building smart alerts, visual indicators, or edge-based automation pipelines—this is a glimpse of what FixedIT Data Agent makes possible.
 
 ## Compatibility
 
@@ -164,7 +164,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
    GITHUB_TOKEN=your_github_token;GITHUB_USER=your_github_username;GITHUB_REPO=your_repo_name;GITHUB_BRANCH=main;GITHUB_WORKFLOW=Your Workflow Name
    ```
 
-   Replace `your_github_token` with the token you created in step 2 (as explained in [Creating a GitHub access token](#creating-a-github-access-token)), `your_github_username` with your GitHub username, `your_repo_name` with the name of the repository (you can see this from the repository URL, e.g. `https://github.com/your_github_username/your_repo_name`), `main` with the name of the branch you want to monitor unless it's the `main` branch, and `Your Workflow Name` with the precise name of the workflow (as explained in step 1, [Creating the GitHub workflow](#creating-the-github-workflow))
+   Replace `your_github_token` with the token you created in step 2 (as explained in [Creating a GitHub access token](#creating-a-github-access-token)), `your_github_username` with your GitHub username, `your_repo_name` with the name of the repository (you can see this from the repository URL, e.g. `https://github.com/your_github_username/your_repo_name`), `main` with the branch you want to monitor (keep `main` if that’s the branch you want), and `Your Workflow Name` with the precise name of the workflow (as explained in step 1, [Creating the GitHub workflow](#creating-the-github-workflow))
 
    Also set the `Vapix username` and `Vapix password` parameters. For increased security, it is recommended to create a new user with `operator` privileges (which is the lowest privilege level that allows you to control the strobe light). This can be done by going to the `System` tab and click on the `Accounts` sub-tab. Then click on `Add account`. You can however use the default `root` user with the same password as you used to login to the device's web interface.
 
@@ -174,7 +174,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 
 6. **Disable the bundled configuration files and enable the configuration files you uploaded**
 
-   **In this project, order of the files matter!**
+   **In this project, order of the files matters!**
 
    This project is making use of multiple processors stacked after each other, in Telegraf, this means that the first processor must already be defined when the second processor depending on the first processor is defined. This is handled by the load order which is visible in the configuration UI. Files enabled later will have a later load order. In this case it is important that you enable the `config_process_filter_by_name.conf` file before the `config_process_select_latest.conf` file, and that one before the `config_process_status_to_color.conf` file.
 
@@ -374,7 +374,7 @@ curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
 
 The conclusion can be `success`, `failure` or null (when it is running).
 
-An example successful response can be seen in the [sample.json](./sample.json) file.
+An example successful response can be seen in the [test_files/sample.json](./test_files/sample.json) file.
 
 ## Configuration Files
 

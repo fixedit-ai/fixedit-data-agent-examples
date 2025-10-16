@@ -1,6 +1,6 @@
 # Strobe Color From GitHub API
 
-This project demonstrates how the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) can be deployed on an Axis strobe light to fetch GitHub API data and dynamically control the device's color based on workflow execution status. The target GitHub repository should have a configured workflow, and this project will monitor the execution status of the latest workflow run on the main branch.
+This project demonstrates how the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) can be deployed on an [Axis strobe light](https://www.axis.com/products/axis-d4100-e-network-strobe-siren/support) to fetch GitHub API data and dynamically control the device's color based on workflow execution status. The target GitHub repository should have a configured workflow, and this project will monitor the execution status of the latest workflow run on the main branch.
 
 ## How It Works
 
@@ -8,22 +8,57 @@ The system operates in a continuous monitoring loop, automatically fetching GitH
 
 ```mermaid
 flowchart TD
-    A["🔍 Fetch GitHub API<br/>Get 10 latest workflow runs<br/>Out: github_workflow"] --> B["🔍 Filter by Name<br/>Keep only target workflow<br/>In: github_workflow<br/>Out: github_workflow_filtered"]
-    B --> C["🏆 Filter for Latest<br/>Keep only latest run<br/>In: github_workflow_filtered<br/>Out: github_workflow_latest"]
-    C --> D["🎨 Map to Color<br/>success → green<br/>failure → red<br/>running → yellow<br/>In: github_workflow_latest<br/>Out: workflow_color"]
-    D --> E["✅ Enable Profile<br/>Set color on strobe<br/>In: workflow_color"]
-    E --> F["❌ Disable Other Profiles<br/>Stop yellow, red, green<br/>(except active one)"]
-    F --> G["⏳ Wait<br/>Sleep for interval period<br/>(default: 5 seconds)"]
-    G --> A
+    XAgent["config_agent.conf:<br/>Agent Configuration<br/>interval=5s, collection_jitter=1s"] --> A
+    XDebug["TELEGRAF_DEBUG"] --> XAgent
 
-    style A fill:#e1f5fe
-    style B fill:#e8f5e8
-    style C fill:#f3e5f5
-    style D fill:#fff3e0
-    style E fill:#e8f5e8
-    style F fill:#fce4ec
-    style G fill:#f1f8e9
+    A["📡 config_input_github.conf:<br/>Fetch GitHub Actions API<br/>Get recent workflow runs"] -->|github_workflow| B["🔍 config_process_filter_by_name.conf:<br/>Filter by workflow name<br/>Keep only target workflow"]
+
+    XGithubCreds["GITHUB_TOKEN<br/>GITHUB_USER<br/>GITHUB_REPO<br/>GITHUB_BRANCH"] --> A
+    XWorkflowName["GITHUB_WORKFLOW"] --> B
+
+    B -->|github_workflow_filtered| C1
+
+    subgraph SelectLatest ["config_process_select_latest.conf:<br/>Select Latest Workflow Run"]
+        C1{"Compare run_number<br/>with state"}
+        C1 -->|"run_number ≥ latest"| C2["Update state<br/>latest_run_number = run_number"]
+        C1 -->|"run_number < latest"| C3["Drop older run"]
+        C2 --> C4["Pass through metric"]
+
+        C2 -.->|"💾 Persistent state"| CX["state.latest_run_number"]
+        CX -.-> C1
+    end
+
+    C4 -->|github_workflow_latest| D["🎨 config_process_status_to_color.conf:<br/>Map workflow conclusion to color<br/>success → green<br/>failure → red<br/>running → yellow"]
+
+    D -->|workflow_color| E["🚨 config_output_strobe.conf:<br/>Execute trigger_strobe.sh script<br/>Enable target color profile<br/>Disable other profiles"]
+
+    XVapix["HELPER_FILES_DIR<br/>VAPIX_USERNAME<br/>VAPIX_PASSWORD<br/>VAPIX_IP"] --> E
+
+    style XAgent fill:#f5f5f5,stroke:#9e9e9e
+    style XDebug fill:#f5f5f5,stroke:#9e9e9e
+    style XGithubCreds fill:#f5f5f5,stroke:#9e9e9e
+    style XWorkflowName fill:#f5f5f5,stroke:#9e9e9e
+    style XVapix fill:#f5f5f5,stroke:#9e9e9e
+    style A fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style SelectLatest fill:#f3e5f5,stroke:#8e24aa
+    style C1 fill:#ffffff,stroke:#673ab7
+    style C2 fill:#ffffff,stroke:#673ab7
+    style C3 fill:#ffffff,stroke:#673ab7
+    style C4 fill:#ffffff,stroke:#673ab7
+    style CX fill:#fff3e0,stroke:#fb8c00
+    style D fill:#f3e5f5,stroke:#8e24aa
+    style E fill:#ffebee,stroke:#e53935
 ```
+
+Color scheme:
+
+- Light green: Input nodes / data ingestion
+- Purple: Processing nodes / data processing and logic
+- Orange: Storage nodes / persistent data
+- Red: Output nodes / notifications
+- Light gray: Configuration data
+- White: Logical operations
 
 This project uses **Telegraf's Starlark processor** for flexible data transformation and filtering. Starlark is a Python-like scripting language that provides more powerful processing capabilities than Telegraf's built-in processors, especially for complex logic and environment variable support.
 

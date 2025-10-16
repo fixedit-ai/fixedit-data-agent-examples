@@ -11,6 +11,7 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
 - [Edge Device Customization Examples](#edge-device-customization-examples)
   - [Older Examples](#older-examples)
   - [Hello, World!](#hello-world)
+  - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
 
 <!-- tocstop -->
@@ -57,6 +58,61 @@ flowchart TD
     style A2 fill:#90EE90,stroke:#43a047
     style C fill:#ffebee,stroke:#e53935
 ```
+
+### Visualizing a GitHub Workflow Status with an Axis Strobe
+
+The [Strobe Color From GitHub Workflow](./project-strobe-color-from-github-workflow) project demonstrates real-time CI/CD status visualization by automatically controlling an Axis strobe light based on GitHub Actions workflow results. When your workflow succeeds, the strobe glows green; when it fails, it turns red; and yellow indicates tests are running. The FixedIT Data Agent should be running on the Axis strobe device, since this will poll the GitHub API, no other infrastructure is required.
+
+![Axis strobe with green color](./project-strobe-color-from-github-workflow/.images/strobe.jpg)
+
+The following diagram shows the data flow of the "Strobe Color From GitHub Workflow" project. For more details see the [README](./project-strobe-color-from-github-workflow/README.md) in the `project-strobe-color-from-github-workflow` directory.
+
+```mermaid
+flowchart TD
+    XAgent["config_agent.conf:<br/>Agent Configuration<br/>interval=5s, collection_jitter=1s"] --> A
+    XDebug["TELEGRAF_DEBUG"] --> XAgent
+
+    A["📡 config_input_github.conf:<br/>Fetch GitHub Actions API<br/>Get recent workflow runs"] -->|github_workflow| B["🔍 config_process_filter_by_name.conf:<br/>Filter by workflow name<br/>Keep only target workflow"]
+
+    XGithubCreds["GITHUB_TOKEN<br/>GITHUB_USER<br/>GITHUB_REPO<br/>GITHUB_BRANCH"] --> A
+    XWorkflowName["GITHUB_WORKFLOW"] --> B
+
+    B -->|github_workflow_filtered| C1
+
+    subgraph SelectLatest ["config_process_select_latest.conf:<br/>Select Latest Workflow Run"]
+        C1{"Compare run_number<br/>with state"}
+        C1 -->|"run_number ≥ latest"| C2["Update state<br/>latest_run_number = run_number"]
+        C1 -->|"run_number < latest"| C3["Drop older run"]
+        C2 --> C4["Pass through metric"]
+
+        C2 -.->|"💾 Persistent state"| CX["state.latest_run_number"]
+        CX -.-> C1
+    end
+
+    C4 -->|github_workflow_latest| D["🎨 config_process_status_to_color.conf:<br/>Map workflow conclusion to color<br/>success → green<br/>failure → red<br/>running → yellow"]
+
+    D -->|workflow_color| E["🚨 config_output_strobe.conf:<br/>Execute trigger_strobe.sh script<br/>Enable target color profile<br/>Disable other profiles"]
+
+    XVapix["HELPER_FILES_DIR<br/>VAPIX_USERNAME<br/>VAPIX_PASSWORD<br/>VAPIX_IP"] --> E
+
+    style XAgent fill:#f5f5f5,stroke:#9e9e9e
+    style XDebug fill:#f5f5f5,stroke:#9e9e9e
+    style XGithubCreds fill:#f5f5f5,stroke:#9e9e9e
+    style XWorkflowName fill:#f5f5f5,stroke:#9e9e9e
+    style XVapix fill:#f5f5f5,stroke:#9e9e9e
+    style A fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style SelectLatest fill:#f3e5f5,stroke:#8e24aa
+    style C1 fill:#ffffff,stroke:#673ab7
+    style C2 fill:#ffffff,stroke:#673ab7
+    style C3 fill:#ffffff,stroke:#673ab7
+    style C4 fill:#ffffff,stroke:#673ab7
+    style CX fill:#fff3e0,stroke:#fb8c00
+    style D fill:#f3e5f5,stroke:#8e24aa
+    style E fill:#ffebee,stroke:#e53935
+```
+
+This example showcases how simple configuration files and shell scripts can create powerful edge intelligence in your Axis strobes without traditional embedded development complexity. The project could easily be adapted to work together with other APIs to visualize statuses such as server health monitoring, weather warnings (like high wind alerts), IoT sensor data (temperature, moisture, etc.), security system states, or any REST API (or most other APIs) that provides status information.
 
 ### Creating a Timelapse with AWS S3 Upload
 

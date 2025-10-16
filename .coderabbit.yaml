@@ -64,6 +64,17 @@ reviews:
         - Use `pathlib` instead of `os.path` for platform portability in Python
         - If the project contains Python files, ensure there's a GitHub Actions workflow called
           `project-<project-dir-name>-python-quality.yml`
+    - path: "project-*/**/*.sh"
+      instructions: >-
+        Shell scripts should be written in portable shell (/bin/sh) syntax since bash is not
+        installed on the Axis devices. Since `local` is not supported in all cameras (like
+        AXIS OS 9.80), it should be avoided unless the AXIS OS limitations are explicitly
+        mentioned. If not using `local`, it can be good to use a function specific prefix
+        for the variable names to avoid conflicts with other variables.
+        Clearly document in the head of the file which environment variables they expect
+        and if they are optional or required.
+        It's normally good to use `set -eu` for stricter error handling, but `-o pipefail`
+        is not supported in the Axis devices' shell.
     - path: "**/*.md"
       instructions: >-
         Documentation files should clearly communicate the dual audience: (1) server-side

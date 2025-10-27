@@ -7,9 +7,71 @@ them on a camera image for visualization.
 """
 
 import json
+import random
 import click
 import cv2
 import numpy as np
+
+
+def edge_crosses_horizontal_line(y, y1, y2):
+    """Check if an edge crosses the horizontal line at y."""
+    return (y1 > y) != (y2 > y)
+
+
+def calculate_edge_x_at_y(x1, y1, x2, y2, y):
+    """Calculate the x-coordinate where the edge intersects the horizontal line at y."""
+    return (x2 - x1) * (y - y1) / (y2 - y1) + x1
+
+
+def ray_intersects_edge(x, y, x1, y1, x2, y2):
+    """
+    Check if a ray cast from point (x,y) to the right intersects the edge.
+
+    Args:
+        x, y: Point coordinates
+        x1, y1: First vertex of edge
+        x2, y2: Second vertex of edge
+
+    Returns:
+        True if the rightward ray from (x,y) intersects the edge
+    """
+    if not edge_crosses_horizontal_line(y, y1, y2):
+        return False
+
+    edge_x = calculate_edge_x_at_y(x1, y1, x2, y2, y)
+    return x < edge_x
+
+
+def is_in_zone(x, y, vertices):
+    """
+    Check if a point (x, y) is inside a polygon defined by vertices.
+    Uses ray tracing algorithm: cast a ray to the right and count intersections.
+
+    This implementation uses only basic Python for easy porting to Starlark.
+
+    Args:
+        x: X coordinate of the point (normalized, -1 to 1)
+        y: Y coordinate of the point (normalized, -1 to 1)
+        vertices: List of [x, y] vertices defining the polygon
+
+    Returns:
+        True if point is inside the polygon, False otherwise
+    """
+    num_vertices = len(vertices)
+    inside = False
+
+    # Check each edge of the polygon
+    j = num_vertices - 1  # Start with the last vertex
+    for i in range(num_vertices):
+        xi, yi = vertices[i]
+        xj, yj = vertices[j]
+
+        if ray_intersects_edge(x, y, xi, yi, xj, yj):
+            inside = not inside
+
+        j = i
+
+    return inside
 
 
 def normalize_to_pixel(x, y, width, height):
@@ -38,6 +100,123 @@ def normalize_to_pixel(x, y, width, height):
     pixel_x = int((x + 1) * width / 2)
     pixel_y = int((1 - y) * height / 2)
     return pixel_x, pixel_y
+
+
+def draw_zone_on_image(img, vertices_list, color_bgr, thickness, fill_alpha):
+    """
+    Draw a zone polygon on the image with semi-transparent fill.
+
+    Args:
+        img: OpenCV image (modified in place)
+        vertices_list: List of [x, y] normalized vertices
+        color_bgr: Tuple of (B, G, R) color values
+        thickness: Line thickness for polygon outline
+        fill_alpha: Transparency for fill (0.0-1.0)
+
+    Returns:
+        List of pixel coordinates for the vertices
+    """
+    height, width = img.shape[:2]
+
+    # Convert normalized coordinates to pixel coordinates
+    pixel_points = []
+    for vertex in vertices_list:
+        x, y = vertex
+        px, py = normalize_to_pixel(x, y, width, height)
+        pixel_points.append([px, py])
+
+    # Convert to numpy array for OpenCV
+    pts = np.array(pixel_points, dtype=np.int32)
+
+    # Create overlay for semi-transparent fill
+    overlay = img.copy()
+    cv2.fillPoly(overlay, [pts], color_bgr)
+
+    # Blend overlay with original image
+    cv2.addWeighted(overlay, fill_alpha, img, 1 - fill_alpha, 0, img)
+
+    # Draw polygon outline
+    cv2.polylines(img, [pts], isClosed=True, color=color_bgr, thickness=thickness)
+
+    # Draw vertices as circles
+    for point in pixel_points:
+        cv2.circle(img, tuple(point), radius=5, color=color_bgr, thickness=-1)
+
+    return pixel_points
+
+
+def draw_test_points_on_image(img, vertices_list, num_points):
+    """
+    Draw random test points on the image to visualize the is_in_zone algorithm.
+
+    Args:
+        img: OpenCV image (modified in place)
+        vertices_list: List of [x, y] normalized vertices defining the zone
+        num_points: Number of random points to generate
+    """
+    height, width = img.shape[:2]
+    random.seed(42)  # For reproducible results
+
+    inside_count = 0
+    outside_count = 0
+
+    for i in range(num_points):
+        # Generate random normalized coordinates
+        test_x = random.uniform(-1.0, 1.0)
+        test_y = random.uniform(-1.0, 1.0)
+
+        # Check if point is inside zone
+        is_inside = is_in_zone(test_x, test_y, vertices_list)
+
+        # Convert to pixel coordinates
+        test_px, test_py = normalize_to_pixel(test_x, test_y, width, height)
+
+        # Choose color: red for inside, yellow for outside
+        if is_inside:
+            point_color = (0, 0, 255)  # Red (BGR)
+            inside_count += 1
+        else:
+            point_color = (0, 255, 255)  # Yellow (BGR)
+            outside_count += 1
+
+        # Draw the point
+        cv2.circle(img, (test_px, test_py), radius=8, color=point_color, thickness=-1)
+        cv2.circle(img, (test_px, test_py), radius=8, color=(0, 0, 0), thickness=1)
+
+    # Add legend
+    legend_y = 60
+    cv2.putText(
+        img,
+        f"Test points: {num_points}",
+        (10, legend_y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+    cv2.circle(img, (20, legend_y + 25), radius=8, color=(0, 0, 255), thickness=-1)
+    cv2.putText(
+        img,
+        f"Inside: {inside_count}",
+        (35, legend_y + 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (255, 255, 255),
+        1,
+        cv2.LINE_AA,
+    )
+    cv2.circle(img, (20, legend_y + 50), radius=8, color=(0, 255, 255), thickness=-1)
+    cv2.putText(
+        img,
+        f"Outside: {outside_count}",
+        (35, legend_y + 55),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (255, 255, 255),
+        1,
+        cv2.LINE_AA,
+    )
 
 
 @click.command()
@@ -80,7 +259,15 @@ def normalize_to_pixel(x, y, width, height):
     type=float,
     help="Fill transparency (0.0-1.0, default: 0.3)",
 )
-def visualize_zone(vertices, image, save_to, no_show, color, thickness, fill_alpha):
+@click.option(
+    "--add-random-points",
+    "-r",
+    type=int,
+    help="Add N random test points (red=inside zone, yellow=outside zone)",
+)
+def visualize_zone(
+    vertices, image, save_to, no_show, color, thickness, fill_alpha, add_random_points
+):
     """
     Visualize AXIS Object Analytics zone on a camera image.
 
@@ -97,12 +284,20 @@ def visualize_zone(vertices, image, save_to, no_show, color, thickness, fill_alp
 
         # Save only (no display)
         python visualize_zone.py -v '[...]' -i snapshot.jpg --save-to output.jpg --no-show
+
+        # Test the is_in_zone algorithm with random points
+        python visualize_zone.py -v '[...]' -i snapshot.jpg --add-random-points 50
     """
     try:
         # Parse vertices JSON
         vertices_list = json.loads(vertices)
         if not isinstance(vertices_list, list) or len(vertices_list) < 3:
             raise ValueError("Vertices must be a list with at least 3 points")
+
+        # Validate vertex format
+        for vertex in vertices_list:
+            if len(vertex) != 2:
+                raise ValueError(f"Invalid vertex format: {vertex}")
 
         # Parse color
         color_bgr = tuple(map(int, color.split(",")))
@@ -116,35 +311,12 @@ def visualize_zone(vertices, image, save_to, no_show, color, thickness, fill_alp
 
         height, width = img.shape[:2]
 
-        # Convert normalized coordinates to pixel coordinates
-        pixel_points = []
-        for vertex in vertices_list:
-            if len(vertex) != 2:
-                raise ValueError(f"Invalid vertex format: {vertex}")
-            x, y = vertex
-            px, py = normalize_to_pixel(x, y, width, height)
-            pixel_points.append([px, py])
+        # Draw the zone polygon on the image
+        pixel_points = draw_zone_on_image(
+            img, vertices_list, color_bgr, thickness, fill_alpha
+        )
 
-        # Convert to numpy array for OpenCV
-        pts = np.array(pixel_points, dtype=np.int32)
-
-        # Create overlay for semi-transparent fill
-        overlay = img.copy()
-
-        # Draw filled polygon on overlay
-        cv2.fillPoly(overlay, [pts], color_bgr)
-
-        # Blend overlay with original image
-        cv2.addWeighted(overlay, fill_alpha, img, 1 - fill_alpha, 0, img)
-
-        # Draw polygon outline
-        cv2.polylines(img, [pts], isClosed=True, color=color_bgr, thickness=thickness)
-
-        # Draw vertices as circles
-        for point in pixel_points:
-            cv2.circle(img, tuple(point), radius=5, color=color_bgr, thickness=-1)
-
-        # Add text info
+        # Add zone info text
         text = f"Zone: {len(pixel_points)} vertices"
         cv2.putText(
             img,
@@ -156,6 +328,10 @@ def visualize_zone(vertices, image, save_to, no_show, color, thickness, fill_alp
             2,
             cv2.LINE_AA,
         )
+
+        # Draw random test points if requested
+        if add_random_points:
+            draw_test_points_on_image(img, vertices_list, add_random_points)
 
         # Save if requested
         if save_to:

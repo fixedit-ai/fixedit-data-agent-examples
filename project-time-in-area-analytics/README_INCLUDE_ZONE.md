@@ -19,7 +19,7 @@ curl -X POST \
 This will contain information about the configuration, including one or multiple include zones for a scenario:
 
 ```json
-"vertices":[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.03069,0.7259],[0.05851,0.5204],[0.04617,-0.9691]]
+"vertices":[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.7562,0.6008],[-0.7652,0.05951],[0.05851,0.5204],[0.04617,-0.9691]]
 ```
 
 The example above is from the `data.scenarios[0].triggers[0].vertices` field.
@@ -40,8 +40,26 @@ To visualize the zone on a camera snapshot, use the `visualize_zone.py` script i
 ```bash
 # Display the zone
 python test_scripts/visualize_zone.py \
-  -v '[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.03069,0.7259],[0.05851,0.5204],[0.04617,-0.9691]]' \
+  -v '[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.7562,0.6008],[-0.7652,0.05951],[0.05851,0.5204],[0.04617,-0.9691]]' \
   -i test_files/snapshot.jpg
 ```
 
 This will overlay the zone polygon on the image with a semi-transparent green fill, showing exactly which area is being monitored.
+
+### Testing the Point-in-Zone Algorithm
+
+The script includes an `is_in_zone()` function that uses the ray tracing algorithm to determine if a point is inside the zone. You can test it by adding random points:
+
+```bash
+python test_scripts/visualize_zone.py \
+  -v '[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.7562,0.6008],[-0.7652,0.05951],[0.05851,0.5204],[0.04617,-0.9691]]' \
+  -i test_files/snapshot.jpg \
+  --add-random-points 500
+```
+
+Points will be drawn in:
+
+- **Red**: Inside the zone
+- **Yellow**: Outside the zone
+
+The algorithm uses basic Python only (no numpy) for easy porting to Starlark.

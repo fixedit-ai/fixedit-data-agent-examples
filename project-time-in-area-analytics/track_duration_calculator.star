@@ -1,4 +1,5 @@
 load("time.star", "time")
+load("logging.star", "log")
 
 def parse_timestamp_to_float_seconds(timestamp_str):
     """Parse ISO 8601 timestamp string to Unix seconds as float
@@ -50,6 +51,7 @@ def get_time_in_area_seconds(track_id, current_seconds, track_state):
             "first_seen_seconds": current_seconds,
             "last_seen_seconds": current_seconds
         }
+        log.debug("get_time_in_area_seconds: track_id=" + track_id + " first detection at " + str(current_seconds))
         return 0  # Time in area is 0 on first detection
 
     # Update last seen time
@@ -58,6 +60,7 @@ def get_time_in_area_seconds(track_id, current_seconds, track_state):
     # Calculate time in area - simple subtraction since both are in seconds
     first_seen_seconds = track_state[track_id]["first_seen_seconds"]
     time_in_area = current_seconds - first_seen_seconds
+    log.debug("get_time_in_area_seconds: track_id=" + track_id + " duration=" + str(time_in_area) + "s (first_seen=" + str(first_seen_seconds) + ", current=" + str(current_seconds) + ")")
     return time_in_area
 
 def cleanup_stale_tracks(current_seconds, track_state, max_stale_seconds):
@@ -79,6 +82,8 @@ def cleanup_stale_tracks(current_seconds, track_state, max_stale_seconds):
             tracks_to_remove.append(track_id)
 
     # Remove stale tracks
+    if len(tracks_to_remove) > 0:
+        log.debug("cleanup_stale_tracks: Removing " + str(len(tracks_to_remove)) + " stale track(s): " + str(tracks_to_remove))
     for track_id in tracks_to_remove:
         track_state.pop(track_id)
 

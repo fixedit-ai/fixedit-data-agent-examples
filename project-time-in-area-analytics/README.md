@@ -8,10 +8,10 @@ The system consumes real-time object detection data from Axis fisheye cameras an
 
 ```mermaid
 flowchart TD
-    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] -->|detection_frame| B["Filter by area & type (TODO)"]
+    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] -->|detection_frame| B["config_process_zone_filter.conf:<br/>Filter by include zone polygon"]
     X0["Configuration variables: HELPER_FILES_DIR"] --> A
-    X1["Configuration variables: TODO"] --> B
-    B -->|detection_frame| C1
+    X1["Configuration variables: INCLUDE_ZONE_POLYGON"] --> B
+    B -->|detection_frame_in_zone| C1
 
     subgraph TimeLogic ["config_process_track_duration.conf:<br/>Time-in-area Logic Details"]
         C1{"First time seeing<br/>this object ID?"}
@@ -24,7 +24,7 @@ flowchart TD
         CX --> C3
     end
 
-    C5 -->|detection_frame| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
+    C5 -->|detection_frame_with_duration| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
 
     D -->|alerting_frame| E["🚨 MQTT Output<br/>Alert messages (TODO)"]
@@ -88,6 +88,7 @@ Color scheme:
     - ["Text area is too big!" in overlay](#text-area-is-too-big-in-overlay)
 - [Configuration Files](#configuration-files)
   - [config_input_scene_detections.conf and axis_scene_detection_consumer.sh](#config_input_scene_detectionsconf-and-axis_scene_detection_consumersh)
+  - [config_process_zone_filter.conf and zone_filter.star](#config_process_zone_filterconf-and-zone_filterstar)
   - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
   - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
   - [config_process_rate_limit.conf](#config_process_rate_limitconf)
@@ -100,6 +101,7 @@ Color scheme:
   - [Prerequisites](#prerequisites)
   - [Host Testing Limitations](#host-testing-limitations)
   - [Test Commands](#test-commands)
+    - [Test Zone Filter Only](#test-zone-filter-only)
     - [Test Time in Area Calculation Only](#test-time-in-area-calculation-only)
     - [Test Alert Pipeline](#test-alert-pipeline)
     - [Test Alert Pipeline with Rate Limit](#test-alert-pipeline-with-rate-limit)
@@ -137,7 +139,9 @@ Color scheme:
 Create a combined file by running:
 
 ```bash
-cat config_input_scene_detections.conf \
+cat config_agent.conf \
+    config_input_scene_detections.conf \
+    config_process_zone_filter.conf \
     config_process_track_duration.conf \
     config_process_threshold_filter.conf \
     config_process_rate_limit.conf \
@@ -145,9 +149,16 @@ cat config_input_scene_detections.conf \
     config_output_overlay.conf > combined.conf
 ```
 
-Then upload `combined.conf` as a config file and `overlay_manager.sh`, `axis_scene_detection_consumer.sh` and `track_duration_calculator.star` as helper files.
+Then upload `combined.conf` as a config file and `overlay_manager.sh`, `axis_scene_detection_consumer.sh`, `zone_filter.star`, and `track_duration_calculator.star` as helper files.
 
-Set `Extra Env` to `ALERT_THRESHOLD_SECONDS=30` and set valid credentials in the parameters `Vapix username` and `Vapix password`.
+Set `Extra Env` to:
+
+- `ALERT_THRESHOLD_SECONDS=30`
+- `INCLUDE_ZONE_POLYGON=[[[-1,-1],[-1,1],[1,1],[1,-1]]]` (configure for your zone polygon)
+
+Set valid credentials in the parameters `Vapix username` and `Vapix password`.
+
+To export the zone from AXIS Object Analytics, see [README_INCLUDE_ZONE.md](README_INCLUDE_ZONE.md).
 
 ### Troubleshooting
 
@@ -207,6 +218,15 @@ Can also be used for reproducible testing on host systems by setting `CONSUMER_S
 - `HELPER_FILES_DIR`: Directory containing project files (required)
 - `CONSUMER_SCRIPT`: Path to consumer script (defaults to `axis_scene_detection_consumer.sh`)
 - `SAMPLE_FILE`: Path to sample data file (required when using `sample_data_feeder.sh`)
+
+### config_process_zone_filter.conf and zone_filter.star
+
+Filters the incoming detection frames based on the configured include zone polygon. This processor:
+
+- Read the `INCLUDE_ZONE_POLYGON` env var to get the zone polygon
+- Uses the `zone_filter.star` script to determine if the detected object's bounding box center is within the polygon
+- Only passes detections that are within the polygon to the next stage
+- Outputs debug messages when detections are filtered
 
 ### config_process_track_duration.conf and track_duration_calculator.star
 
@@ -287,6 +307,52 @@ You can test the processing logic locally using Telegraf before deploying to you
 
 ### Test Commands
 
+#### Test Zone Filter Only
+
+We have two files with fake detections that are good for testing the zone filter:
+
+- `test_files/simple_tracks.jsonl` - simple tracks that are good for testing the zone filter
+- `test_files/test_zone_filter_complex.jsonl` - complex tracks that are good for testing the zone filter with a complex polygon
+
+You can use the [visualize_zone_tests.py](test_scripts/visualize_zone_tests.py) script to visualize the zone and detections:
+
+```bash
+python test_scripts/visualize_zone_tests.py test_files/test_zone_filter_simple.jsonl
+```
+
+This will show an image like the following where you can see the zone the test is intended to be used with (parsed from a comment in the `.jsonl` file) and the sample detections. That way, it is easy to see which points are inside and which are outside and therefore to know what you should expect from the Telegraf pipeline test using this test file.
+
+![Complex zone test](.images/simple-zone-test.png)
+
+Test the zone filter to ensure it correctly filters detections based on the polygon:
+
+```bash
+# Set up test environment
+export HELPER_FILES_DIR="$(pwd)"
+export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
+export SAMPLE_FILE="test_files/test_zone_filter_simple.jsonl"
+export TELEGRAF_DEBUG=true
+
+# Set the zone polygon from the test file (example for simple rectangular zone)
+export INCLUDE_ZONE_POLYGON='[[[-0.6, -0.4], [0.2, -0.4], [0.2, 0.2], [-0.6, 0.2]]]'
+
+# Test zone filter only
+telegraf --config config_agent.conf \
+         --config config_input_scene_detections.conf \
+         --config config_process_zone_filter.conf \
+         --config test_files/config_output_stdout.conf \
+         --once
+```
+
+**How it works:** By setting `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"`, we override the default live camera script with a file reader that simulates the camera's message broker output by reading from the file specified in `SAMPLE_FILE`. This allows us to test the zone filter on the host using pre-recorded sample data instead of connecting to the live camera infrastructure.
+
+**Expected Output:**
+Three detections should be outputted by the filter. These can be identified by their `track_id`:
+
+- `inside_zone_a`
+- `inside_zone_b`
+- `crossing_edge_g`
+
 #### Test Time in Area Calculation Only
 
 Test the time in area calculator without threshold filtering to see all detections with their calculated time in area:
@@ -296,9 +362,15 @@ Test the time in area calculator without threshold filtering to see all detectio
 export HELPER_FILES_DIR="$(pwd)"
 export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+export TELEGRAF_DEBUG=true
+
+# Set zone to cover entire view (so all detections pass through)
+export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]'
 
 # Test time in area calculation only (shows all detections + debug messages)
-telegraf --config config_input_scene_detections.conf \
+telegraf --config config_agent.conf \
+         --config config_input_scene_detections.conf \
+         --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config test_files/config_output_stdout.conf \
          --once
@@ -307,7 +379,7 @@ telegraf --config config_input_scene_detections.conf \
 **How it works:** By setting `CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"`, we override the default live camera script with a file reader that simulates the camera's message broker output by reading from the file specified in `SAMPLE_FILE`. This allows us to test the processing pipeline on the host using pre-recorded sample data instead of connecting to the live camera infrastructure.
 
 **Expected Output:**
-All detections with `time_in_area_seconds` field.
+All detections with `time_in_area_seconds` field and `name` set to `detection_frame_with_duration`.
 
 Example output:
 
@@ -324,13 +396,13 @@ Example output:
     "track_id": "track_001",
     "time_in_area_seconds": 1.67
   },
-  "name": "detection_frame",
+  "name": "detection_frame_with_duration",
   "tags": { "host": "test-host" },
   "timestamp": 1755677033
 }
 ```
 
-The `time_in_area_seconds` field is added by the time-in-area processor, showing how long this object has been tracked in the monitored area.
+The `time_in_area_seconds` field is added by the time-in-area processor, showing how long this object has been tracked in the monitored area. The metric name changes from `detection_frame` → `detection_frame_in_zone` → `detection_frame_with_duration` as it flows through the pipeline.
 
 #### Test Alert Pipeline
 
@@ -341,10 +413,16 @@ Test the alert generation pipeline with threshold filtering:
 export HELPER_FILES_DIR="$(pwd)"
 export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+export TELEGRAF_DEBUG=true
 export ALERT_THRESHOLD_SECONDS="2"  # Alert threshold in seconds
 
+# Set zone to cover entire view (so all detections pass through)
+export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]'
+
 # Test time in area calculation + threshold filtering
-telegraf --config config_input_scene_detections.conf \
+telegraf --config config_agent.conf \
+         --config config_input_scene_detections.conf \
+         --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config config_process_threshold_filter.conf \
          --config test_files/config_output_stdout.conf \
@@ -365,10 +443,16 @@ Test the complete pipeline including threshold filtering and rate limiting for o
 export HELPER_FILES_DIR="$(pwd)"
 export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+export TELEGRAF_DEBUG=true
 export ALERT_THRESHOLD_SECONDS="2"  # Alert threshold in seconds
 
+# Set zone to cover entire view (so all detections pass through)
+export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]'
+
 # Test complete pipeline with rate limiting
-telegraf --config config_input_scene_detections.conf \
+telegraf --config config_agent.conf \
+         --config config_input_scene_detections.conf \
+         --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config config_process_threshold_filter.conf \
          --config config_process_rate_limit.conf \
@@ -390,9 +474,15 @@ You can also test with real analytics scene description data recorded from an Ax
 export HELPER_FILES_DIR="$(pwd)"
 export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
 export SAMPLE_FILE="test_files/real_device_data.jsonl"
+export TELEGRAF_DEBUG=true
+
+# Set zone to cover entire view (so all detections pass through)
+export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]'
 
 # Test time in area calculation with real data
-telegraf --config config_input_scene_detections.conf \
+telegraf --config config_agent.conf \
+         --config config_input_scene_detections.conf \
+         --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config test_files/config_output_stdout.conf \
          --once

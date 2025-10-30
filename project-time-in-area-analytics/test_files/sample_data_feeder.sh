@@ -28,8 +28,8 @@ fi
 
 # Process data line by line and output it as pure json.
 while IFS= read -r line; do
-    # Skip empty lines
-    if [ -n "$line" ]; then
+    # Skip empty lines and comment lines (starting with #)
+    if [ -n "$line" ] && [ "${line#\#}" = "$line" ]; then
         # Process this frame with jq
         echo "$line" | jq -c '
         .frame as $frame |

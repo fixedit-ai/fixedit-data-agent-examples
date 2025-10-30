@@ -177,8 +177,8 @@ def get_or_parse_zone(state, zone_polygon_json):
         return state.get("zone_vertices"), state.get("zone_vertices_normalized")
 
     # If no zone JSON provided, return None
-    if zone_polygon_json == "" or zone_polygon_json == None:
-        log.debug("get_or_parse_zone: No zone_polygon_json configured")
+    if zone_polygon_json == "" or zone_polygon_json == None or zone_polygon_json[:2] == "${":
+        log.error("get_or_parse_zone: No INCLUDE_ZONE_POLYGON configured")
         return None, None
 
     # Parse the zone
@@ -244,7 +244,7 @@ def apply(metric):
     bbox_bottom = metric.fields.get("bounding_box_bottom")
 
     if bbox_left == None or bbox_right == None or bbox_top == None or bbox_bottom == None:
-        log.debug("apply: Metric missing bounding box fields")
+        log.warning("apply: Metric missing bounding box fields")
         return metric
 
     # Calculate center point of bounding box

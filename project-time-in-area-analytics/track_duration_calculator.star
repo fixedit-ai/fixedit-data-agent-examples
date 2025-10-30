@@ -114,8 +114,12 @@ def apply(metric):
     # Get the time in area for this track ID
     time_in_area = get_time_in_area_seconds(track_id, current_seconds, state["track_state"])
 
-    # Add the time in area to the metric (always add it, filtering happens in next processor)
-    metric.fields["time_in_area_seconds"] = time_in_area
+    # Create a new metric with duration calculated name (before adding fields)
+    duration_metric = deepcopy(metric)
+    duration_metric.name = "detection_frame_with_duration"
 
-    # Return the same metric with the time in area added
-    return metric
+    # Add the time in area to the new metric (filtering happens in next processor)
+    duration_metric.fields["time_in_area_seconds"] = time_in_area
+
+    # Return the new metric with the time in area added
+    return duration_metric

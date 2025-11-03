@@ -228,14 +228,21 @@ def apply(metric):
         metric: Telegraf metric object
 
     Returns:
-        The metric if its center is inside the zone, None otherwise (filtered out)
+        The metric renamed to detection_frame_in_zone. If no zone is configured, all metrics
+        pass through. If a zone is configured, only metrics with centers inside the zone pass through.
     """
     # Get or parse the zone (uses Telegraf's state dict for caching)
     zone_vertices, zone_vertices_normalized = get_or_parse_zone(state, zone_polygon_json)
 
-    # If no zone is configured, pass all metrics through
+    # If no zone is configured, pass all metrics through with renamed metric name,
+    # but show a warning since it might be unintended.
     if zone_vertices == None:
-        return metric
+        log.warn("No INCLUDE_ZONE_POLYGON configured - passing all detections through. " +
+                 "To explicitly include the entire frame, set INCLUDE_ZONE_POLYGON to " +
+                 "[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]")
+        pass_through_metric = deepcopy(metric)
+        pass_through_metric.name = "detection_frame_in_zone"
+        return pass_through_metric
 
     # Extract bounding box coordinates from metric
     bbox_left = metric.fields.get("bounding_box_left")

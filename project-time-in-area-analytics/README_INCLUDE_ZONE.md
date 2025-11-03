@@ -24,6 +24,37 @@ This will contain information about the configuration, including one or multiple
 
 The example above is from the `data.scenarios[0].triggers[0].vertices` field.
 
+You can also use [Postman](https://www.postman.com/downloads/) to get the zone from the camera.
+
+First:
+
+- Set method to `POST`
+- Set the URL (including the IP of the camera)
+- Press `Authorization` and select `Digest Auth`
+- Specify the username and password for the camera
+
+![Postman digest auth and URL](.images/zone_auth.png)
+
+Then:
+
+- Press `Body`
+- Specify `raw` format and select `JSON` in the drop-down
+- Specify the following JSON:
+  ```json
+  {
+    "apiVersion": "1.2",
+    "context": "zone_export",
+    "method": "getConfiguration"
+  }
+  ```
+- Press the `Send` button
+
+![Postman body and response](.images/zone_post.png)
+
+You can see the zone in the `vertices` field. To use the zone in the application configuration, you need to have it with no new lines. Press the `Raw` button to remove the new lines.
+
+Note that when you use the zone in the application configuration, you need to enclose it in an extra pair of square brackets. The format of it should look like this: `[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]`.
+
 ## The coordinate system
 
 The AXIS Object Analytics API uses a normalized coordinate system where all coordinates are in the range **[-1, 1]**:

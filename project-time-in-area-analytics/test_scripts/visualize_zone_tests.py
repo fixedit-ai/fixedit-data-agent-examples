@@ -26,7 +26,10 @@ from prettytable import PrettyTable
 
 # Import visualization functions from visualize_zone
 sys.path.insert(0, str(Path(__file__).parent))
-from visualize_zone import draw_zone_on_image, normalize_to_pixel
+from visualize_zone import (  # noqa: E402 pylint: disable=wrong-import-position
+    draw_zone_on_image,
+    normalize_to_pixel,
+)
 
 
 def parse_json(data_str):
@@ -54,7 +57,8 @@ def parse_zone_from_file(filepath):
     Raises:
         ValueError: If zone definition comment is not found in file.
     """
-    with open(filepath, "r") as f:
+    # pylint: disable=too-many-nested-blocks
+    with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line.startswith("# Use zone:"):
@@ -102,26 +106,29 @@ def parse_zone_from_file(filepath):
                         IndexError,
                     ) as e:
                         raise ValueError(
-                            f"Failed to parse zone polygon.\n"
-                            f"Expected format: '# Use zone: [[[x1,y1],[x2,y2],...]]' (array of zones)\n"
+                            "Failed to parse zone polygon.\n"
+                            "Expected format: '# Use zone: [[[x1,y1],[x2,y2],...]]' "
+                            "(array of zones)\n"
                             f"Got: '{line}'\n"
                             f"Error: {e}"
-                        )
+                        ) from e
                 else:
                     raise ValueError(
-                        f"Zone definition format mismatch.\n"
-                        f"Expected format: '# Use zone: [[[x1,y1],[x2,y2],...]]' (array of zones)\n"
+                        "Zone definition format mismatch.\n"
+                        "Expected format: '# Use zone: [[[x1,y1],[x2,y2],...]]' (array of zones)\n"
                         f"Got: '{line}'"
                     )
 
     raise ValueError(
         f"Zone definition not found in {filepath}.\n"
-        f"File must contain a comment line with format:\n"
-        f"# Use zone: [[x1,y1],[x2,y2],...] in [-1, 1] range"
+        "File must contain a comment line with format:\n"
+        "# Use zone: [[x1,y1],[x2,y2],...] in [-1, 1] range"
     )
 
 
-def draw_detections_on_image(img, observations, detection_labels):
+def draw_detections_on_image(
+    img, observations, detection_labels
+):  # pylint: disable=too-many-locals
     """Draw detection centers on image with labels.
 
     Args:
@@ -131,7 +138,7 @@ def draw_detections_on_image(img, observations, detection_labels):
     """
     height, width = img.shape[:2]
 
-    for idx, (obs, label) in enumerate(zip(observations[:26], detection_labels)):
+    for _, (obs, label) in enumerate(zip(observations[:26], detection_labels)):
         bbox = obs["bounding_box"]
         # Convert [0,1] bounding box to [-1,1] for consistency
         cx_0_1 = (bbox["left"] + bbox["right"]) / 2
@@ -229,9 +236,9 @@ def visualize_zone_and_detections(observations, zones, output_file=None, display
     type=click.Path(),
     help="Save visualization image to this path instead of displaying",
 )
-def main(jsonl_file, no_visualize, save_to):
+def main(jsonl_file, no_visualize, save_to):  # pylint: disable=too-many-locals
     """Extract center coordinates from detections in JSONL_FILE."""
-    with open(jsonl_file, "r") as f:
+    with open(jsonl_file, "r", encoding="utf-8") as f:
         data = f.read()
 
     observations = parse_json(data)
@@ -297,4 +304,4 @@ def main(jsonl_file, no_visualize, save_to):
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter

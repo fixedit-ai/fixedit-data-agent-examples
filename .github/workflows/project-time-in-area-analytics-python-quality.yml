@@ -26,3 +26,5 @@ jobs:
         uses: ./.github/actions/python-quality-check
         with:
           working-directory: project-time-in-area-analytics/test_scripts
+          # Disable E1101 for OpenCV false positives (no-member errors for cv2)
+          pylint-options: --disable=E1101

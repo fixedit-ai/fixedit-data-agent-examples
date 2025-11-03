@@ -200,9 +200,10 @@ jobs:
 
           # Run Telegraf pipeline with ONLY time-in-area calculation (no threshold filtering)
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
-                                    --config config_process_track_duration.conf \
-                                    --config test_files/config_output_stdout.conf \
-                                    --once 2>/dev/null)
+                                     --config config_process_zone_filter.conf \
+                                     --config config_process_track_duration.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
@@ -211,7 +212,7 @@ jobs:
 
           # Verify all detections have time_in_area_seconds field
           MISSING_FIELD_COUNT=$(echo "$TELEGRAF_OUTPUT" | \
-            jq -r 'select(.name == "detection_frame" and (.fields.time_in_area_seconds == null or .fields.time_in_area_seconds == "")) | .fields.track_id' 2>/dev/null | wc -l)
+            jq -r 'select(.name == "detection_frame_with_duration" and (.fields.time_in_area_seconds == null or .fields.time_in_area_seconds == "")) | .fields.track_id' 2>/dev/null | wc -l)
 
           if [ "$MISSING_FIELD_COUNT" -gt 0 ]; then
             echo "❌ FAIL: Found $MISSING_FIELD_COUNT detections without time_in_area_seconds field"
@@ -257,7 +258,7 @@ jobs:
 
             # Find corresponding actual value
             actual_time=$(echo "$TELEGRAF_OUTPUT" | \
-              jq -r "select(.name == \"detection_frame\" and .fields.track_id == \"$track_id\" and .fields.timestamp == \"$timestamp\") | .fields.time_in_area_seconds" 2>/dev/null)
+              jq -r "select(.name == \"detection_frame_with_duration\" and .fields.track_id == \"$track_id\" and .fields.timestamp == \"$timestamp\") | .fields.time_in_area_seconds" 2>/dev/null)
 
             if [ -n "$actual_time" ] && [ "$actual_time" != "null" ]; then
               # Simple string comparison for expected values (within tolerance)
@@ -308,10 +309,11 @@ jobs:
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
-                                    --config config_process_track_duration.conf \
-                                    --config config_process_threshold_filter.conf \
-                                    --config test_files/config_output_stdout.conf \
-                                    --once 2>/dev/null)
+                                     --config config_process_zone_filter.conf \
+                                     --config config_process_track_duration.conf \
+                                     --config config_process_threshold_filter.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
@@ -319,9 +321,9 @@ jobs:
           EXPECTED_UNIQUE_TRACKS=0
           EXPECTED_ALARM_DETECTIONS=0
 
-          # Count unique track IDs and alarm detections in detection_frame outputs
-          ACTUAL_UNIQUE_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | wc -l)
-          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
+          # Count unique track IDs and alarm detections in alerting_frame outputs
+          ACTUAL_UNIQUE_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | sort -u | wc -l)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
           echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
           echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"
@@ -349,10 +351,11 @@ jobs:
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
-                                    --config config_process_track_duration.conf \
-                                    --config config_process_threshold_filter.conf \
-                                    --config test_files/config_output_stdout.conf \
-                                    --once 2>/dev/null)
+                                     --config config_process_zone_filter.conf \
+                                     --config config_process_track_duration.conf \
+                                     --config config_process_threshold_filter.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
@@ -363,10 +366,10 @@ jobs:
           EXPECTED_ALARM_DETECTIONS=10
           EXPECTED_TRACKS="track_001 track_002 track_003 track_005"
 
-          # Extract unique track IDs and count alarm detections from detection_frame outputs
-          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
+          # Extract unique track IDs and count alarm detections from alerting_frame outputs
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
           ACTUAL_UNIQUE_TRACKS=$(echo "$ACTUAL_TRACKS" | wc -w)
-          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
           echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
           echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"
@@ -396,10 +399,11 @@ jobs:
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
-                                    --config config_process_track_duration.conf \
-                                    --config config_process_threshold_filter.conf \
-                                    --config test_files/config_output_stdout.conf \
-                                    --once 2>/dev/null)
+                                     -config config_process_zone_filter.conf \
+                                     --config config_process_track_duration.conf \
+                                     --config config_process_threshold_filter.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
@@ -410,10 +414,10 @@ jobs:
           EXPECTED_ALARM_DETECTIONS=18
           EXPECTED_TRACKS="track_001 track_002 track_003 track_004 track_005"
 
-          # Extract unique track IDs and count alarm detections from detection_frame outputs
-          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
+          # Extract unique track IDs and count alarm detections from alerting_frame outputs
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
           ACTUAL_UNIQUE_TRACKS=$(echo "$ACTUAL_TRACKS" | wc -w)
-          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
           echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
           echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"
@@ -443,10 +447,11 @@ jobs:
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
-                                    --config config_process_track_duration.conf \
-                                    --config config_process_threshold_filter.conf \
-                                    --config test_files/config_output_stdout.conf \
-                                    --once 2>/dev/null)
+                                     --config config_process_zone_filter.conf \
+                                     --config config_process_track_duration.conf \
+                                     --config config_process_threshold_filter.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
@@ -457,10 +462,10 @@ jobs:
           EXPECTED_ALARM_DETECTIONS=2
           EXPECTED_TRACKS="track_005"
 
-          # Extract unique track IDs and count alarm detections from detection_frame outputs
-          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
+          # Extract unique track IDs and count alarm detections from alerting_frame outputs
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | sort -u | tr '\n' ' ' | sed 's/ $//')
           ACTUAL_UNIQUE_TRACKS=$(echo "$ACTUAL_TRACKS" | wc -w)
-          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "detection_frame") | .fields.track_id' 2>/dev/null | wc -l)
+          ACTUAL_ALARM_DETECTIONS=$(echo "$TELEGRAF_OUTPUT" | jq -r 'select(.name == "alerting_frame") | .fields.track_id' 2>/dev/null | wc -l)
 
           echo "Expected unique tracks: $EXPECTED_UNIQUE_TRACKS"
           echo "Expected alarm detections: $EXPECTED_ALARM_DETECTIONS"

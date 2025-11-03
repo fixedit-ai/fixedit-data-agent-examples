@@ -8,6 +8,7 @@ them on a camera image for visualization.
 
 import json
 import random
+
 import click
 import cv2
 import numpy as np
@@ -23,7 +24,9 @@ def calculate_edge_x_at_y(x1, y1, x2, y2, y):
     return (x2 - x1) * (y - y1) / (y2 - y1) + x1
 
 
-def ray_intersects_edge(x, y, x1, y1, x2, y2):
+def ray_intersects_edge(
+    x, y, x1, y1, x2, y2
+):  # pylint: disable=too-many-arguments,too-many-positional-arguments
     """
     Check if a ray cast from point (x,y) to the right intersects the edge.
 
@@ -102,7 +105,9 @@ def normalize_to_pixel(x, y, width, height):
     return pixel_x, pixel_y
 
 
-def draw_zone_on_image(img, vertices_list, color_bgr, thickness, fill_alpha):
+def draw_zone_on_image(
+    img, vertices_list, color_bgr, thickness, fill_alpha
+):  # pylint: disable=too-many-locals
     """
     Draw a zone polygon on the image with semi-transparent fill.
 
@@ -160,7 +165,7 @@ def draw_test_points_on_image(img, vertices_list, num_points):
     inside_count = 0
     outside_count = 0
 
-    for i in range(num_points):
+    for _ in range(num_points):
         # Generate random normalized coordinates
         test_x = random.uniform(-1.0, 1.0)
         test_y = random.uniform(-1.0, 1.0)
@@ -268,6 +273,7 @@ def draw_test_points_on_image(img, vertices_list, num_points):
 def visualize_zone(
     vertices, image, save_to, no_show, color, thickness, fill_alpha, add_random_points
 ):
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     """
     Visualize AXIS Object Analytics zone on a camera image.
 
@@ -347,10 +353,10 @@ def visualize_zone(
             cv2.destroyAllWindows()
 
         # Print zone info
-        click.echo(f"\n📊 Zone Information:")
+        click.echo("\n📊 Zone Information:")
         click.echo(f"   Image size: {width}x{height}")
         click.echo(f"   Vertices: {len(pixel_points)}")
-        click.echo(f"\n   Normalized → Pixel coordinates:")
+        click.echo("\n   Normalized → Pixel coordinates:")
         for i, (norm_pt, pixel_pt) in enumerate(zip(vertices_list, pixel_points)):
             click.echo(
                 f"   [{i}] ({norm_pt[0]:+.4f}, {norm_pt[1]:+.4f}) → ({pixel_pt[0]}, {pixel_pt[1]})"
@@ -362,4 +368,4 @@ def visualize_zone(
 
 
 if __name__ == "__main__":
-    visualize_zone()
+    visualize_zone()  # pylint: disable=no-value-for-parameter

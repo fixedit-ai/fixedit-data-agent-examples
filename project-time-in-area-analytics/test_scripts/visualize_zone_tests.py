@@ -100,8 +100,7 @@ def parse_zone_from_file(filepath):
 
                         return zones, bbox
                     except (
-                        json.JSONDecodeError,
-                        ValueError,
+                        ValueError,  # parent to json.JSONDecodeError
                         TypeError,
                         IndexError,
                     ) as e:

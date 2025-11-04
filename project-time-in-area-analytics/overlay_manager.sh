@@ -37,6 +37,10 @@ FONT_SIZE="${FONT_SIZE:-45}"
 # Fixed context name for all overlays to ensure only one is active
 OVERLAY_CONTEXT="time_in_area_overlay"
 
+# Strings that we will match from API responses. These should never
+# be changed!
+API_ERROR_STRING="error"
+
 # Validate required environment variables for VAPIX API access
 if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ]; then
     printf "VAPIX_USERNAME and VAPIX_PASSWORD must be set" >&2
@@ -48,9 +52,11 @@ DEBUG="${TELEGRAF_DEBUG:-false}"
 
 # Function to log debug messages to a file
 debug_log_file() {
+    _debug_message=$1
     if [ "$DEBUG" = "true" ]; then
-        echo "DEBUG: $1" >> "${HELPER_FILES_DIR}/overlay_manager.debug" 2>/dev/null || true
+        echo "DEBUG: $_debug_message" >> "${HELPER_FILES_DIR}/overlay_manager.debug" 2>/dev/null || true
     fi
+    return 0
 }
 
 # Helper function to add a new overlay
@@ -92,7 +98,7 @@ add_overlay() {
     debug_log_file "API call exit code: $api_exit"
     debug_log_file "API response: $api_response"
 
-    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q '"error"'; then
+    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
         debug_log_file "ERROR: Failed to create overlay"
         return 1
     fi
@@ -142,7 +148,7 @@ update_overlay() {
     debug_log_file "API call exit code: $api_exit"
     debug_log_file "API response: $api_response"
 
-    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q '"error"'; then
+    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
         # Note that this might be intentional since the caller might try
         # to update an overlay and only create a new one if it doesn't exist.
         debug_log_file "INFO: Failed to update overlay"
@@ -179,7 +185,7 @@ delete_overlay() {
     debug_log_file "API call exit code: $api_exit"
     debug_log_file "API response: $api_response"
 
-    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q '"error"'; then
+    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
         debug_log_file "ERROR: Failed to delete overlay"
         return 1
     fi
@@ -245,7 +251,7 @@ control_overlay() {
     fi
 
     # Check if response contains an error
-    if echo "$api_response" | grep -q '"error"'; then
+    if echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
         debug_log_file "ERROR: VAPIX API returned error - Action: $action"
         debug_log_file "ERROR: Response: $api_response"
         printf "Failed to %s overlay" "$action" >&2

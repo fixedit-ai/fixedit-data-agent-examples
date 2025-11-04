@@ -669,18 +669,25 @@ This project includes comprehensive automated testing to ensure both the visuali
 
 The automated tests run on every push and pull request via the `project-time-in-area-test-analytics.yml` workflow, which includes:
 
-**Two Independent Test Jobs:**
+**Three Independent Test Jobs:**
 
-- **Track Heatmap Viewer Tests**: Validates alarm detection in the visualization script
-- **Telegraf Pipeline Tests**: Validates time-in-area calculations and threshold filtering
+In file `project-time-in-area-test-analytics.yml`:
 
-**Three Test Scenarios per Tool:**
+- `test-telegraf-pipeline`: Validates time-in-area algorithms and workflows in Telegraf
+- `test-visualization-script`: Validates alarm detection in the test visualization script
 
-- **No alarms scenario**: High threshold (15s) should produce no alarms
-- **Some alarms scenario**: Moderate threshold (2s) should identify 3 specific tracks
-- **All alarms scenario**: Low threshold (0s) should identify all 4 tracks
+In file `project-time-in-area-analytics-python-quality.yml`:
 
-Both tools now behave identically, calculating total time-in-area including brief gaps under 60 seconds. If a gap is longer than 60 seconds (should not happen in data from the Axis cameras!?), then the Telegraf pipeline would forget about the track and the time-in-area would be reset to 0 once the track reappears.
+- `python-quality`: Validates Python code quality in the test scripts
+
+If you have [Act](https://github.com/nektos/act) installed, you can run the tests locally from the terminal. Note that you need to run them from the root of the repo. Run e.g. the following:
+
+```bash
+cd ..
+act -j test-telegraf-pipeline -W .github/workflows/project-time-in-area-test-analytics.yml -P ubuntu-24.04=catthehacker/ubuntu:act-24.04
+```
+
+If you have the [VS Code plugin "GitHub Local Actions"](https://marketplace.visualstudio.com/items?itemName=SanjulaGanepola.github-local-actions) installed, then you can just open the plugin and press play on any of the test jobs to run them locally.
 
 ### Test Data
 

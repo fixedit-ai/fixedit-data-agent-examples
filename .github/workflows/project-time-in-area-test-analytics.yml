@@ -187,6 +187,100 @@ jobs:
           # Verify installation
           telegraf --version
 
+      - name: Test Zone Filter Only (Rectangular Zone)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing zone filter in isolation"
+
+          # Set up environment variables
+          export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
+          export SAMPLE_FILE="test_files/test_zone_filter_simple.jsonl"
+
+          # Set the zone polygon from the test file (simple rectangular zone)
+          export INCLUDE_ZONE_POLYGON='[[[-0.6, -0.4], [0.2, -0.4], [0.2, 0.2], [-0.6, 0.2]]]'
+
+          # Run Telegraf with zone filter only
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_zone_filter.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
+
+          echo "Checking zone filter output..."
+
+          # Expected: Three detections (inside_zone_a, inside_zone_b, crossing_edge_g)
+          EXPECTED_TRACKS="crossing_edge_g inside_zone_a inside_zone_b"
+          EXPECTED_COUNT=3
+
+          # Count unique track_ids that passed through the filter (sorted alphabetically)
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | \
+            jq -r 'select(.name == "detection_frame_in_zone") | .fields.track_id' 2>/dev/null | \
+            sort -u | tr '\n' ' ' | sed 's/ $//')
+
+          ACTUAL_COUNT=$(echo "$TELEGRAF_OUTPUT" | \
+            jq -r 'select(.name == "detection_frame_in_zone") | .fields.track_id' 2>/dev/null | \
+            sort -u | wc -l)
+
+          echo "Expected tracks: $EXPECTED_TRACKS"
+          echo "Expected count: $EXPECTED_COUNT"
+          echo "Actual tracks: $ACTUAL_TRACKS"
+          echo "Actual count: $ACTUAL_COUNT"
+
+          if [ "$ACTUAL_COUNT" -eq "$EXPECTED_COUNT" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Zone filter correctly filtered to $ACTUAL_COUNT detections with correct track IDs"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_COUNT detections ($EXPECTED_TRACKS) but found $ACTUAL_COUNT ($ACTUAL_TRACKS)"
+            exit 1
+          fi
+
+      - name: Test Zone Filter (Complex Concave Polygon)
+        run: |
+          cd project-time-in-area-analytics
+
+          echo "Testing zone filter with complex concave polygon"
+
+          # Set up environment variables
+          export HELPER_FILES_DIR="$(pwd)"
+          export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
+          export SAMPLE_FILE="test_files/test_zone_filter_complex.jsonl"
+
+          # Set the complex concave zone polygon from the test file
+          export INCLUDE_ZONE_POLYGON='[[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.7562,0.6008],[-0.7652,0.05951],[0.05851,0.5204],[0.04617,-0.9691]]]'
+
+          # Run Telegraf with zone filter only
+          TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_zone_filter.conf \
+                                     --config test_files/config_output_stdout.conf \
+                                     --once 2>/dev/null)
+
+          echo "Checking complex zone filter output..."
+
+          # Expected: Only two detections (inside_c, inside_d) should pass through
+          EXPECTED_TRACKS="inside_c inside_d"
+          EXPECTED_COUNT=2
+
+          # Count unique track_ids that passed through the filter (sorted alphabetically)
+          ACTUAL_TRACKS=$(echo "$TELEGRAF_OUTPUT" | \
+            jq -r 'select(.name == "detection_frame_in_zone") | .fields.track_id' 2>/dev/null | \
+            sort -u | tr '\n' ' ' | sed 's/ $//')
+
+          ACTUAL_COUNT=$(echo "$TELEGRAF_OUTPUT" | \
+            jq -r 'select(.name == "detection_frame_in_zone") | .fields.track_id' 2>/dev/null | \
+            sort -u | wc -l)
+
+          echo "Expected tracks: $EXPECTED_TRACKS"
+          echo "Expected count: $EXPECTED_COUNT"
+          echo "Actual tracks: $ACTUAL_TRACKS"
+          echo "Actual count: $ACTUAL_COUNT"
+
+          if [ "$ACTUAL_COUNT" -eq "$EXPECTED_COUNT" ] && [ "$ACTUAL_TRACKS" = "$EXPECTED_TRACKS" ]; then
+            echo "✅ PASS: Complex zone filter correctly filtered to $ACTUAL_COUNT detections with correct track IDs"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_COUNT detections ($EXPECTED_TRACKS) but found $ACTUAL_COUNT ($ACTUAL_TRACKS)"
+            exit 1
+          fi
+
       - name: Test Telegraf pipeline - Time-in-area calculation only
         run: |
           cd project-time-in-area-analytics

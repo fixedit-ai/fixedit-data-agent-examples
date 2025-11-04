@@ -200,9 +200,11 @@ jobs:
 
           # Set the zone polygon from the test file (simple rectangular zone)
           export INCLUDE_ZONE_POLYGON='[[[-0.6, -0.4], [0.2, -0.4], [0.2, 0.2], [-0.6, 0.2]]]'
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
-          # Run Telegraf with zone filter only
+          # Run Telegraf with class filter and zone filter
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_class_filter.conf \
                                      --config config_process_zone_filter.conf \
                                      --config test_files/config_output_stdout.conf \
                                      --once 2>/dev/null)
@@ -247,9 +249,11 @@ jobs:
 
           # Set the complex concave zone polygon from the test file
           export INCLUDE_ZONE_POLYGON='[[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.7562,0.6008],[-0.7652,0.05951],[0.05851,0.5204],[0.04617,-0.9691]]]'
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
-          # Run Telegraf with zone filter only
+          # Run Telegraf with class filter and zone filter only
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_class_filter.conf \
                                      --config config_process_zone_filter.conf \
                                      --config test_files/config_output_stdout.conf \
                                      --once 2>/dev/null)
@@ -291,9 +295,11 @@ jobs:
           export HELPER_FILES_DIR="$(pwd)"
           export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
           # Run Telegraf pipeline with ONLY time-in-area calculation (no threshold filtering)
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_class_filter.conf \
                                      --config config_process_zone_filter.conf \
                                      --config config_process_track_duration.conf \
                                      --config test_files/config_output_stdout.conf \
@@ -327,13 +333,16 @@ jobs:
 
             # track_002: starts at 10:00:03, increases over time
             ["track_002:2024-01-15T10:00:03.345678Z"]="0.0"
-            ["track_002:2024-01-15T10:00:04.901234Z"]="1.6"
             ["track_002:2024-01-15T10:00:05.567890Z"]="2.2"
 
             # track_003: starts at 10:00:10, increases over time
             ["track_003:2024-01-15T10:00:10.234567Z"]="0.0"
             ["track_003:2024-01-15T10:00:11.890123Z"]="1.7"
             ["track_003:2024-01-15T10:00:12.456789Z"]="2.2"
+
+            # track_004: starts at 10:00:12.456789, only 2 detections
+            ["track_004:2024-01-15T10:00:12.456789Z"]="0.0"
+            ["track_004:2024-01-15T10:00:13.012345Z"]="0.6"
 
             # track_005: starts at 10:00:30, increases every 30s
             ["track_005:2024-01-15T10:00:30.000000Z"]="0.0"
@@ -400,9 +409,11 @@ jobs:
           export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="200"
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_class_filter.conf \
                                      --config config_process_zone_filter.conf \
                                      --config config_process_track_duration.conf \
                                      --config config_process_threshold_filter.conf \
@@ -442,9 +453,11 @@ jobs:
           export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="2"
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_class_filter.conf \
                                      --config config_process_zone_filter.conf \
                                      --config config_process_track_duration.conf \
                                      --config config_process_threshold_filter.conf \
@@ -453,11 +466,11 @@ jobs:
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
-          # Expected: 4 unique tracks, 10 alarm detections
+          # Expected: 4 unique tracks, 9 alarm detections
           # Note: Once a track exceeds the threshold, ALL subsequent detections for that track
           # trigger alarms (i.e., get output by the threshold filter)
           EXPECTED_UNIQUE_TRACKS=4
-          EXPECTED_ALARM_DETECTIONS=10
+          EXPECTED_ALARM_DETECTIONS=9
           EXPECTED_TRACKS="track_001 track_002 track_003 track_005"
 
           # Extract unique track IDs and count alarm detections from alerting_frame outputs
@@ -490,10 +503,12 @@ jobs:
           export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="0"
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
-                                     -config config_process_zone_filter.conf \
+                                     --config config_process_class_filter.conf \
+                                     --config config_process_zone_filter.conf \
                                      --config config_process_track_duration.conf \
                                      --config config_process_threshold_filter.conf \
                                      --config test_files/config_output_stdout.conf \
@@ -501,11 +516,11 @@ jobs:
 
           echo "Telegraf output: $TELEGRAF_OUTPUT"
 
-          # Expected: 5 unique tracks, 18 alarm detections (all tracks: track_001, track_002, track_003, track_004, track_005)
+          # Expected: 5 unique tracks, 17 alarm detections (all tracks: track_001, track_002, track_003, track_004, track_005)
           # Note: Once a track exceeds the threshold, ALL subsequent detections for that track
           # trigger alarms (i.e., get output by the threshold filter)
           EXPECTED_UNIQUE_TRACKS=5
-          EXPECTED_ALARM_DETECTIONS=18
+          EXPECTED_ALARM_DETECTIONS=17
           EXPECTED_TRACKS="track_001 track_002 track_003 track_004 track_005"
 
           # Extract unique track IDs and count alarm detections from alerting_frame outputs
@@ -538,9 +553,11 @@ jobs:
           export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
           export SAMPLE_FILE="test_files/simple_tracks.jsonl"
           export ALERT_THRESHOLD_SECONDS="120"
+          export OBJECT_TYPE_FILTER="ALL_UNVERIFIED"
 
           # Run Telegraf pipeline
           TELEGRAF_OUTPUT=$(telegraf --config config_input_scene_detections.conf \
+                                     --config config_process_class_filter.conf \
                                      --config config_process_zone_filter.conf \
                                      --config config_process_track_duration.conf \
                                      --config config_process_threshold_filter.conf \

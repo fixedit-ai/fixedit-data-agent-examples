@@ -39,7 +39,7 @@ while IFS= read -r line; do
             "frame": $frame.timestamp,
             "timestamp": .timestamp,
             "track_id": .track_id,
-            "object_type": (.class.type // "null"),
+            "object_type": .class.type,
             "bounding_box": .bounding_box
           }
         else

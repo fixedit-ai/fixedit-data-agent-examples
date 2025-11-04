@@ -8,10 +8,12 @@ The system consumes real-time object detection data from Axis fisheye cameras an
 
 ```mermaid
 flowchart TD
-    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] -->|detection_frame| B["config_process_zone_filter.conf:<br/>Filter by include zone polygon"]
+    A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] -->|detection_frame| B1["config_process_class_filter.conf:<br/>Filter by class name"]
     X0["Configuration variables: HELPER_FILES_DIR"] --> A
-    X1["Configuration variables: INCLUDE_ZONE_POLYGON"] --> B
-    B -->|detection_frame_in_zone| C1
+    X1a["Configuration variables: OBJECT_TYPE_FILTER"] --> B1
+    B1 -->|detection_frame_class_filtered| B2["config_process_zone_filter.conf:<br/>Filter by include zone polygon"]
+    X1b["Configuration variables: INCLUDE_ZONE_POLYGON"] --> B2
+    B2 -->|detection_frame_in_zone| C1
 
     subgraph TimeLogic ["config_process_track_duration.conf:<br/>Time-in-area Logic Details"]
         C1{"First time seeing<br/>this object ID?"}
@@ -37,7 +39,8 @@ flowchart TD
     G --> H["📺 VAPIX Overlay API"]
 
     style A fill:#e8f5e9,stroke:#43a047
-    style B fill:#f3e5f5,stroke:#8e24aa
+    style B1 fill:#f3e5f5,stroke:#8e24aa
+    style B2 fill:#f3e5f5,stroke:#8e24aa
     style TimeLogic fill:#f3e5f5,stroke:#8e24aa
     style C1 fill:#ffffff,stroke:#673ab7
     style C2 fill:#ffffff,stroke:#673ab7
@@ -52,7 +55,8 @@ flowchart TD
     style G fill:#ffebee,stroke:#e53935
     style H fill:#ffebee,stroke:#e53935
     style X0 fill:#f5f5f5,stroke:#9e9e9e
-    style X1 fill:#f5f5f5,stroke:#9e9e9e
+    style X1a fill:#f5f5f5,stroke:#9e9e9e
+    style X1b fill:#f5f5f5,stroke:#9e9e9e
     style X2 fill:#f5f5f5,stroke:#9e9e9e
     style X3 fill:#f5f5f5,stroke:#9e9e9e
     style X4 fill:#f5f5f5,stroke:#9e9e9e
@@ -88,6 +92,7 @@ Color scheme:
     - ["Text area is too big!" in overlay](#text-area-is-too-big-in-overlay)
 - [Configuration Files](#configuration-files)
   - [config_input_scene_detections.conf and axis_scene_detection_consumer.sh](#config_input_scene_detectionsconf-and-axis_scene_detection_consumersh)
+  - [config_process_class_filter.conf](#config_process_class_filterconf)
   - [config_process_zone_filter.conf and zone_filter.star](#config_process_zone_filterconf-and-zone_filterstar)
   - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
   - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
@@ -101,6 +106,7 @@ Color scheme:
   - [Prerequisites](#prerequisites)
   - [Host Testing Limitations](#host-testing-limitations)
   - [Test Commands](#test-commands)
+    - [Test Class Filter Only](#test-class-filter-only)
     - [Test Zone Filter Only](#test-zone-filter-only)
     - [Test Time in Area Calculation Only](#test-time-in-area-calculation-only)
     - [Test Alert Pipeline](#test-alert-pipeline)
@@ -141,6 +147,7 @@ Create a combined file by running:
 ```bash
 cat config_agent.conf \
     config_input_scene_detections.conf \
+    config_process_class_filter.conf \
     config_process_zone_filter.conf \
     config_process_track_duration.conf \
     config_process_threshold_filter.conf \
@@ -218,6 +225,26 @@ Can also be used for reproducible testing on host systems by setting `CONSUMER_S
 - `HELPER_FILES_DIR`: Directory containing project files (required)
 - `CONSUMER_SCRIPT`: Path to consumer script (defaults to `axis_scene_detection_consumer.sh`)
 - `SAMPLE_FILE`: Path to sample data file (required when using `sample_data_feeder.sh`)
+
+### config_process_class_filter.conf
+
+Filters the incoming detection frames based on the configured object type. This processor:
+
+- Reads the `OBJECT_TYPE_FILTER` env var to get the filtering mode or target class
+- Uses inline Starlark logic to determine if the detected object's class matches the filter
+- Only passes detections that match the filter to the next stage
+- Outputs debug messages when detections are filtered
+
+**OBJECT_TYPE_FILTER Values:**
+
+The `object_type` field in incoming detections comes from the camera's `.class.type` field or JSON `null` when the camera has not yet verified/classified the object.
+
+| Value                           | Behavior                                                                                    | Use Case                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ALL`                           | Pass only verified detections where `object_type != null`                                   | Include all object classes, but exclude objects still being classified                           |
+| `ALL_UNVERIFIED`                | Pass all detections (both verified and unverified null values)                              | Include all objects including those still being classified (less predictable but more sensitive) |
+| `"Human"` (or other class name) | Pass only detections where `object_type` exactly matches the given class (case-insensitive) | Filter by specific object type (e.g., "Human", "Vehicle" or "Face")                              |
+| Not set or unresolved           | Defaults to `ALL` and logs a warning                                                        | Not recommended                                                                                  |
 
 ### config_process_zone_filter.conf and zone_filter.star
 
@@ -307,6 +334,31 @@ You can test the processing logic locally using Telegraf before deploying to you
 
 ### Test Commands
 
+#### Test Class Filter Only
+
+Test the class filter to ensure it correctly filters detections by object type:
+
+```bash
+# Set up test environment
+export HELPER_FILES_DIR="$(pwd)"
+export CONSUMER_SCRIPT="test_files/sample_data_feeder.sh"
+export SAMPLE_FILE="test_files/simple_tracks.jsonl"
+export TELEGRAF_DEBUG=true
+
+# Filter for only verified detections (exclude unclassified)
+export OBJECT_TYPE_FILTER="Human"
+
+# Test class filter only
+telegraf --config config_agent.conf \
+         --config config_input_scene_detections.conf \
+         --config config_process_class_filter.conf \
+         --config test_files/config_output_stdout.conf \
+         --once
+```
+
+**Expected Output:**
+When set to `Human`, only detections with a class name of `Human` are passed through. You can try to change to `ALL` which should show all detections that has a class, or `ALL_UNVERIFIED` which should show all detections even if the class data is not available yet.
+
 #### Test Zone Filter Only
 
 We have two files with fake detections that are good for testing the zone filter:
@@ -339,6 +391,7 @@ export INCLUDE_ZONE_POLYGON='[[[-0.6, -0.4], [0.2, -0.4], [0.2, 0.2], [-0.6, 0.2
 # Test zone filter only
 telegraf --config config_agent.conf \
          --config config_input_scene_detections.conf \
+         --config config_process_class_filter.conf \
          --config config_process_zone_filter.conf \
          --config test_files/config_output_stdout.conf \
          --once
@@ -370,6 +423,7 @@ export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0
 # Test time in area calculation only (shows all detections + debug messages)
 telegraf --config config_agent.conf \
          --config config_input_scene_detections.conf \
+         --config config_process_class_filter.conf \
          --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config test_files/config_output_stdout.conf \
@@ -422,6 +476,7 @@ export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0
 # Test time in area calculation + threshold filtering
 telegraf --config config_agent.conf \
          --config config_input_scene_detections.conf \
+         --config config_process_class_filter.conf \
          --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config config_process_threshold_filter.conf \
@@ -452,6 +507,7 @@ export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0
 # Test complete pipeline with rate limiting
 telegraf --config config_agent.conf \
          --config config_input_scene_detections.conf \
+         --config config_process_class_filter.conf \
          --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config config_process_threshold_filter.conf \
@@ -482,6 +538,7 @@ export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0
 # Test time in area calculation with real data
 telegraf --config config_agent.conf \
          --config config_input_scene_detections.conf \
+         --config config_process_class_filter.conf \
          --config config_process_zone_filter.conf \
          --config config_process_track_duration.conf \
          --config test_files/config_output_stdout.conf \

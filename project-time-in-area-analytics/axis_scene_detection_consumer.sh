@@ -50,7 +50,7 @@ if ($frame.observations | length) > 0 then
     "frame": $frame.timestamp,
     "timestamp": .timestamp,
     "track_id": .track_id,
-    "object_type": (.class.type // "null"),
+    "object_type": .class.type,
     "bounding_box": .bounding_box
   }
 else

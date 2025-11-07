@@ -94,11 +94,18 @@ The following is a list of parameters with explanations on how to configure them
 
 - `Extra Env`: this parameter contains a semicolon-separated list of all project-specific configuration variables for the QR Code Decoder HTTP push project. There is primarily one variable that you need to set:
   - `PUSH_URL`: the URL of the HTTP endpoint to which to push the messages.
+  - `INSECURE_SKIP_VERIFY` (optional): set to `true` to skip verification of HTTPS certificates. Defaults to `false` for security. Only needed if you use HTTPS protocol and the HTTPS endpoint has an invalid or self-signed certificate. Use with caution in production environments.
 
   To set `PUSH_URL` to `http://my.server.com:8080/api/v1/metrics`, the `Extra Env` variable would be set to:
 
-  ```
+  ```text
   PUSH_URL=http://my.server.com:8080/api/v1/metrics
+  ```
+
+  To also enable insecure certificate verification:
+
+  ```text
+  PUSH_URL=https://my.server.com:8443/api/v1/metrics;INSECURE_SKIP_VERIFY=true
   ```
 
 - `Area`: The top-most geographical level, e.g. `Europe`
@@ -197,7 +204,7 @@ If there are no messages about sending the detections and the buffer fullnes is 
 
 If you see an error like this:
 
-```
+```text
 [2025-11-05 10:08:28] 2025-11-05T09:08:28Z E! [agent] Error writing to outputs.http:
 Post "$%7BPUSH_URL%7D": unsupported protocol scheme ""
 ```

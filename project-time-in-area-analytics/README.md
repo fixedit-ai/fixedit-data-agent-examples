@@ -1,6 +1,6 @@
 # Time-in-Area Analytics
 
-This project demonstrates how to implement time-in-area analytics for Axis fisheye cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). While AXIS Object Analytics natively supports time-in-area detection for traditional cameras, fisheye cameras lack this capability. This solution bridges that gap by consuming real-time object detection metadata from fisheye cameras and implementing custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs from [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) to track objects within a defined rectangular area, measures time in area, and triggers both warning (TODO) and alert notifications via MQTT (TODO) when objects remain in the monitored zone beyond configured thresholds.
+This project demonstrates how to implement time-in-area analytics for Axis fisheye cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). While AXIS Object Analytics natively supports time-in-area detection for traditional cameras, fisheye cameras lack this capability. This solution bridges that gap by consuming real-time object detection metadata from fisheye cameras and implementing custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs from [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) to track objects within a defined rectangular area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds.
 
 ## How It Works
 
@@ -29,8 +29,9 @@ flowchart TD
     C5 -->|detection_frame_with_duration| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
 
-    D -->|alerting_frame| E["🚨 MQTT Output<br/>Alert messages (TODO)"]
-    X3["Configuration variables: TODO"] --> E
+    D -->|alerting_frame_two| E0["config_process_alarming_state.conf:<br/>Check if any alerting detections have happened during the last second"]
+    E0 -->|alerting_state_change| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
+    E01 --> E["🚨 Event Output<br/>Alert messages"]
 
     D -->|alerting_frame| E1["config_process_rate_limit.conf:<br/>Rate limit to 1 message per second<br/>using Starlark state"]
     E1 -->|rate_limited_alert_frame| F["config_process_overlay_transform.conf:<br/>Recalculate coordinates for overlay visualization"]
@@ -49,6 +50,8 @@ flowchart TD
     style C5 fill:#ffffff,stroke:#673ab7
     style CX fill:#fff3e0,stroke:#fb8c00
     style D fill:#f3e5f5,stroke:#8e24aa
+    style E0 fill:#f3e5f5,stroke:#8e24aa
+    style E01 fill:#f3e5f5,stroke:#8e24aa
     style E fill:#ffebee,stroke:#e53935
     style E1 fill:#f3e5f5,stroke:#8e24aa
     style F fill:#f3e5f5,stroke:#8e24aa
@@ -58,7 +61,6 @@ flowchart TD
     style X1a fill:#f5f5f5,stroke:#9e9e9e
     style X1b fill:#f5f5f5,stroke:#9e9e9e
     style X2 fill:#f5f5f5,stroke:#9e9e9e
-    style X3 fill:#f5f5f5,stroke:#9e9e9e
     style X4 fill:#f5f5f5,stroke:#9e9e9e
 ```
 
@@ -135,8 +137,8 @@ Color scheme:
 
 ### FixedIT Data Agent Compatibility
 
-- **Minimum Data Agent version**: 1.1
-- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. It is recommended to use version 1.1 or higher since the load order of config files was not visible in the web user interface in version 1.0.
+- **Minimum Data Agent version**: <TODO: TBD>
+- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application <TODO: TBD> and above.
 
 ## Quick Setup
 
@@ -153,10 +155,12 @@ cat config_agent.conf \
     config_process_threshold_filter.conf \
     config_process_rate_limit.conf \
     config_process_overlay_transform.conf \
-    config_output_overlay.conf > combined.conf
+    config_output_overlay.conf \
+    config_process_alarming_state.conf \
+    config_output_events.conf > combined.conf
 ```
 
-Then upload `combined.conf` as a config file and `overlay_manager.sh`, `axis_scene_detection_consumer.sh`, `zone_filter.star`, and `track_duration_calculator.star` as helper files.
+Then upload `combined.conf` as a config file and `overlay_manager.sh`, `axis_scene_detection_consumer.sh`, `zone_filter.star` and `track_duration_calculator.star` as helper files.
 
 Set `Extra Env` to:
 

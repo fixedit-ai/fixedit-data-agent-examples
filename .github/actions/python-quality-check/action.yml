@@ -1,0 +1,79 @@
+name: "Python Quality Check"
+description: "Run Python linting and type checking tools"
+inputs:
+  working-directory:
+    description: "Working directory for the Python project"
+    required: true
+  additional-types:
+    description: "Additional type packages to install (space-separated)"
+    required: false
+    default: ""
+  pylint-options:
+    description: "Additional options for pylint"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Install test dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install \
+          black==25.1.0 \
+          flake8==7.3.0 \
+          isort==6.0.1 \
+          mypy==1.17.1 \
+          pylint==3.3.8 \
+          types-click==7.1.8 \
+          ${{ inputs.additional-types }}
+
+    - name: Install project requirements
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run flake8
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        # E203: whitespace before ':' (conflicts with black)
+        # W503: line break before binary operator (conflicts with black)
+        flake8 . --max-line-length=100 --extend-ignore=E203,W503
+
+    - name: Run mypy
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        mypy .
+
+    - name: Run pylint
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        pylint *.py ${{ inputs.pylint-options }}
+
+    - name: Run isort
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        isort --check-only --diff --profile black .
+
+    - name: Run black
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        black --check --diff .
+
+    - name: Run doctests
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        python -m doctest *.py -v

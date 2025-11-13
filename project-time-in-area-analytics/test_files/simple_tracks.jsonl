@@ -1,0 +1,72 @@
+# Simple (fake) example data on the same format at the Axis metadata from the camera.
+#
+# track_001:
+#   - Detections: 4 total (3 unverified/null, 1 verified as Human)
+#   - Time span: 3.78s (from first detection to last)
+#   - First verified: at 3.78s into track (4th detection)
+#   - One `operation` to delete track_001 after track_002 appears.
+#
+# track_002:
+#   - Detections: 2 total (2 unverified/null, 0 verified)
+#   - Time span: 2.22s (from first to last detection)
+#   - First verified: N/A (never verified)
+#   - Notes: Completely unverified track. Appears only in frames 3-6.
+#
+# track_003:
+#   - Detections: 3 total (0 unverified, 3 verified as Face)
+#   - Time span: 2.22s (from first detection to last)
+#   - First verified: 0.00s (verified from first detection)
+#   - Note: Last frame (11) shared with track_004.
+#
+# track_004:
+#   - Detections: 2 total (0 unverified, 2 verified as Human)
+#   - Time span: 0.56s (from first detection to last)
+#   - First verified: 0.00s (verified from first detection)
+#   - Note: First detection shared with track_003's last.
+#   - One frame contains one `operation` field that is empty.
+#
+# track_005:
+#   - Detections: 6 total (0 unverified, 6 verified as Human)
+#   - Time span: 150.00s (from first detection to last)
+#   - First verified: 0.00s (verified from first detection)
+
+# Frame 1: track_001 det 1 (unverified) - duration_from_first=0.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.6, "left": 0.2, "right": 0.3, "top": 0.4}, "timestamp": "2024-01-15T10:00:01.123456Z", "track_id": "track_001"}], "timestamp": "2024-01-15T10:00:01.123456Z"}}
+# Frame 2: track_001 det 2 (unverified) - duration_from_first=1.67s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.62, "left": 0.22, "right": 0.32, "top": 0.42}, "timestamp": "2024-01-15T10:00:02.789012Z", "track_id": "track_001"}], "timestamp": "2024-01-15T10:00:02.789012Z"}}
+# Frame 3:
+# - track_001 det 3 (unverified) - duration_from_first=2.22s
+# - track_002 det 1 (unverified) - duration_from_first=0.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.64, "left": 0.24, "right": 0.34, "top": 0.44}, "timestamp": "2024-01-15T10:00:03.345678Z", "track_id": "track_001"}, {"bounding_box": {"bottom": 0.56, "left": 0.12, "right": 0.18, "top": 0.36}, "timestamp": "2024-01-15T10:00:03.345678Z", "track_id": "track_002"}], "timestamp": "2024-01-15T10:00:03.345678Z"}}
+# Frame 4: track_001 det 4 (verified) - duration_from_first=3.78s, duration_from_verified=0.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.66, "left": 0.26, "right": 0.36, "top": 0.46}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:04.901234Z", "track_id": "track_001"}], "timestamp": "2024-01-15T10:00:04.901234Z"}}
+
+# Frame 6: track_002 det 2 (unverified) - duration_from_first=2.22s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.60, "left": 0.16, "right": 0.22, "top": 0.40}, "timestamp": "2024-01-15T10:00:05.567890Z", "track_id": "track_002"}], "timestamp": "2024-01-15T10:00:05.567890Z"}}
+{"frame": {"observations": [], "operations": [{"id": "track_001", "type": "DeleteOperation"}], "timestamp": "2024-01-15T10:00:06.000000Z"}}
+
+# Frame 9: track_003 det 1 (verified) - duration_from_first=0.00s, duration_from_verified=0.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.75, "left": 0.25, "right": 0.35, "top": 0.50}, "class": {"type": "Face"}, "timestamp": "2024-01-15T10:00:10.234567Z", "track_id": "track_003"}], "timestamp": "2024-01-15T10:00:10.234567Z"}}
+# Frame 10: track_003 det 2 (verified) - duration_from_first=1.66s, duration_from_verified=1.66s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.77, "left": 0.27, "right": 0.37, "top": 0.52}, "class": {"type": "Face"}, "timestamp": "2024-01-15T10:00:11.890123Z", "track_id": "track_003"}], "timestamp": "2024-01-15T10:00:11.890123Z"}}
+# Frame 11:
+# - track_003 det 3 (verified) - duration_from_first=2.22s, duration_from_verified=2.22s
+# - track_004 det 1 (verified) - duration_from_first=0.00s, duration_from_verified=0.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.79, "left": 0.29, "right": 0.39, "top": 0.54}, "class": {"type": "Face"}, "timestamp": "2024-01-15T10:00:12.456789Z", "track_id": "track_003"}, {"bounding_box": {"bottom": 0.68, "left": 0.28, "right": 0.38, "top": 0.48}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:12.456789Z", "track_id": "track_004"}], "timestamp": "2024-01-15T10:00:12.456789Z"}}
+# Frame 12: track_004 det 2 (verified) - duration_from_first=0.56s, duration_from_verified=0.56s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.80, "left": 0.35, "right": 0.45, "top": 0.60}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:13.012345Z", "track_id": "track_004"}], "timestamp": "2024-01-15T10:00:13.012345Z"}}
+{"frame": {"observations": [], "operations": [], "timestamp": "2024-01-15T10:00:25.000000Z"}}
+
+# Frame 15: track_005 det 1 (verified) - duration_from_first=0.00s, duration_from_verified=0.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.85, "left": 0.10, "right": 0.25, "top": 0.65}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:30.000000Z", "track_id": "track_005"}], "timestamp": "2024-01-15T10:00:30.000000Z"}}
+# Frame 16: track_005 det 2 (verified) - duration_from_first=30.00s, duration_from_verified=30.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.86, "left": 0.11, "right": 0.26, "top": 0.66}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:01:00.000000Z", "track_id": "track_005"}], "timestamp": "2024-01-15T10:01:00.000000Z"}}
+# Frame 17: track_005 det 3 (verified) - duration_from_first=60.00s, duration_from_verified=60.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.87, "left": 0.12, "right": 0.27, "top": 0.67}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:01:30.000000Z", "track_id": "track_005"}], "timestamp": "2024-01-15T10:01:30.000000Z"}}
+# Frame 18: track_005 det 4 (verified) - duration_from_first=90.00s, duration_from_verified=90.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.88, "left": 0.13, "right": 0.28, "top": 0.68}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:02:00.000000Z", "track_id": "track_005"}], "timestamp": "2024-01-15T10:02:00.000000Z"}}
+# Frame 19: track_005 det 5 (verified) - duration_from_first=120.00s, duration_from_verified=120.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.89, "left": 0.14, "right": 0.29, "top": 0.69}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:02:30.000000Z", "track_id": "track_005"}], "timestamp": "2024-01-15T10:02:30.000000Z"}}
+# Frame 20: track_005 det 6 (verified) - duration_from_first=150.00s, duration_from_verified=150.00s
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.90, "left": 0.15, "right": 0.30, "top": 0.70}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:03:00.000000Z", "track_id": "track_005"}], "timestamp": "2024-01-15T10:03:00.000000Z"}}
+{"frame": {"observations": [], "operations": [], "timestamp": "2024-01-15T10:03:30.000000Z"}}

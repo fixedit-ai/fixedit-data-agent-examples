@@ -27,9 +27,9 @@ usage() {
 get_token() {
   local token_file="${HELPER_FILES_DIR}/token.txt"
   local token=""
-  
+
   echo "[DEBUG] Looking for token file at: $token_file" >&2
-  
+
   if [ -f "$token_file" ] && [ -s "$token_file" ]; then
     echo "[DEBUG] Token file found, reading latest token (last line)..." >&2
     # Read the last line from the JSONL file and extract the token field
@@ -44,7 +44,7 @@ get_token() {
   else
     echo "[DEBUG] Token file does not exist or is empty" >&2
   fi
-  
+
   # Token not found, return empty
   return 0
 }
@@ -56,7 +56,7 @@ send_http_request() {
   local url=$2
   local token=$3
   local data=$4
-  
+
   if [ -z "$data" ]; then
     # For requests without data body (GET, or POST with no body)
     curl -X "$method" "$url" \
@@ -86,11 +86,11 @@ make_request_with_retry() {
   local token=$3
   local default_token=$4
   local data=$5
-  
+
   RESPONSE=$(send_http_request "$method" "$url" "$token" "$data")
   REQUEST_HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
   REQUEST_BODY=$(echo "$RESPONSE" | sed '$d')
-  
+
   # If 401 (invalid token) and we have a default token, retry with it
   if [ "$REQUEST_HTTP_CODE" = "401" ] && [ -n "$default_token" ]; then
     echo "[DEBUG] Got 401 with current token, retrying with default token" >&2
@@ -107,7 +107,7 @@ handle_response() {
   local http_code=$1
   local body=$2
   local auth_error_msg=$3
-  
+
   if [ "$http_code" = "200" ]; then
     return 0
   elif [ "$http_code" = "401" ]; then

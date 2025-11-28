@@ -178,7 +178,7 @@ def get_or_parse_zone(state, zone_polygon_json):
 
     # If no zone JSON provided, return None
     if zone_polygon_json == "" or zone_polygon_json == None or zone_polygon_json[:2] == "${":
-        log.error("get_or_parse_zone: No INCLUDE_ZONE_POLYGON configured")
+        # Don't log any error here, instead let the caller use a default (or complain)...
         return None, None
 
     # Parse the zone
@@ -238,7 +238,7 @@ def apply(metric):
     # but show a warning since it might be unintended.
     if zone_vertices == None:
         log.warn("No INCLUDE_ZONE_POLYGON configured - passing all detections through. " +
-                 "To explicitly include the entire frame, set INCLUDE_ZONE_POLYGON to " +
+                 "To explicitly include the entire frame, set INCLUDE_ZONE_POLYGON=" +
                  "[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]")
         pass_through_metric = deepcopy(metric)
         pass_through_metric.name = "detection_frame_in_zone"

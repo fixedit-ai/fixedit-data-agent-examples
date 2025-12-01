@@ -30,7 +30,7 @@ flowchart TD
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
 
     D -->|alerting_frame_two| E0["config_process_alarming_state.conf:<br/>Check if any alerting detections have happened during the last second"]
-    E0 -->|alerting_state_change| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
+    E0 -->|alerting_state_metric| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
     E01 --> E["🚨 Event Output<br/>Alert messages"]
 
     D -->|alerting_frame| E1["config_process_rate_limit.conf:<br/>Rate limit to 1 message per second<br/>using Starlark state"]

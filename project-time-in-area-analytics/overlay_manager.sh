@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Set strict error handling, but note that the Axis cameras
+# does not support "-o pipefail".
+set -eu
+
 # Axis Overlay Manager Script
 #
 # This script manages text overlays on Axis cameras based on time-in-area analytics.
@@ -17,7 +21,7 @@
 # Environment Variables:
 # - VAPIX_USERNAME: Device username (required)
 # - VAPIX_PASSWORD: Device password (required)
-# - HELPER_FILES_DIR: Directory for debug log files (required)
+# - HELPER_FILES_DIR: Directory for storing overlay identity and debug log files (required)
 # - VAPIX_IP: IP address of the Axis device (defaults to 127.0.0.1 for localhost)
 # - TELEGRAF_DEBUG: Enable debug logging when set to "true" (defaults to false)
 # - FONT_SIZE: Font size for the overlay text (defaults to 32)
@@ -37,13 +41,25 @@ FONT_SIZE="${FONT_SIZE:-45}"
 # Fixed context name for all overlays to ensure only one is active
 OVERLAY_CONTEXT="time_in_area_overlay"
 
+# We will use a persistent file in the flash to remember the ID of the
+# overlay which we are currently using. This allows us to update the
+# text and position of the existing overlay instead of creating a new one.
+# We must be aware that there might be other overlay texts that the user
+# has created manually in the camera, therefore the identity is important.
+IDENTITY_FILE="${HELPER_FILES_DIR}/.overlay_identity_${OVERLAY_CONTEXT}"
+
 # Strings that we will match from API responses. These should never
 # be changed!
 API_ERROR_STRING="error"
 
-# Validate required environment variables for VAPIX API access
+# Validate required environment variables
 if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ]; then
     printf "VAPIX_USERNAME and VAPIX_PASSWORD must be set" >&2
+    exit 10
+fi
+
+if [ -z "$HELPER_FILES_DIR" ]; then
+    printf "HELPER_FILES_DIR must be set" >&2
     exit 10
 fi
 
@@ -56,6 +72,47 @@ debug_log_file() {
     if [ "$DEBUG" = "true" ]; then
         echo "DEBUG: $_debug_message" >> "${HELPER_FILES_DIR}/overlay_manager.debug" 2>/dev/null || true
     fi
+    return 0
+}
+
+# Function to log an error message and exit with the specified code
+error_exit() {
+    _exit_code=$1
+    _error_message=$2
+    debug_log_file "ERROR: $_error_message"
+    printf "%s" "$_error_message" >&2
+    exit "$_exit_code"
+    return 1 # Should never get here...
+}
+
+# Function to get stored overlay identity or return an error
+# code if the file does not exist or is empty.
+get_stored_identity() {
+    if [ -f "$IDENTITY_FILE" ]; then
+        # Read identity from file
+        _identity=$(cat "$IDENTITY_FILE" 2>/dev/null | tr -d '\n')
+
+        # Validate that we got a non-empty identity
+        if [ -n "$_identity" ]; then
+            echo "$_identity"
+            return 0
+        fi
+    fi
+
+    # File doesn't exist or is empty - both cases should create new overlay
+    echo ""
+    return 1
+}
+
+# Function to store overlay identity in a persistent file.
+# Returns 1 on failure to save the file.
+store_identity() {
+    _identity=$1
+    if ! echo "$_identity" > "$IDENTITY_FILE"; then
+        debug_log_file "ERROR: Failed to write identity file: $IDENTITY_FILE"
+        return 1
+    fi
+    debug_log_file "Stored overlay identity: $_identity"
     return 0
 }
 
@@ -103,27 +160,50 @@ add_overlay() {
         return 1
     fi
 
-    # Extract and log the overlay identity from the response
+    # Extract and store the overlay identity from the response
     overlay_identity=$(echo "$api_response" | jq -r '.data.identity // empty' 2>/dev/null)
     if [ -n "$overlay_identity" ] && [ "$overlay_identity" != "null" ]; then
         debug_log_file "Overlay added successfully with identity: $overlay_identity"
-    else
-        debug_log_file "Overlay added but could not extract identity"
-    fi
 
-    return 0
+        # Store the identity - if this fails, propagate the error
+        if ! store_identity "$overlay_identity"; then
+            debug_log_file "ERROR: Failed to store overlay identity"
+            printf "Failed to store overlay identity to file %s" "$IDENTITY_FILE" >&2
+            return 1
+        fi
+
+        return 0
+    else
+        debug_log_file "ERROR: Overlay added but could not extract identity from API response"
+        return 1
+    fi
 }
 
 # Helper function to update an existing overlay
+#
+# Expected API behavior:
+# - Success: Returns {"data": {}, ...} without error field
+# - Invalid identity: Returns {"error": {"code": 302, "message": "Invalid value for parameter identity"}, ...}
+#
+# Return codes:
+# - 0: Success
+# - 1: General failure (curl error or API error)
+# - 2: Invalid identity (error code 302) - overlay was deleted, caller should remove identity file and create new overlay
+#
+# Note: We have observed cases where the API does not reliably report errors when the overlay
+# doesn't exist. Therefore, the caller should use a file-based identity tracking system and
+# check the return code to detect when overlays have been deleted (behavior not guaranteed).
 update_overlay() {
     text=$1      # Text content
     x=$2         # X coordinate
     y=$3         # Y coordinate
+    overlay_identity=$4  # Overlay identity to update
 
-    debug_log_file "Updating overlay - Text: $text, Pos: ($x, $y)"
+    debug_log_file "Updating overlay - Text: $text, Pos: ($x, $y), Identity: $overlay_identity"
     json_payload=$(jq -n \
         --arg text "$text" \
         --arg context "$OVERLAY_CONTEXT" \
+        --arg identity "$overlay_identity" \
         --arg x "$x" \
         --arg y "$y" \
         '{
@@ -131,7 +211,7 @@ update_overlay() {
             method: "setText",
             context: $context,
             params: {
-                identity: 1,
+                identity: ($identity|tonumber),
                 text: $text,
                 position: [($x|tonumber),($y|tonumber)]
             }
@@ -148,29 +228,47 @@ update_overlay() {
     debug_log_file "API call exit code: $api_exit"
     debug_log_file "API response: $api_response"
 
-    if [ $api_exit -ne 0 ] || echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
-        # Note that this might be intentional since the caller might try
-        # to update an overlay and only create a new one if it doesn't exist.
-        debug_log_file "INFO: Failed to update overlay"
+    # Check for curl failure
+    if [ $api_exit -ne 0 ]; then
+        debug_log_file "ERROR: Failed to update overlay (curl exit: $api_exit)"
         return 1
     fi
 
-    debug_log_file "Successfully updated overlay"
+    # Check for API error response
+    if echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
+        debug_log_file "ERROR: API returned error in response"
+
+        # Check specifically for error code 302 (invalid identity parameter)
+        # This indicates the overlay no longer exists - return special code for caller to handle
+        error_code=$(echo "$api_response" | jq -r '.error.code // empty' 2>/dev/null)
+        if [ "$error_code" = "302" ]; then
+            debug_log_file "ERROR: Invalid identity parameter (code 302) - overlay was likely deleted externally"
+            return 2
+        fi
+
+        return 1
+    fi
+
     return 0
 }
 
-# Helper function to delete an overlay
+# Helper function to delete an overlay.
+# Currently not used, but we will add an automatic deletion of stale overlays
+# in the future, so we keep the function here.
 delete_overlay() {
-    debug_log_file "Deleting overlay"
+    overlay_identity=$1  # Overlay identity to delete
+
+    debug_log_file "Deleting overlay with identity: $overlay_identity"
 
     json_payload=$(jq -n \
         --arg context "$OVERLAY_CONTEXT" \
+        --arg identity "$overlay_identity" \
         '{
             apiVersion: "1.8",
             method: "remove",
             context: $context,
             params: {
-                identity: 1
+                identity: ($identity|tonumber)
             }
         }')
 
@@ -190,77 +288,45 @@ delete_overlay() {
         return 1
     fi
 
-    debug_log_file "Successfully deleted overlay"
     return 0
 }
 
 # Helper function to update or create overlay
+# If identity exists, update the existing overlay. Otherwise, create a new one.
+# If the update fails due to invalid identity (code 302), removes the identity file
+# and creates a new overlay since this means the overlay was deleted externally.
 update_or_create_overlay() {
     text=$1      # Text content
     x=$2         # X coordinate
     y=$3         # Y coordinate
 
     debug_log_file "Attempting to update or create overlay - Text: $text, Pos: ($x, $y)"
-    if update_overlay "$text" "$x" "$y"; then
-        return 0
-    fi
 
-    debug_log_file "Update failed, creating new overlay"
-    add_overlay "$text" "$x" "$y"
-}
+    # Try to get stored identity
+    if overlay_identity=$(get_stored_identity); then
+        # Found stored identity, update the existing overlay
+        debug_log_file "Found stored identity: $overlay_identity, updating existing overlay"
+        update_overlay "$text" "$x" "$y" "$overlay_identity"
+        update_exit=$?
 
-# Function to control overlays via VAPIX API
-control_overlay() {
-    action=$1    # Action to perform (add, update, update_or_add, delete)
-    text=$2      # Text content (for add and update)
-    x=$3         # X coordinate
-    y=$4         # Y coordinate
-
-    debug_log_file "Making VAPIX API call - Action: $action, Text: $text, Pos: ($x, $y)"
-    case $action in
-        "add")
+        # Check if update failed due to invalid identity (return code 2), if so
+        # remove the identity file and create a new overlay.
+        if [ $update_exit -eq 2 ]; then
+            debug_log_file "Invalid identity detected (overlay was deleted), removing identity file and creating new overlay"
+            rm -f "$IDENTITY_FILE" 2>/dev/null || true
             add_overlay "$text" "$x" "$y"
             return $?
-            ;;
-        "update")
-            update_overlay "$text" "$x" "$y"
-            return $?
-            ;;
-        "update_or_add")
-            update_or_create_overlay "$text" "$x" "$y"
-            return $?
-            ;;
-        "delete")
-            delete_overlay
-            return $?
-            ;;
-        *)
-            debug_log_file "ERROR: Unknown action: $action"
-            return 1
-            ;;
-    esac
+        fi
 
-    api_exit=$?
-    debug_log_file "API call exit code: $api_exit"
-    debug_log_file "API response: $api_response"
-
-    if [ $api_exit -ne 0 ]; then
-        debug_log_file "ERROR: VAPIX API call failed - Action: $action (exit code: $api_exit)"
-        printf "Failed to %s overlay" "$action" >&2
-        return 1
-    fi
-
-    # Check if response contains an error
-    if echo "$api_response" | grep -q "\"$API_ERROR_STRING\""; then
-        debug_log_file "ERROR: VAPIX API returned error - Action: $action"
-        debug_log_file "ERROR: Response: $api_response"
-        printf "Failed to %s overlay" "$action" >&2
-        return 1
+        return $update_exit
     else
-        debug_log_file "VAPIX API call successful - Action: $action"
-        return 0
+        # No stored identity found, create a new overlay
+        debug_log_file "No stored identity found, creating new overlay"
+        add_overlay "$text" "$x" "$y"
+        return $?
     fi
 }
+
 
 debug_log_file "Starting overlay_manager.sh script"
 debug_log_file "Environment variables - VAPIX_USERNAME: $VAPIX_USERNAME, VAPIX_IP: $VAPIX_IP, DEBUG: $DEBUG"
@@ -287,9 +353,7 @@ debug_log_file "Received JSON input: $json_input"
 
 # Validate that we received input data
 if [ -z "$json_input" ]; then
-    debug_log_file "ERROR: Empty input received from Telegraf"
-    printf "Empty input received from Telegraf" >&2
-    exit 11
+    error_exit 11 "Empty input received from Telegraf"
 fi
 
 # Extract required fields from JSON using jq
@@ -302,31 +366,21 @@ timestamp=$(echo "$json_input" | jq -r '.timestamp // empty')
 center_x=$(echo "$json_input" | jq -r '.fields.center_x // empty')
 center_y=$(echo "$json_input" | jq -r '.fields.center_y // empty')
 
-debug_log_file "Extracted fields - track_id: $track_id, time_in_area_seconds: $object_type, object_type: $object_type"
+debug_log_file "Extracted fields - track_id: $track_id, time_in_area_seconds: $time_in_area, object_type: $object_type"
 
 # Validate required fields. We allow object_type to be empty (null) since
 # this happens before the video object detection has been able to classify
 # the object.
 if [ -z "$track_id" ] || [ "$track_id" = "null" ] || \
    [ -z "$time_in_area" ] || [ "$time_in_area" = "null" ] || \
-   [ -z "$object_type" ] || [ -z "$timestamp" ] || [ "$timestamp" = "null" ]; then
-    debug_log_file "ERROR: Missing required track info fields in JSON input"
-    printf "Missing required track info fields in JSON input. "\
-           "Required: track_id, time_in_area_seconds, timestamp. "\
-           "Received: track_id='%s', time_in_area_seconds='%s', timestamp='%s'" \
-           "$track_id" "$time_in_area" "$object_type" "$timestamp" >&2
-    exit 12
+   [ -z "$timestamp" ] || [ "$timestamp" = "null" ]; then
+    error_exit 12 "Missing required track info fields in JSON input. Required: track_id, time_in_area_seconds, timestamp. Received: track_id='$track_id', time_in_area_seconds='$time_in_area', timestamp='$timestamp'"
 fi
 
 # Use pre-calculated coordinates
 if [ -z "$center_x" ] || [ "$center_x" = "null" ] || \
    [ -z "$center_y" ] || [ "$center_y" = "null" ]; then
-    debug_log_file "ERROR: Missing required coordinate fields in JSON input"
-    printf "Missing required coordinate fields in JSON input. "\
-           "Required: center_x, center_y. "\
-           "Received: center_x='%s', center_y='%s'" \
-           "$center_x" "$center_y" >&2
-    exit 12
+    error_exit 12 "Missing required coordinate fields in JSON input. Required: center_x, center_y. Received: center_x='$center_x', center_y='$center_y'"
 fi
 
 # Get first 10 chars of track_id and add dots if it's longer than 13 chars.
@@ -356,12 +410,10 @@ debug_log_file "Overlay text: $overlay_text"
 
 # Update or create overlay for current detection
 debug_log_file "Updating/creating overlay for track: $track_id"
-if control_overlay "update_or_add" "$overlay_text" "$center_x" "$center_y"; then
+if update_or_create_overlay "$overlay_text" "$center_x" "$center_y"; then
     debug_log_file "Overlay updated/created successfully for track: $track_id"
 else
-    debug_log_file "ERROR: Failed to update/create overlay for track: $track_id"
-    printf "Failed to update/create overlay for track %s" "$track_id" >&2
-    exit 13
+    error_exit 13 "Failed to update/create overlay for track $track_id"
 fi
 
 debug_log_file "Script completed successfully for track: $track_id"

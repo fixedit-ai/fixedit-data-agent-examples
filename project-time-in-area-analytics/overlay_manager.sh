@@ -21,7 +21,7 @@ set -eu
 # Environment Variables:
 # - VAPIX_USERNAME: Device username (required)
 # - VAPIX_PASSWORD: Device password (required)
-# - HELPER_FILES_DIR: Directory for debug log files (required)
+# - HELPER_FILES_DIR: Directory for storing overlay identity and debug log files (required)
 # - VAPIX_IP: IP address of the Axis device (defaults to 127.0.0.1 for localhost)
 # - TELEGRAF_DEBUG: Enable debug logging when set to "true" (defaults to false)
 # - FONT_SIZE: Font size for the overlay text (defaults to 32)
@@ -52,9 +52,14 @@ IDENTITY_FILE="${HELPER_FILES_DIR}/.overlay_identity_${OVERLAY_CONTEXT}"
 # be changed!
 API_ERROR_STRING="error"
 
-# Validate required environment variables for VAPIX API access
+# Validate required environment variables
 if [ -z "$VAPIX_USERNAME" ] || [ -z "$VAPIX_PASSWORD" ]; then
     printf "VAPIX_USERNAME and VAPIX_PASSWORD must be set" >&2
+    exit 10
+fi
+
+if [ -z "$HELPER_FILES_DIR" ]; then
+    printf "HELPER_FILES_DIR must be set" >&2
     exit 10
 fi
 
@@ -77,23 +82,30 @@ error_exit() {
     debug_log_file "ERROR: $_error_message"
     printf "%s" "$_error_message" >&2
     exit "$_exit_code"
+    return 1 # Should never get here...
 }
 
 # Function to get stored overlay identity or return an error
-# code if the file does not exist.
+# code if the file does not exist or is empty.
 get_stored_identity() {
     if [ -f "$IDENTITY_FILE" ]; then
-        # Write identity as response and return success code
-        cat "$IDENTITY_FILE" 2>/dev/null | tr -d '\n'
-        return 0
-    else
-        echo ""
+        # Read identity from file
+        _identity=$(cat "$IDENTITY_FILE" 2>/dev/null | tr -d '\n')
+
+        # Validate that we got a non-empty identity
+        if [ -n "$_identity" ]; then
+            echo "$_identity"
+            return 0
+        fi
     fi
+
+    # File doesn't exist or is empty - both cases should create new overlay
+    echo ""
     return 1
 }
 
 # Function to store overlay identity in a persistent file.
-# Returns 1 on failure to prevent accumulation of orphaned overlays on the device.
+# Returns 1 on failure to save the file.
 store_identity() {
     _identity=$1
     if ! echo "$_identity" > "$IDENTITY_FILE"; then
@@ -153,7 +165,7 @@ add_overlay() {
     if [ -n "$overlay_identity" ] && [ "$overlay_identity" != "null" ]; then
         debug_log_file "Overlay added successfully with identity: $overlay_identity"
 
-        # Store the identity - if this fails, propagate the error to prevent orphaned overlays
+        # Store the identity - if this fails, propagate the error
         if ! store_identity "$overlay_identity"; then
             debug_log_file "ERROR: Failed to store overlay identity"
             printf "Failed to store overlay identity to file %s" "$IDENTITY_FILE" >&2
@@ -165,9 +177,6 @@ add_overlay() {
         debug_log_file "ERROR: Overlay added but could not extract identity from API response"
         return 1
     fi
-
-    # Should never get here...
-    return 1
 }
 
 # Helper function to update an existing overlay

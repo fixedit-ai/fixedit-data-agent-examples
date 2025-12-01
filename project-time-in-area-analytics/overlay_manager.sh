@@ -70,6 +70,15 @@ debug_log_file() {
     return 0
 }
 
+# Function to log an error message and exit with the specified code
+error_exit() {
+    _exit_code=$1
+    _error_message=$2
+    debug_log_file "ERROR: $_error_message"
+    printf "%s" "$_error_message" >&2
+    exit "$_exit_code"
+}
+
 # Function to get stored overlay identity or return an error
 # code if the file does not exist.
 get_stored_identity() {
@@ -335,9 +344,7 @@ debug_log_file "Received JSON input: $json_input"
 
 # Validate that we received input data
 if [ -z "$json_input" ]; then
-    debug_log_file "ERROR: Empty input received from Telegraf"
-    printf "Empty input received from Telegraf" >&2
-    exit 11
+    error_exit 11 "Empty input received from Telegraf"
 fi
 
 # Extract required fields from JSON using jq
@@ -358,23 +365,13 @@ debug_log_file "Extracted fields - track_id: $track_id, time_in_area_seconds: $t
 if [ -z "$track_id" ] || [ "$track_id" = "null" ] || \
    [ -z "$time_in_area" ] || [ "$time_in_area" = "null" ] || \
    [ -z "$timestamp" ] || [ "$timestamp" = "null" ]; then
-    debug_log_file "ERROR: Missing required track info fields in JSON input"
-    printf "Missing required track info fields in JSON input. "\
-           "Required: track_id, time_in_area_seconds, timestamp. "\
-           "Received: track_id='%s', time_in_area_seconds='%s', timestamp='%s'" \
-           "$track_id" "$time_in_area" "$timestamp" >&2
-    exit 12
+    error_exit 12 "Missing required track info fields in JSON input. Required: track_id, time_in_area_seconds, timestamp. Received: track_id='$track_id', time_in_area_seconds='$time_in_area', timestamp='$timestamp'"
 fi
 
 # Use pre-calculated coordinates
 if [ -z "$center_x" ] || [ "$center_x" = "null" ] || \
    [ -z "$center_y" ] || [ "$center_y" = "null" ]; then
-    debug_log_file "ERROR: Missing required coordinate fields in JSON input"
-    printf "Missing required coordinate fields in JSON input. "\
-           "Required: center_x, center_y. "\
-           "Received: center_x='%s', center_y='%s'" \
-           "$center_x" "$center_y" >&2
-    exit 12
+    error_exit 12 "Missing required coordinate fields in JSON input. Required: center_x, center_y. Received: center_x='$center_x', center_y='$center_y'"
 fi
 
 # Get first 10 chars of track_id and add dots if it's longer than 13 chars.
@@ -407,9 +404,7 @@ debug_log_file "Updating/creating overlay for track: $track_id"
 if update_or_create_overlay "$overlay_text" "$center_x" "$center_y"; then
     debug_log_file "Overlay updated/created successfully for track: $track_id"
 else
-    debug_log_file "ERROR: Failed to update/create overlay for track: $track_id"
-    printf "Failed to update/create overlay for track %s" "$track_id" >&2
-    exit 13
+    error_exit 13 "Failed to update/create overlay for track $track_id"
 fi
 
 debug_log_file "Script completed successfully for track: $track_id"

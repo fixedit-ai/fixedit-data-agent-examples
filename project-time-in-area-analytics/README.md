@@ -573,6 +573,8 @@ telegraf --config test_files/config_input_overlay_test.conf \
          --once
 ```
 
+This should now have created an overlay in the camera and a file in your current directory called `.overlay_identity_time_in_area_overlay` which will contain the ID of the overlay. If you rerun the same command, it should find that file and instead update the overlay with that identity.
+
 **How it works:**
 
 1. `config_input_overlay_test.conf` reads a single detection from `single_overlay_test.jsonl`

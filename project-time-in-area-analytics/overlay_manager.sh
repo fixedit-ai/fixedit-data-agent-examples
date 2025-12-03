@@ -137,7 +137,7 @@ add_overlay() {
                 camera: 1,
                 text: $text,
                 textColor: "red",
-                textBGColor: "white",
+                textBGColor: "semiTransparent",
                 textOLColor: "black",
                 fontSize: ($font_size|tonumber),
                 position: [($x|tonumber),($y|tonumber)]
@@ -167,8 +167,7 @@ add_overlay() {
 
         # Store the identity - if this fails, propagate the error
         if ! store_identity "$overlay_identity"; then
-            debug_log_file "ERROR: Failed to store overlay identity"
-            printf "Failed to store overlay identity to file %s" "$IDENTITY_FILE" >&2
+            debug_log_file "ERROR: Failed to store overlay identity to file %s" "$IDENTITY_FILE" >&2
             return 1
         fi
 

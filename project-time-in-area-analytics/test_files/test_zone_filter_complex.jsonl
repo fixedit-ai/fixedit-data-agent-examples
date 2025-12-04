@@ -1,0 +1,30 @@
+# Test data for zone filter with complex concave zone
+# Use zone: [[[-0.97,-0.97],[-0.97,0.97],[-0.1209,0.9616],[-0.7562,0.6008],[-0.7652,0.05951],[0.05851,0.5204],[0.04617,-0.9691]]]
+#
+# This is a complex concave polygon that tests the zone filter algorithm.
+#
+# Test coverage with 7 detections:
+#
+# CONCAVE OUTSIDE (2 points):
+# In the concave section of the polygon, i.e. outside the zone.
+#
+# INSIDE (2 points):
+# In the zone.
+#
+# RIGHT OUTSIDE (2 points):
+# Outside the zone on the right side of the zone.
+#
+# LEFT OUTSIDE (2 points):
+# Outside the zone on the left side of the zone.
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.20, "left": 0.35, "right": 0.40, "top": 0.15}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:01.000000Z", "track_id": "concave_outside_a"}], "timestamp": "2024-01-15T10:00:01.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.35, "left": 0.35, "right": 0.40, "top": 0.25}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:01.000000Z", "track_id": "concave_outside_b"}], "timestamp": "2024-01-15T10:00:01.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.55, "left": 0.15, "right": 0.25, "top": 0.45}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:02.000000Z", "track_id": "inside_c"}], "timestamp": "2024-01-15T10:00:02.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.45, "left": 0.05, "right": 0.15, "top": 0.35}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:06.000000Z", "track_id": "inside_d"}], "timestamp": "2024-01-15T10:00:06.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.55, "left": 0.85, "right": 0.95, "top": 0.45}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:03.000000Z", "track_id": "right_outside_e"}], "timestamp": "2024-01-15T10:00:03.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.15, "left": 0.75, "right": 0.85, "top": 0.05}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:04.000000Z", "track_id": "right_outside_f"}], "timestamp": "2024-01-15T10:00:04.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.55, "left": -0.05, "right": 0.05, "top": 0.45}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:05.000000Z", "track_id": "left_outside_g"}], "timestamp": "2024-01-15T10:00:05.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.45, "left": -0.05, "right": 0.05, "top": 0.35}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:06.000000Z", "track_id": "left_outside_h"}], "timestamp": "2024-01-15T10:00:06.000000Z"}}

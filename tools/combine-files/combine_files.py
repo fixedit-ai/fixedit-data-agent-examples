@@ -424,7 +424,7 @@ def inline_shell_script(config_content, file_path_root, path_vars):
             f"openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >\"$tmpfile\"\n"
             f"{script_base64}\n"
             f"FIXEDIT_SCRIPT_EOF\n"
-            f'sh "$tmpfile"\'\'\']\n'
+            f"sh \"$tmpfile\"''']\n"
         )
 
         return inline_command.rstrip("\n")  # Remove trailing newline
@@ -586,24 +586,24 @@ def main(
 ):
     """
     Combine multiple Telegraf configuration files into a single file.
-    
+
     This script can inline Starlark (.star) files and shell scripts (.sh) to create
     a self-contained configuration file that doesn't require separate helper files.
-    
+
     Examples:
-    
+
     \b
         # Combine configs without inlining
         python combine_files.py --config config1.conf --config config2.conf --output combined.conf
-        
+
         # Combine with Starlark inlining
         python combine_files.py --config config1.conf --config config2.conf \\
             --inline-starlark --output combined.conf
-        
+
         # Combine with both Starlark and shell script inlining
         python combine_files.py --config config1.conf --config config2.conf \\
             --inline-starlark --inline-shell-script --output combined.conf
-        
+
         # Expand path variables before inlining
         python combine_files.py --config config1.conf --config config2.conf \\
             --expand-path-var HELPER_FILES_DIR=. --inline-starlark --inline-shell-script \\

@@ -13,6 +13,8 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
   - [Hello, World!](#hello-world)
   - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
+- [Developer Tools](#developer-tools)
+  - [Combine Configuration Files and Scripts](#combine-configuration-files-and-scripts)
 
 <!-- tocstop -->
 
@@ -143,3 +145,15 @@ flowchart TD
 ```
 
 The system leverages the FixedIT Data Agent's built-in capabilities to create sophisticated data workflow graphs without traditional embedded programming. This shows that it is possible to work with binary data such as images and video in the FixedIT Data Agent, it also shows how to use the AWS S3 output integration in the FixedIT Data Agent.
+
+## Developer Tools
+
+The [tools](./tools) directory contains utilities to help developers work more efficiently with FixedIT Data Agent projects. These tools run on your local development machine and are designed to streamline the development and deployment workflow.
+
+### Combine Configuration Files and Scripts
+
+The [combine-files](./tools/combine-files) tool solves a common deployment challenge: many FixedIT Data Agent projects consist of multiple configuration files (`.conf`), Starlark scripts (`.star`), and shell scripts (`.sh`) that all need to be uploaded separately to the device. While keeping files separate during development makes the codebase easier to navigate and test, it complicates deployment.
+
+This Python script combines multiple configuration files into a single file and can inline both Starlark and shell scripts, creating a self-contained configuration that's easy to deploy. The tool supports variable expansion, making it possible to generate different configurations for production vs. testing.
+
+For detailed usage instructions and examples, see the [README](./tools/combine-files/README.md) in the combine-files directory.

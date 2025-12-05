@@ -1,0 +1,228 @@
+# Combine Config Files and Scripts for Easier Deployment
+
+Many projects for the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) end up with multiple `*.conf` files, multiple `.star` Starlark script files and multiple `.sh` shell scripts. Each of these files needs to be uploaded individually to the FixedIT Data Agent which makes the deployment process hard. It is however good to have many smaller files during development since it makes it easier to navigate the code base and write automatic tests for parts of the functionality.
+
+This tool is intended to relieve the pain of having to upload multiple files to the FixedIT Data Agent by combining them into a single file. The tool can combine multiple configuration files into a single file and also inline both Starlark and shell scripts into the same configuration file.
+
+This script is kept generic and should work for any project.
+
+## Table of Content
+
+<!-- toc -->
+
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Required Options](#required-options)
+  - [Optional Options](#optional-options)
+  - [Path Variable Expansion](#path-variable-expansion)
+  - [Simple Example](#simple-example)
+  - [Full Example with All Features](#full-example-with-all-features)
+- [Example: Combining Multiple Files for the Time-in-Area Project](#example-combining-multiple-files-for-the-time-in-area-project)
+  - [Production Configuration](#production-configuration)
+  - [Host Testing Configuration](#host-testing-configuration)
+- [How it Works](#how-it-works)
+  - [Configuration File Combining](#configuration-file-combining)
+  - [Starlark Script Inlining](#starlark-script-inlining)
+  - [Shell Script Inlining](#shell-script-inlining)
+- [Known Issues](#known-issues)
+  - [No Support for Arguments to Scripts](#no-support-for-arguments-to-scripts)
+
+<!-- tocstop -->
+
+## Installation
+
+The script requires Python and the `click` library:
+
+```bash
+pip install click
+```
+
+## Usage
+
+Basic syntax:
+
+```bash
+python combine_files.py [OPTIONS]
+```
+
+### Required Options
+
+- `--config <file>` - Configuration file to include (can be specified multiple times, will be combined in the order specified)
+- `--output <file>` - Output file path for the combined configuration
+
+### Optional Options
+
+- `--inline-starlark` - Inline Starlark `.star` files referenced in configs. Replaces `script = "file.star"` with `source = '''...content...'''`
+- `--inline-shell-script` - Inline shell `.sh` scripts referenced in configs using base64 encoding. Replaces `command = ["file.sh"]` with an inline base64-decoded command
+- `--file-path-root <dir>` - Root directory path for finding `.star` and `.sh` files referenced in configs (defaults to current working directory)
+- `--expand-path-var <VAR=value>` - Expand path variables in configs when identifying scripts to inline (can be specified multiple times). Format: `VAR=value`, e.g., `HELPER_FILES_DIR=.`
+
+### Path Variable Expansion
+
+The `--expand-path-var` option allows you to substitute variables in your configuration files while the script tried to find them. I.e., it does not substitute any variables in the inlined scripts. This is useful when:
+
+- Your configs reference helper files using variables like `${HELPER_FILES_DIR}/script.sh`
+- You want to use different scripts for testing vs production (e.g., `${CONSUMER_SCRIPT:-default.sh}`)
+
+The tool supports two variable patterns:
+
+- `${VAR}` - Simple variable substitution
+- `${VAR:-default}` - Variable with default value (uses `default` if `VAR` is not defined)
+
+Variables are expanded before the script attempts to find and inline the referenced files. Any variables used in the scripts themselves are left untouched so that they can be resolved at runtime.
+
+### Simple Example
+
+Combine two config files without any inlining:
+
+```bash
+python combine_files.py \
+  --config config1.conf \
+  --config config2.conf \
+  --output combined.conf
+```
+
+This is essentially the same as appending the second file to the end of the first file and saving it to a new file. The script does, however, also add headers between the content of the files referencing which file the content came from.
+
+### Full Example with All Features
+
+Combine multiple configs with Starlark and shell script inlining:
+
+```bash
+python combine_files.py \
+  --config config1.conf \
+  --config config2.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --expand-path-var HELPER_FILES_DIR=. \
+  --file-path-root . \
+  --output combined.conf
+```
+
+## Example: Combining Multiple Files for the Time-in-Area Project
+
+The following example has been tested on the [Work-in-Progress Time-in-Area project from this open PR](https://github.com/fixedit-ai/fixedit-data-agent-examples/pull/12).
+
+### Production Configuration
+
+To generate a combined configuration file with all scripts inlined for deployment to the FixedIT Data Agent, run:
+
+```bash
+export PROJECT_DIR=/path/to/time-in-area-analytics-project
+python3 combine_files.py \
+  --config $PROJECT_DIR/config_agent.conf \
+  --config $PROJECT_DIR/config_input_scene_detections.conf \
+  --config $PROJECT_DIR/config_process_class_filter.conf \
+  --config $PROJECT_DIR/config_process_zone_filter.conf \
+  --config $PROJECT_DIR/config_process_track_duration.conf \
+  --config $PROJECT_DIR/config_process_threshold_filter.conf \
+  --config $PROJECT_DIR/config_process_rate_limit.conf \
+  --config $PROJECT_DIR/config_process_overlay_transform.conf \
+  --config $PROJECT_DIR/config_output_overlay.conf \
+  --config $PROJECT_DIR/config_process_alarming_state.conf \
+  --config $PROJECT_DIR/config_output_events.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --expand-path-var HELPER_FILES_DIR=. \
+  --file-path-root $PROJECT_DIR \
+  --output combined.conf
+```
+
+This will create a `combined.conf` file that:
+
+- Concatenates all configuration files in the correct order
+- Inlines Starlark scripts (`.star` files) directly into the configuration
+- Inlines shell scripts (`.sh` files) as base64-encoded commands
+
+The resulting single file can be uploaded to the FixedIT Data Agent without needing to upload any separate helper files.
+
+### Host Testing Configuration
+
+You can also generate a combined configuration for host testing. Note the use of `--expand-path-var` to override the consumer script with a test version:
+
+```bash
+export PROJECT_DIR=/path/to/time-in-area-analytics-project
+python3 combine_files.py \
+  --config $PROJECT_DIR/config_agent.conf \
+  --config $PROJECT_DIR/config_input_scene_detections.conf \
+  --config $PROJECT_DIR/config_process_class_filter.conf \
+  --config $PROJECT_DIR/config_process_zone_filter.conf \
+  --config $PROJECT_DIR/config_process_track_duration.conf \
+  --config $PROJECT_DIR/test_files/config_output_stdout.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --expand-path-var HELPER_FILES_DIR=. \
+  --expand-path-var CONSUMER_SCRIPT=test_files/sample_data_feeder.sh \
+  --file-path-root $PROJECT_DIR \
+  --output combined_host_test.conf
+```
+
+Note that you had to set the `CONSUMER_SCRIPT` variable to the path to the sample data feeder script relative to the `file-path-root`, otherwise the `combine_files.py` script would use the default "real" metadata consumer script which is not available on the host.
+
+This will create a `combined_host_test.conf` file that can be tested on your local machine:
+
+```bash
+# Set up test environment with real device data
+export SAMPLE_FILE="$PROJECT_DIR/test_files/real_device_data.jsonl"
+export TELEGRAF_DEBUG=true
+
+# Set zone to cover entire view (so all detections pass through)
+export INCLUDE_ZONE_POLYGON='[[[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]]'
+
+# Run telegraf
+telegraf --config combined_host_test.conf --once
+```
+
+## How it Works
+
+### Configuration File Combining
+
+The script reads each configuration file in the order specified and concatenates them with separator comments showing which file each section came from. The path shown in comments is relative to `--file-path-root` when possible.
+
+### Starlark Script Inlining
+
+When `--inline-starlark` is used, the script finds all references like:
+
+```toml
+script = "path/to/file.star"
+```
+
+and replaces them with:
+
+```toml
+source = '''
+...content of file.star...
+'''
+```
+
+The script will fail if the Starlark file contains triple single quotes (`'''`) since that would break the inline format.
+
+### Shell Script Inlining
+
+When `--inline-shell-script` is used, the script finds all references like:
+
+```toml
+command = ["path/to/file.sh"]
+```
+
+and replaces them with:
+
+```toml
+command = ["sh", "-c", '''
+tmpfile=$(mktemp)
+trap 'rm -f "$tmpfile"' EXIT
+openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >"$tmpfile"
+...base64 encoded script...
+FIXEDIT_SCRIPT_EOF
+sh "$tmpfile"''']
+```
+
+The script is base64-encoded to avoid any escaping issues. The temp file approach preserves stdin for the Telegraf data (important for output plugins). The `openssl base64 -d` command is used instead of the `base64` command since `base64` doesn't exist on Axis devices.
+
+**Important**: This works well for `execd` plugins since unpacking only happens once during startup, but might introduce overhead on `exec` plugins since they would be unpacked for every metric passed to them.
+
+## Known Issues
+
+### No Support for Arguments to Scripts
+
+Inlining of shell scripts does currently not support arguments. This is just a question of improving the parser so that we can append the arguments after `sh "$tmpfile"`.

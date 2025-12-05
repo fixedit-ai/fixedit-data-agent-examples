@@ -14,6 +14,24 @@ reviews:
         dashboard usability, and proper licensing compliance. We should make sure that
         dashboards are portable and does not check in specific host names, or refer to
         other specific data from a single deployment.
+    - path: "tools/**"
+      instructions: >-
+        This directory contains developer tools that run on the developer's local machine
+        to streamline the development and deployment workflow for FixedIT Data Agent projects.
+        These tools are not deployed to Axis devices. Tools should be well-documented with
+        comprehensive README files that include installation instructions, usage examples,
+        and explanations of how they work and why they are needed. Python tools should use
+        `click` for argument parsing and pathlib for path handling, expose helpful
+        command-line help texts, include a `requirements.txt` file for easy installation
+        and include comprehensive docstrings with doctests where appropriate. Tools should
+        be generic and reusable across multiple projects rather than project-specific (otherwise
+        the tool should be placed in the project-specific directory in a subfolder called
+        `tools/`). Each tool should have its own subdirectory under `tools/` (e.g.,
+        `tools/combine-files/`). Documentation should be placed in the root of the tool directory
+        and should be named `README.md`. Tool READMEs should follow standard documentation
+        practices including table of contents with `<!-- toc -->` markers. The README should
+        consider that users might use Windows, Linux or MacOS and should explain how the tools
+        work in the different environments or which environments it does work under.
     - path: "project-*/**"
       instructions: >-
         Each example project for the FixedIT Data Agent should be self-contained and

@@ -33,7 +33,7 @@ flowchart TD
     E0 -->|alerting_state_metric| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
     E01 --> E["🚨 Event Output<br/>Alert messages"]
 
-    D -->|alerting_frame| E1["config_process_rate_limit.conf:<br/>Rate limit to 1 message per second<br/>using Starlark state"]
+    D -->|alerting_frame| E1["config_process_rate_limit.conf:<br/>Limit to max one message per second and only in debug mode"]
     E1 -->|rate_limited_alert_frame| F["config_process_overlay_transform.conf:<br/>Recalculate coordinates for overlay visualization"]
     F -->|overlay_frame| G["📺 config_output_overlay.conf:<br/>Overlay Manager with the outputs.exec plugin and overlay_manager.sh"]
     X4["Configuration variables:<br/>VAPIX_USERNAME<br/>VAPIX_PASSWORD<br/>HELPER_FILES_DIR<br/>VAPIX_IP<br/>TELEGRAF_DEBUG<br/>FONT_SIZE"] --> G
@@ -274,12 +274,11 @@ Filters detection frames based on the configured alert threshold. Only detection
 
 ### config_process_rate_limit.conf
 
-Rate limits messages to protect the overlay API from being overloaded. This processor:
+Rate limits messages to protect the overlay API from being overloaded and only allows messages through in debug mode. This processor:
 
+- Only allows messages through when `TELEGRAF_DEBUG` is set to `true`
 - Uses system time (not message timestamps) to enforce rate limiting
 - Only allows one message per second to pass through
-- Drops messages that arrive too soon after the last one
-- Maintains state using Starlark to track the last update time
 
 ### config_process_overlay_transform.conf
 

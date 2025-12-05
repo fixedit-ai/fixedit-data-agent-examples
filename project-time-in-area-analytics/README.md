@@ -274,12 +274,11 @@ Filters detection frames based on the configured alert threshold. Only detection
 
 ### config_process_rate_limit.conf
 
-Rate limits messages to protect the overlay API from being overloaded. This processor:
+Rate limits messages to protect the overlay API from being overloaded and only allows messages through in debug mode. This processor:
 
+- Only allows messages through when `TELEGRAF_DEBUG` is set to `true`
 - Uses system time (not message timestamps) to enforce rate limiting
 - Only allows one message per second to pass through
-- Drops messages that arrive too soon after the last one
-- Maintains state using Starlark to track the last update time
 
 ### config_process_overlay_transform.conf
 

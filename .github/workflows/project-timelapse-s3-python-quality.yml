@@ -22,47 +22,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Run Python Quality Check
+        uses: ./.github/actions/python-quality-check
         with:
-          python-version: "3.13"
-
-      - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install \
-            black==25.1.0 \
-            flake8==7.3.0 \
-            isort==6.0.1 \
-            mypy==1.17.1 \
-            pylint==3.3.7 \
-            types-tqdm==4.67.0.20250516 \
-            types-boto3==1.40.4 \
-            types-Pillow==10.2.0.20240822
-
-      - name: Install project requirements
-        run: |
-          pip install -r requirements.txt
-
-      - name: Run flake8
-        run: |
-          # E203: whitespace before ':' (conflicts with black)
-          # W503: line break before binary operator (conflicts with black)
-          flake8 . --max-line-length=100 --extend-ignore=E203,W503
-
-      - name: Run mypy
-        run: |
-          mypy .
-
-      - name: Run pylint
-        run: |
+          working-directory: project-timelapse-s3/test_scripts
+          additional-types: types-tqdm==4.67.0.20250516 types-boto3==1.40.4 types-Pillow==10.2.0.20240822
           # Disable E1101 for OpenCV false positives (no-member errors for cv2)
-          pylint *.py --disable=E1101
-
-      - name: Run isort
-        run: |
-          isort --check-only --diff .
-
-      - name: Run black
-        run: |
-          black --check --diff .
+          pylint-options: --disable=E1101

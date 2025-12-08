@@ -1,0 +1,25 @@
+# ========================================
+# From: test_path_variables.conf
+# ========================================
+
+# Test path variables in script references
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+[[outputs.execd]]
+  command = ["sh", "-c", '''
+tmpfile=$(mktemp)
+trap 'rm -f "$tmpfile"' EXIT
+openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >"$tmpfile"
+IyEvYmluL3NoCmVjaG8gIlByb2Nlc3NpbmcgZGF0YSIKY2F0Cgo=
+FIXEDIT_SCRIPT_EOF
+sh "$tmpfile" "arg1"''']
+
+[[outputs.file]]
+  files = ["stdout"]
+

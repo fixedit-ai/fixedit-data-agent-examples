@@ -31,10 +31,10 @@ This script is kept generic and should work for any project.
 
 ## Installation
 
-The script requires Python and the `click` library:
+The script requires Python and the dependencies in `requirements.txt`:
 
 ```bash
-pip install click
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -220,6 +220,10 @@ sh "$tmpfile"''']
 The script is base64-encoded to avoid any escaping issues. The temp file approach preserves stdin for the Telegraf data (important for output plugins). The `openssl base64 -d` command is used instead of the `base64` command since `base64` doesn't exist on Axis devices.
 
 **Important**: This works well for `execd` plugins since unpacking only happens once during startup, but might introduce overhead on `exec` plugins since they would be unpacked for every metric passed to them.
+
+## Generation of TOML Files
+
+We are intentionally not using any library to dump the modified TOML files. Instead we do string manipulation to build the final TOML file. The reasoning for this is that we want to introduce as little change as possible when translating the original TOML files to the combined TOML file (with scripts inlined). Using a TOML library to write the file would rewrite every single line, and a bug in that logic could be introduced anywhere in the generated files. By doing manual string manipulation, we can guarantee that the only lines that are changed are the ones inlining scripts. We use the `tomlkit` library for parsing TOML files since that is a style-preserving parser which makes it easier to modify selected lines in the toml without rewriting the entire file.
 
 ## Known Issues
 

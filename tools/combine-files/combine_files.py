@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import click
+import tomlkit
 
 
 def find_file(filename, root_path):
@@ -49,45 +50,60 @@ def find_file(filename, root_path):
     return None
 
 
-def read_file_content(file_path):
-    """
-    Read file content, handling encoding issues.
 
-    Attempts to read the file as UTF-8 text. If that fails due to encoding
-    issues, falls back to binary mode and decodes with error replacement.
+
+def expand_default_values(path_str, path_vars):
+    """
+    Expand ${VAR:-default} patterns in a path string.
+
+    Replaces patterns like ${VAR:-default} with the value from path_vars if
+    VAR exists, otherwise uses the default value.
 
     Args:
-        file_path: Path to the file to read (Path object or string)
+        path_str: Path string that may contain default value patterns (string)
+        path_vars: Dictionary mapping variable names to their values (dict)
 
     Returns:
-        String content of the file
+        Path string with default value patterns expanded (string)
 
     Example:
-        >>> from pathlib import Path
-        >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as tmpdir:
-        ...     test_file = Path(tmpdir) / "test.txt"
-        ...     _ = test_file.write_text("Hello, world!")
-        ...     content = read_file_content(test_file)
-        ...     content == "Hello, world!"
-        True
+        >>> expand_default_values("${VAR:-default.sh}", {})
+        'default.sh'
 
-        >>> # Test binary fallback with invalid UTF-8
-        >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as tmpdir:
-        ...     test_file = Path(tmpdir) / "test.bin"
-        ...     _ = test_file.write_bytes(bytes([0xff, 0xfe, 0x00, 0x01]))
-        ...     content = read_file_content(test_file)
-        ...     len(content) > 0  # Should decode with replacement characters
-        True
+        >>> expand_default_values("${VAR:-default.sh}", {"VAR": "custom.sh"})
+        'custom.sh'
+
+        >>> expand_default_values("${VAR:-default.sh}", {"OTHER": "value"})
+        'default.sh'
+
+        >>> expand_default_values("${DIR:-scripts}/${FILE:-test.sh}", {})
+        'scripts/test.sh'
+
+        >>> expand_default_values("${DIR:-scripts}/${FILE:-test.sh}", {"DIR": "custom"})
+        'custom/test.sh'
+
+        >>> expand_default_values("${DIR:-scripts}/${FILE:-test.sh}", {"FILE": "run.sh"})
+        'scripts/run.sh'
+
+        >>> expand_default_values("${DIR:-scripts}/${FILE:-test.sh}", {"DIR": "custom", "FILE": "run.sh"})
+        'custom/run.sh'
+
+        >>> expand_default_values("no_variables.sh", {})
+        'no_variables.sh'
+
+        >>> expand_default_values("${VAR}/file.sh", {})
+        '${VAR}/file.sh'
     """
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except UnicodeDecodeError:
-        # Fallback to binary mode if UTF-8 fails
-        with open(file_path, "rb") as f:
-            return f.read().decode("utf-8", errors="replace")
+    var_default_pattern = r"\$\{([^:}]+):-([^}]+)\}"
+
+    def replace_default(match):
+        var_name = match.group(1)
+        default_value = match.group(2)
+        if path_vars and var_name in path_vars:
+            return path_vars[var_name]
+        return default_value
+
+    return re.sub(var_default_pattern, replace_default, path_str)
 
 
 def expand_path_variables(path_str, path_vars):
@@ -130,26 +146,14 @@ def expand_path_variables(path_str, path_vars):
         >>> expand_path_variables("${VAR1}/${VAR2:-default.sh}", {"VAR1": "scripts", "VAR2": "custom.sh"})
         'scripts/custom.sh'
     """
-    if not path_vars:
-        return path_str
-
-    result = path_str
-
-    # First, handle ${VAR:-default} patterns - use default value if VAR not in path_vars
-    var_default_pattern = r"\$\{([^:}]+):-([^}]+)\}"
-
-    def replace_default(match):
-        var_name = match.group(1)
-        default_value = match.group(2)
-        if var_name in path_vars:
-            return path_vars[var_name]
-        return default_value
-
-    result = re.sub(var_default_pattern, replace_default, result)
+    # First, handle ${VAR:-default} patterns (always process these regardless of path_vars
+    # since we should still expand default values even if we don't have any values specified)
+    result = expand_default_values(path_str, path_vars)
 
     # Then, replace remaining ${VAR} patterns with their values
-    for variable_name, variable_value in path_vars.items():
-        result = result.replace(f"${{{variable_name}}}", variable_value)
+    if path_vars:
+        for variable_name, variable_value in path_vars.items():
+            result = result.replace(f"${{{variable_name}}}", variable_value)
 
     return result
 
@@ -222,6 +226,413 @@ def resolve_script_path(path_str, file_path_root, path_vars):
     return find_file(expanded_path, file_path_root)
 
 
+def find_matching_lines(config_content, pattern):
+    """
+    Find all regex pattern matches in config content and return their line ranges.
+
+    Searches the entire content for pattern matches (which may span multiple lines)
+    and returns the line numbers where each match starts and ends.
+
+    Args:
+        config_content: The config file content to search (string)
+        pattern: Compiled regex pattern to search for (re.Pattern)
+
+    Returns:
+        List of tuples: (start_line, end_line)
+        - start_line: 0-based line number where match starts (int)
+        - end_line: 0-based line number where match ends (int)
+
+    Example:
+        >>> import re
+        >>> pattern = re.compile(r'name\s*=\s*"[^"]+"')
+        >>> config = 'name = "test"'
+        >>> find_matching_lines(config, pattern)
+        [(0, 0)]
+
+        >>> import re
+        >>> pattern = re.compile(r'items\s*=\s*\\[[^\\]]+\\]', re.MULTILINE | re.DOTALL)
+        >>> config = 'test = "hello"\\nitems = [\\n  "a",\\n  "b"\\n]'
+        >>> find_matching_lines(config, pattern)
+        [(1, 4)]
+
+        >>> import re
+        >>> pattern = re.compile(r'name\s*=\s*"[^"]+"')
+        >>> config = '# name = "commented"'
+        >>> find_matching_lines(config, pattern)
+        [(0, 0)]
+
+        >>> import re
+        >>> pattern = re.compile(r'name\s*=\s*"[^"]+"')
+        >>> config = 'name = "first"\\nother = "value"\\nname = "second"'
+        >>> result = find_matching_lines(config, pattern)
+        >>> len(result)
+        2
+        >>> result[0]  # first match
+        (0, 0)
+        >>> result[1]  # second match
+        (2, 2)
+
+        >>> import re
+        >>> pattern = re.compile(r'count\s*=\s*\\d+')
+        >>> config = 'test = "hello"\\ncount = 42\\nname = "end"'
+        >>> find_matching_lines(config, pattern)
+        [(1, 1)]
+    """
+    results = []
+    
+    # Find all matches in the entire content (may span multiple lines)
+    for match in pattern.finditer(config_content):
+        match_start = match.start()
+        match_end = match.end()
+        
+        # Calculate which line numbers this match spans
+        # Count newlines before the match to get start line
+        start_line = config_content[:match_start].count('\n')
+        end_line = config_content[:match_end].count('\n')
+        
+        results.append((start_line, end_line))
+    
+    return results
+
+
+def _find_all_keys_in_toml(data, key_name):
+    """
+    Find all occurrences of a key in TOML structure.
+    
+    Searches at:
+    1. Top level: key = value
+    2. Inside table arrays: [[table.subtable]] with key = value
+    
+    Args:
+        data: The TOML data structure (dict from tomlkit.parse)
+        key_name: The key name to search for (e.g., "script", "command")
+    
+    Returns:
+        List of values found (may be empty)
+    
+    Examples:
+        >>> _find_all_keys_in_toml({"name": "value"}, "name")
+        ['value']
+        
+        >>> data = {"processors": {"starlark": [{"script": "test1.star"}, {"script": "test2.star"}]}}
+        >>> _find_all_keys_in_toml(data, "script")
+        ['test1.star', 'test2.star']
+        
+        >>> data = {"outputs": {"execd": [{"command": ["test.sh"]}]}}
+        >>> _find_all_keys_in_toml(data, "command")
+        [['test.sh']]
+        
+        >>> data = {"processors": {"starlark": [{"script": "a.star"}]}, "outputs": {"execd": [{"command": ["b.sh"]}]}}
+        >>> _find_all_keys_in_toml(data, "script")
+        ['a.star']
+    """
+    results = []
+    
+    # Check top level
+    if key_name in data:
+        results.append(data[key_name])
+    
+    # Check inside table arrays: [[table.subtable]]
+    # Structure: {"table": {"subtable": [{"key": value}, ...]}}
+    for table_value in data.values():
+        if not isinstance(table_value, dict):
+            continue
+        
+        # Iterate through subtables (e.g., "starlark", "execd")
+        for subtable_value in table_value.values():
+            if not isinstance(subtable_value, list):
+                continue
+            
+            # Iterate through array elements (the [[...]] entries)
+            for item in subtable_value:
+                if isinstance(item, dict) and key_name in item:
+                    results.append(item[key_name])
+    
+    return results
+
+
+def _extract_normalized_value(key_name, parsed_value_raw):
+    """
+    Get the style-preserved TOML value string for use in regex matching.
+    
+    Uses tomlkit.dumps() which is STYLE-PRESERVING: multi-line arrays stay
+    multi-line, indentation is preserved, etc. This normalized value is used
+    to build a regex pattern for finding the exact key=value in the original
+    config text.
+    
+    For example, if the config has:
+        command = [
+          "test.sh",
+          "arg1"
+        ]
+    
+    The normalized value will preserve that formatting:
+        [\n  "test.sh",\n  "arg1"\n]
+    
+    This allows us to match the exact text from the original config.
+    
+    Args:
+        key_name: The key name
+        parsed_value_raw: The value from tomlkit (preserves style info)
+    
+    Returns:
+        The style-preserved TOML value string (without the key= part)
+    
+    Raises:
+        RuntimeError: If the normalized snippet format is unexpected
+    
+    Examples:
+        >>> # Single-line array
+        >>> config = 'command = ["test.sh", "arg1"]'
+        >>> doc = tomlkit.parse(config)
+        >>> _extract_normalized_value("command", doc["command"])
+        '["test.sh", "arg1"]'
+        
+        >>> # Multi-line array - style is preserved
+        >>> config = 'items = [\\n  1,\\n  2,\\n  3\\n]'
+        >>> doc = tomlkit.parse(config)
+        >>> _extract_normalized_value("items", doc["items"])
+        '[\\n  1,\\n  2,\\n  3\\n]'
+        
+        >>> # Another multi-line example with different indentation preserved
+        >>> config = 'command = [\\n    "test.sh",\\n    "arg1"\\n  ]'
+        >>> doc = tomlkit.parse(config)
+        >>> _extract_normalized_value("command", doc["command"])
+        '[\\n    "test.sh",\\n    "arg1"\\n  ]'
+    """
+    normalized_snippet = tomlkit.dumps({key_name: parsed_value_raw}).strip()
+    key_equals = f"{key_name} = "
+    if not normalized_snippet.startswith(key_equals):
+        raise RuntimeError(
+            f"Internal error: unexpected normalized snippet format: {repr(normalized_snippet)}"
+        )
+    return normalized_snippet[len(key_equals):]
+
+
+def _is_valid_toml_match(config_content, start_pos, end_pos, key_name):
+    """
+    Check if a text snippet is a valid TOML key=value by parsing it.
+    
+    This uses tomlkit to validate the match, which properly handles:
+    - Comments (ignores them)
+    - Strings containing # characters
+    - All TOML syntax variations
+    
+    Args:
+        config_content: The full config content
+        start_pos: Start position of the snippet
+        end_pos: End position of the snippet
+        key_name: The key name we're looking for
+    
+    Returns:
+        True if the snippet is valid TOML containing the key, False otherwise
+    
+    Examples:
+        >>> config = 'script = "test.star"'
+        >>> _is_valid_toml_match(config, 0, len(config), "script")
+        True
+        
+        >>> config = '# script = "test.star"'
+        >>> _is_valid_toml_match(config, 0, len(config), "script")
+        False
+        
+        >>> config = 'script = "file#with#hash.star"'
+        >>> _is_valid_toml_match(config, 0, len(config), "script")
+        True
+        
+        >>> config = '  script = "test.star"'
+        >>> _is_valid_toml_match(config, 2, len(config), "script")
+        True
+    """
+    snippet = config_content[start_pos:end_pos]
+    try:
+        doc = tomlkit.parse(snippet)
+        return key_name in doc
+    except Exception:
+        # If it doesn't parse, it's not valid (e.g., it's commented out)
+        return False
+
+
+def _unwrap_tomlkit_value(value):
+    """
+    Unwrap tomlkit wrapper types to regular Python objects.
+    
+    Args:
+        value: The tomlkit value
+    
+    Returns:
+        Regular Python object (str, int, list, dict, etc.)
+    
+    Examples:
+        >>> doc = tomlkit.parse('name = "test"')
+        >>> wrapped = doc['name']
+        >>> _unwrap_tomlkit_value(wrapped)
+        'test'
+        
+        >>> doc = tomlkit.parse('items = [1, 2, 3]')
+        >>> wrapped = doc['items']
+        >>> _unwrap_tomlkit_value(wrapped)
+        [1, 2, 3]
+        
+        >>> doc = tomlkit.parse('count = 42')
+        >>> wrapped = doc['count']
+        >>> _unwrap_tomlkit_value(wrapped)
+        42
+    """
+    if hasattr(value, 'unwrap'):
+        return value.unwrap()
+    else:
+        # For simple types that don't have unwrap(), convert to appropriate Python type
+        return dict(value) if isinstance(value, dict) else value
+
+
+def _find_key_value_in_text(config_content, key_name, normalized_value, already_found_positions):
+    """
+    Find key=value occurrences in the config text.
+    
+    Uses regex for high-sensitivity detection, then validates with tomlkit
+    to filter out false positives (e.g., commented lines, strings with #).
+    
+    Args:
+        config_content: The config file content
+        key_name: The key name to search for
+        normalized_value: The normalized value string
+        already_found_positions: Set of positions already found (to avoid duplicates)
+    
+    Returns:
+        List of tuples: (snippet, start_pos, end_pos)
+    """
+    # High-sensitivity regex: matches key<whitespace>=<whitespace>value
+    # We use tomlkit validation below to filter out false positives
+    pattern = re.compile(
+        rf'^([ \t]*)({re.escape(key_name)})([ \t]*)=([ \t]*)({re.escape(normalized_value)})',
+        re.MULTILINE | re.DOTALL  # ^ matches line start, value might span multiple lines
+    )
+    
+    matches = []
+    for match in pattern.finditer(config_content):
+        snippet_start = match.start() + len(match.group(1))
+        snippet_end = match.end()
+        
+        # Check if we already found this position (avoid duplicates)
+        if snippet_start in already_found_positions:
+            continue
+        
+        # Validate with tomlkit: this filters out comments and handles complex cases
+        # like # inside strings
+        if not _is_valid_toml_match(config_content, snippet_start, snippet_end, key_name):
+            continue
+        
+        key_value_snippet = config_content[snippet_start:snippet_end]
+        matches.append((key_value_snippet, snippet_start, snippet_end))
+    
+    return matches
+
+
+def find_valid_toml_matches(config_content, key_name):
+    """
+    Find a TOML key=value pair in config content using tomlkit for parsing.
+
+    Uses tomlkit to parse the entire config, which properly handles:
+    - Complex nested values (arrays, inline tables, etc.)
+    - Multi-line values
+    - All TOML syntax variations
+    - Comments (they are naturally ignored by the parser)
+    
+    Uses tomlkit.dumps() to get a normalized representation, then uses regex to
+    find the original key=value in the config while preserving any excessive
+    whitespace around the `=` sign. This allows simple string replacement while
+    maintaining the user's original formatting.
+
+    Args:
+        config_content: The config file content to search (string)
+        key_name: The TOML key name to search for and extract (string)
+
+    Returns:
+        List of tuples: [(original_snippet, parsed_value, start_pos, end_pos), ...] 
+        Empty list if key not found. Each tuple contains:
+        - original_snippet: The exact key=value text from the original config (string)
+        - parsed_value: The parsed value for key_name from tomlkit
+        - start_pos: Starting position of the snippet in config_content (int)
+        - end_pos: Ending position of the snippet in config_content (int)
+
+    Raises:
+        ValueError: If the config content is not valid TOML
+
+    Example:
+        >>> config = '[[processors.starlark]]\\n  script = "test.star"'
+        >>> results = find_valid_toml_matches(config, "script")
+        >>> len(results)
+        1
+        >>> results[0][0]  # original snippet
+        'script = "test.star"'
+        >>> results[0][1]  # parsed value
+        'test.star'
+
+        >>> config = '# [[processors.starlark]]\\n#   script = "commented.star"'
+        >>> find_valid_toml_matches(config, "script")
+        []
+
+        >>> config = '[[outputs.execd]]\\n  command = [\\n    "helper.sh",\\n    "arg1"\\n  ]'
+        >>> results = find_valid_toml_matches(config, "command")
+        >>> results[0][0]  # original snippet (style-preserved)
+        'command = [\\n    "helper.sh",\\n    "arg1"\\n  ]'
+        >>> results[0][1]  # parsed_value
+        ['helper.sh', 'arg1']
+
+        >>> config = '# [[processors.starlark]]\\n#   script = "old.star"\\n[[processors.starlark]]\\n  script = "new.star"'
+        >>> results = find_valid_toml_matches(config, "script")
+        >>> results[0][0]  # only the real one, not commented
+        'script = "new.star"'
+        >>> results[0][1]
+        'new.star'
+
+        >>> config = '[[outputs.execd]]\\n  command       =       ["test.sh"]'
+        >>> results = find_valid_toml_matches(config, "command")
+        >>> results[0][0]  # preserves excessive whitespace
+        'command       =       ["test.sh"]'
+
+        >>> config = '[[processors.starlark]]\\n  script = "a.star"\\n[[processors.starlark]]\\n  script = "b.star"'
+        >>> results = find_valid_toml_matches(config, "script")
+        >>> len(results)  # finds multiple occurrences
+        2
+        >>> results[0][1]
+        'a.star'
+        >>> results[1][1]
+        'b.star'
+
+        >>> config = '[[processors.starlark]]\\n  script = "file#with#hashes.star"'
+        >>> results = find_valid_toml_matches(config, "script")
+        >>> results[0][1]  # handles # inside strings correctly
+        'file#with#hashes.star'
+    """
+    # Parse the config with tomlkit to get the value
+    try:
+        doc = tomlkit.parse(config_content)
+    except tomlkit.exceptions.TOMLKitError as e:
+        raise ValueError(f"Invalid TOML syntax in config: {e}") from e
+    
+    # Recursively search for all occurrences of the key in the parsed document
+    parsed_values_raw = _find_all_keys_in_toml(doc, key_name)
+    if not parsed_values_raw:
+        return []
+    
+    results = []
+    already_found_positions = set()
+    
+    # For each value found, locate it in the original config
+    for parsed_value_raw in parsed_values_raw:
+        normalized_value = _extract_normalized_value(key_name, parsed_value_raw)
+        matches = _find_key_value_in_text(config_content, key_name, normalized_value, already_found_positions)
+        
+        for key_value_snippet, snippet_start, snippet_end in matches:
+            parsed_value = _unwrap_tomlkit_value(parsed_value_raw)
+            results.append((key_value_snippet, parsed_value, snippet_start, snippet_end))
+            already_found_positions.add(snippet_start)
+    
+    return results
+
+
 def inline_starlark_script(config_content, file_path_root, path_vars):
     """
     Replace external Starlark script references with inline source code.
@@ -286,14 +697,26 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
         ...         inline_starlark_script(config, tmpdir, {})
         ...     except SystemExit:
         ...         pass  # Expected to exit with error
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     script_file = Path(tmpdir) / "old.star"
+        ...     _ = script_file.write_text("old content")
+        ...     config = '# script = "old.star"'
+        ...     result = inline_starlark_script(config, tmpdir, {})
+        ...     # Should NOT inline the commented reference - it should remain unchanged
+        ...     result
+        '# script = "old.star"'
     """
-    # Pattern to match: script = "any/path/with/variables"
-    # Matches the entire quoted path string, which may contain any number of variables
-    pattern = r'script\s*=\s*"([^"]+)"'
-
-    def replace_script(match):
-        path_str = match.group(1)  # The entire path string (may contain variables)
-
+    # Find all script references
+    matches = find_valid_toml_matches(config_content, "script")
+    
+    if not matches:
+        return config_content
+    
+    # Process matches in reverse order (from end to start) to avoid position shifts
+    for original_snippet, path_str, start_pos, end_pos in reversed(matches):
         script_path = resolve_script_path(path_str, file_path_root, path_vars)
 
         if not script_path:
@@ -303,8 +726,10 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
             )
             sys.exit(1)
 
-        # Read the script content
-        script_content = read_file_content(script_path)
+        # Read the script content as UTF-8 - this should be safe since we do
+        # not expect binary data in Starlark files.
+        with open(script_path, encoding="utf-8") as f:
+            script_content = f.read()
 
         # Validate that script doesn't contain triple single quotes which would break the inline format
         if "'''" in script_content:
@@ -314,10 +739,11 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
             )
             sys.exit(1)
 
-        # Replace with inline source
-        return f"source = '''\n{script_content}'''"
-
-    return re.sub(pattern, replace_script, config_content)
+        # Replace using position-based replacement (more reliable than string.replace)
+        replacement = f"source = '''\n{script_content}'''"
+        config_content = config_content[:start_pos] + replacement + config_content[end_pos:]
+    
+    return config_content
 
 
 def inline_shell_script(config_content, file_path_root, path_vars):
@@ -392,18 +818,47 @@ def inline_shell_script(config_content, file_path_root, path_vars):
         ...     result = inline_shell_script(config, str(Path(tmpdir)), {"HELPER_FILES_DIR": "scripts"})
         ...     "openssl base64 -d" in result
         True
+
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     script_file = Path(tmpdir) / "old.sh"
+        ...     _ = script_file.write_text("echo old")
+        ...     config = '# command = ["old.sh"]'
+        ...     result = inline_shell_script(config, tmpdir, {})
+        ...     # Should NOT inline the commented reference - it should remain unchanged
+        ...     result
+        '# command = ["old.sh"]'
     """
 
-    def replace_with_inline(script_path, original):
-        """Replace a script reference with inline base64-encoded version."""
-        if not script_path:
-            return original
+    def replace_with_inline(script_path, script_args):
+        """Replace a script reference with inline base64-encoded version.
+        
+        Args:
+            script_path: Path to the script file
+            script_args: List of additional arguments to pass to the script (may be empty)
+        
+        Returns:
+            The inline command string with base64-encoded script
+        """
+        # Read the script content as binary (we don't care about the content, we
+        # will base64 encode it anyway)
+        with open(script_path, "rb") as f:
+            script_content = f.read()
 
-        # Read the script content
-        script_content = read_file_content(script_path)
+        # Encode to base64 (and decode the bytes as ASCII - we know this is safe
+        # since base64 only contains ASCII characters)
+        script_base64 = base64.b64encode(script_content).decode("ascii")
 
-        # Encode to base64
-        script_base64 = base64.b64encode(script_content.encode("utf-8")).decode("ascii")
+        # Build the script invocation with arguments
+        # Arguments need to be properly quoted for shell safety
+        if script_args:
+            # Quote each argument for safe shell execution
+            # TODO: Write a test for this...
+            quoted_args = " ".join(f'"{arg}"' for arg in script_args)
+            script_invocation = f'sh "$tmpfile" {quoted_args}'
+        else:
+            script_invocation = 'sh "$tmpfile"'
 
         # Create the inline command using a few tricks:
         # 1. We use a temp file approach so that we preserves stdin for the Telegraf data.
@@ -424,20 +879,33 @@ def inline_shell_script(config_content, file_path_root, path_vars):
             f"openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >\"$tmpfile\"\n"
             f"{script_base64}\n"
             f"FIXEDIT_SCRIPT_EOF\n"
-            f"sh \"$tmpfile\"''']\n"
+            f"{script_invocation}''']\n"
         )
 
         return inline_command.rstrip("\n")  # Remove trailing newline
 
-    # Pattern to match: command = ["any/path/with/variables"]
-    # Matches the entire quoted path string, which may contain any number of variables
-    # expand_path_variables handles both ${VAR} and ${VAR:-default} patterns
-    # Handles both single-line and multi-line command arrays
-    pattern = r'command\s*=\s*\[([^\]]*?)"([^"]+)"([^\]]*?)\]'
+    # Find all command references
+    matches = find_valid_toml_matches(config_content, "command")
+    
+    if not matches:
+        return config_content
+    
+    # Process matches in reverse order (from end to start) to avoid position shifts
+    for original_snippet, command_array, start_pos, end_pos in reversed(matches):
+        # Validate that we have at least one element
+        if not command_array or not isinstance(command_array, list):
+            click.echo(
+                "Error: Invalid command array",
+                err=True,
+            )
+            sys.exit(1)
 
-    def replace_command(match):
-        """Handle script references with variable expansion."""
-        path_str = match.group(2)  # The entire path string (may contain variables)
+        # Extract script path and arguments. E.g. the line might look like:
+        # command = ["${HELPER_FILES_DIR}/filename.sh", "arg1", "arg2"]
+        # or it might look like:
+        # command = ["filename.sh"]
+        path_str = command_array[0]
+        script_args = command_array[1:] if len(command_array) > 1 else []
 
         # Expand variables to determine the actual file path
         expanded_path = expand_path_variables(path_str, path_vars)
@@ -449,21 +917,22 @@ def inline_shell_script(config_content, file_path_root, path_vars):
                 fg="yellow",
                 err=True,
             )
-            return match.group(0)  # Return unchanged
+            continue  # Skip this match but continue processing others
 
         script_path = resolve_script_path(path_str, file_path_root, path_vars)
 
-        if script_path:
-            return replace_with_inline(script_path, match.group(0))
-        click.echo(
-            f"Error: Could not find shell script '{path_str}' in root path '{file_path_root}'",
-            err=True,
-        )
-        sys.exit(1)
+        if not script_path:
+            click.echo(
+                f"Error: Could not find shell script '{path_str}' in root path '{file_path_root}'",
+                err=True,
+            )
+            sys.exit(1)
 
-    content = re.sub(pattern, replace_command, config_content)
-
-    return content
+        # Replace using position-based replacement (more reliable than string.replace)
+        replacement = replace_with_inline(script_path, script_args)
+        config_content = config_content[:start_pos] + replacement + config_content[end_pos:]
+    
+    return config_content
 
 
 def combine_configs(
@@ -511,7 +980,10 @@ def combine_configs(
             click.echo(f"Error: Config file not found: {config_file}", err=True)
             sys.exit(1)
 
-        content = read_file_content(config_path)
+        # Read config file as UTF-8 - this should be safe since we do not expect
+        # binary data in config files.
+        with open(config_path, encoding="utf-8") as f:
+            content = f.read()
 
         # Inline Starlark scripts if requested
         if inline_starlark:
@@ -524,7 +996,7 @@ def combine_configs(
         # Add a header comment for each config file (with relative path if possible)
         if combined_content:
             combined_content.append("\n")
-        combined_content.append(f"# ========================================\n")
+        combined_content.append("# ========================================\n")
 
         # Try to make path relative to file_path_root
         try:
@@ -536,7 +1008,7 @@ def combine_configs(
             # Path is not relative to root_path or root_path is None, use the original path
             combined_content.append(f"# From: {config_file}\n")
 
-        combined_content.append(f"# ========================================\n\n")
+        combined_content.append("# ========================================\n\n")
         combined_content.append(content)
 
     return "".join(combined_content)

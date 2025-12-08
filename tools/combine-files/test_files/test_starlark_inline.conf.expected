@@ -1,0 +1,15 @@
+# ========================================
+# From: test_starlark_inline.conf
+# ========================================
+
+# Test Starlark inlining
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+[[outputs.file]]
+  files = ["stdout"]

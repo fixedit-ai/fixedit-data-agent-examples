@@ -1,0 +1,19 @@
+# ========================================
+# From: test_comments.conf
+# ========================================
+
+# This commented reference should NOT be inlined
+# [[processors.starlark]]
+#   script = "scripts/hello.star"
+
+# This real reference SHOULD be inlined
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+[[outputs.file]]
+  files = ["stdout"]

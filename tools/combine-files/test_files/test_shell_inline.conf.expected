@@ -3,6 +3,10 @@
 # ========================================
 
 # Test shell script inlining
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
 [[outputs.execd]]
   command = ["sh", "-c", '''
 tmpfile=$(mktemp)

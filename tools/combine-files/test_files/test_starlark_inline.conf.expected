@@ -3,6 +3,10 @@
 # ========================================
 
 # Test Starlark inlining
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
 [[processors.starlark]]
   source = '''
 def apply(metric):

@@ -2,6 +2,10 @@
 # From: test_multiline.conf
 # ========================================
 
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
 [[outputs.execd]]
   command = ["sh", "-c", '''
 tmpfile=$(mktemp)

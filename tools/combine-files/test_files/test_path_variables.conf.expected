@@ -3,6 +3,20 @@
 # ========================================
 
 # Test path variables in script references
+# Tests both ${VAR} and $VAR syntax
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+# Test $VAR syntax (without curly braces)
 [[processors.starlark]]
   source = '''
 def apply(metric):

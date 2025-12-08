@@ -1,16 +1,18 @@
 # ========================================
-# From: test_comments.conf
+# From: test_multiline_variable.conf
 # ========================================
 
-# This commented reference should NOT be inlined
-# [[processors.starlark]]
-#   script = "scripts/hello.star"
+# Test that multi-line variable expansion doesn't break subsequent inlining
+[agent]
+  interval = "10s"
+  flush_interval = "10s"
+  # This variable expands to a multi-line string value
+  description = ${MULTILINE_DESC}
 
 [[inputs.cpu]]
   percpu = false
   totalcpu = true
 
-# This real reference SHOULD be inlined
 [[processors.starlark]]
   source = '''
 def apply(metric):
@@ -21,3 +23,4 @@ def apply(metric):
 
 [[outputs.file]]
   files = ["stdout"]
+

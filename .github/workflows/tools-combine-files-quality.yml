@@ -52,4 +52,3 @@ jobs:
       - name: Run integration tests
         run: |
           python test_files/run_tests.py
-

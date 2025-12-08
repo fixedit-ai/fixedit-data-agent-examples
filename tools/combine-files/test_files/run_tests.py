@@ -164,6 +164,12 @@ def main():
             "--inline-shell-script",
         ),
         (
+            "Shell script with arguments",
+            "test_script_with_args.conf",
+            "test_script_with_args.conf.expected",
+            "--inline-shell-script",
+        ),
+        (
             "Multiple mixed scripts and commands",
             "test_multiple_mixed.conf",
             "test_multiple_mixed.conf.expected",
@@ -176,7 +182,7 @@ def main():
             "test_path_variables.conf.expected",
             "--inline-starlark",
             "--inline-shell-script",
-            "--expand-path-var",
+            "--temporary-expand-var",
             "SCRIPTS_DIR=scripts",
         ),
         (
@@ -185,6 +191,22 @@ def main():
             "test_default_values.conf.expected",
             "--inline-starlark",
             "--inline-shell-script",
+        ),
+        (
+            "Non-string variables (e.g. boolean)",
+            "test_nonstring_variables.conf",
+            "test_nonstring_variables.conf.expected",
+            "--inline-starlark",
+            "--temporary-expand-var",
+            "TELEGRAF_DEBUG=true",
+        ),
+        (
+            "Multi-line variable expansion",
+            "test_multiline_variable.conf",
+            "test_multiline_variable.conf.expected",
+            "--inline-starlark",
+            "--temporary-expand-var",
+            'MULTILINE_DESC="""\nLine 1\nLine 2\nLine 3\n"""',
         ),
     ]
 

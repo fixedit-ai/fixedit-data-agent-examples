@@ -3,6 +3,10 @@
 # ========================================
 
 # Test multiple shell commands in the same file
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
 [[outputs.execd]]
   command = ["sh", "-c", '''
 tmpfile=$(mktemp)

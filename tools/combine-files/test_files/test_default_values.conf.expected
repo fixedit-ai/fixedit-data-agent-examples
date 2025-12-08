@@ -3,6 +3,10 @@
 # ========================================
 
 # Test default values in script references
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
 [[processors.starlark]]
   source = '''
 def apply(metric):

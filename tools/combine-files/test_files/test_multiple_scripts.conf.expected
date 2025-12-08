@@ -3,6 +3,10 @@
 # ========================================
 
 # Test multiple starlark scripts in the same file
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
 [[processors.starlark]]
   source = '''
 def apply(metric):

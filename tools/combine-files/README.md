@@ -6,7 +6,7 @@ This tool is intended to relieve the pain of having to upload multiple files to 
 
 This script is kept generic and should work for any project.
 
-## Table of Content
+## Table of Contents
 
 <!-- toc -->
 
@@ -14,7 +14,7 @@ This script is kept generic and should work for any project.
 - [Usage](#usage)
   - [Required Options](#required-options)
   - [Optional Options](#optional-options)
-  - [Path Variable Expansion](#path-variable-expansion)
+  - [Temporary Variable Expansion](#temporary-variable-expansion)
   - [Simple Example](#simple-example)
   - [Full Example with All Features](#full-example-with-all-features)
 - [Example: Combining Multiple Files for the Time-in-Area Project](#example-combining-multiple-files-for-the-time-in-area-project)
@@ -55,21 +55,25 @@ python combine_files.py [OPTIONS]
 - `--inline-starlark` - Inline Starlark `.star` files referenced in configs. Replaces `script = "file.star"` with `source = '''...content...'''`
 - `--inline-shell-script` - Inline shell `.sh` scripts referenced in configs using base64 encoding. Replaces `command = ["file.sh"]` with an inline base64-decoded command
 - `--file-path-root <dir>` - Root directory path for finding `.star` and `.sh` files referenced in configs (defaults to current working directory)
-- `--expand-path-var <VAR=value>` - Expand path variables in configs when identifying scripts to inline (can be specified multiple times). Format: `VAR=value`, e.g., `HELPER_FILES_DIR=.`
+- `--temporary-expand-var <VAR=value>` - Temporarily expand variables in configs for TOML parsing and file resolution (can be specified multiple times). Format: `VAR=value`, e.g., `HELPER_FILES_DIR=.`
 
-### Path Variable Expansion
+### Temporary Variable Expansion
 
-The `--expand-path-var` option allows you to substitute variables in your configuration files while the script tried to find them. I.e., it does not substitute any variables in the inlined scripts. This is useful when:
+The `--temporary-expand-var` option allows you to temporarily substitute variables in your configuration files for TOML parsing and file resolution. The variables are NOT substituted in the final output - they remain as-is so they can be resolved at runtime. This is useful when:
 
 - Your configs reference helper files using variables like `${HELPER_FILES_DIR}/script.sh`
 - You want to use different scripts for testing vs production (e.g., `${CONSUMER_SCRIPT:-default.sh}`)
+- Your config contains non-string fields (booleans, integers) that use variables and need valid TOML values to parse correctly
 
-The tool supports two variable patterns:
+The tool supports the following variable patterns:
 
-- `${VAR}` - Simple variable substitution
+- `${VAR}` - Simple variable substitution (bash-style with braces)
+- `$VAR` - Simple variable substitution (shell-style without braces)
 - `${VAR:-default}` - Variable with default value (uses `default` if `VAR` is not defined)
 
-Variables are expanded before the script attempts to find and inline the referenced files. Any variables used in the scripts themselves are left untouched so that they can be resolved at runtime.
+Both `${VAR}` and `$VAR` syntaxes are supported for flexibility. Use the syntax that best fits your configuration style.
+
+Variables are expanded temporarily before the script attempts to parse the TOML and find/inline the referenced files. The original variables are preserved in the output file so they can be resolved at runtime.
 
 ### Simple Example
 
@@ -94,7 +98,7 @@ python combine_files.py \
   --config config2.conf \
   --inline-starlark \
   --inline-shell-script \
-  --expand-path-var HELPER_FILES_DIR=. \
+  --temporary-expand-var HELPER_FILES_DIR=. \
   --file-path-root . \
   --output combined.conf
 ```
@@ -123,7 +127,7 @@ python3 combine_files.py \
   --config $PROJECT_DIR/config_output_events.conf \
   --inline-starlark \
   --inline-shell-script \
-  --expand-path-var HELPER_FILES_DIR=. \
+  --temporary-expand-var HELPER_FILES_DIR=. \
   --file-path-root $PROJECT_DIR \
   --output combined.conf
 ```
@@ -138,7 +142,7 @@ The resulting single file can be uploaded to the FixedIT Data Agent without need
 
 ### Host Testing Configuration
 
-You can also generate a combined configuration for host testing. Note the use of `--expand-path-var` to override the consumer script with a test version:
+You can also generate a combined configuration for host testing. Note the use of `--temporary-expand-var` to override the consumer script with a test version:
 
 ```bash
 export PROJECT_DIR=/path/to/time-in-area-analytics-project
@@ -151,8 +155,8 @@ python3 combine_files.py \
   --config $PROJECT_DIR/test_files/config_output_stdout.conf \
   --inline-starlark \
   --inline-shell-script \
-  --expand-path-var HELPER_FILES_DIR=. \
-  --expand-path-var CONSUMER_SCRIPT=test_files/sample_data_feeder.sh \
+  --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var CONSUMER_SCRIPT=test_files/sample_data_feeder.sh \
   --file-path-root $PROJECT_DIR \
   --output combined_host_test.conf
 ```
@@ -225,8 +229,22 @@ The script is base64-encoded to avoid any escaping issues. The temp file approac
 
 We are intentionally not using any library to dump the modified TOML files. Instead we do string manipulation to build the final TOML file. The reasoning for this is that we want to introduce as little change as possible when translating the original TOML files to the combined TOML file (with scripts inlined). Using a TOML library to write the file would rewrite every single line, and a bug in that logic could be introduced anywhere in the generated files. By doing manual string manipulation, we can guarantee that the only lines that are changed are the ones inlining scripts. We use the `tomlkit` library for parsing TOML files since that is a style-preserving parser which makes it easier to modify selected lines in the toml without rewriting the entire file.
 
-## Known Issues
+## Known Limitations
 
-### No Support for Arguments to Scripts
+### Variable Expansion in Script Arguments
 
-Inlining of shell scripts does currently not support arguments. This is just a question of improving the parser so that we can append the arguments after `sh "$tmpfile"`.
+If you use `--temporary-expand-var` to define a variable (e.g., `--temporary-expand-var MY_VAR=value`), and that same variable appears in a script's command arguments, it will be expanded to the provided value before being passed to the script. This happens because the tool parses the expanded version of the configuration to locate scripts for inlining.
+
+For example:
+
+```bash
+# Config has: command = ["script.sh", "$TELEGRAF_DEBUG"]
+# Running with: --temporary-expand-var TELEGRAF_DEBUG=false
+# Result: The argument becomes `false` instead of "$TELEGRAF_DEBUG"
+```
+
+**Workaround:** Read the environment variables in your script arguments using the `env` command or use a different variable name in your script arguments than those you define with `--temporary-expand-var`. Variables not defined in `--temporary-expand-var` are preserved as-is and will be expanded by the shell at runtime.
+
+### General Note
+
+This script is relatively early in its development, so we recommend validating the generated files before using them in production.

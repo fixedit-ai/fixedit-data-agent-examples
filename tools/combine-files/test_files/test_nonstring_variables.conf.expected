@@ -1,0 +1,27 @@
+# ========================================
+# From: test_nonstring_variables.conf
+# ========================================
+
+# Test config with variables in non-string fields (like booleans)
+# This should not cause errors even though debug = ${TELEGRAF_DEBUG} is invalid TOML
+
+[agent]
+  # This is a boolean variable, so it needs to be expanded to
+  # make valid TOML.
+  debug = ${TELEGRAF_DEBUG}
+
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+[[outputs.file]]
+  files = ["stdout"]
+

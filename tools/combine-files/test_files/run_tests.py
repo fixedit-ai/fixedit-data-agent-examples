@@ -4,8 +4,8 @@
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from difflib import unified_diff
+from pathlib import Path
 
 
 def run_test(

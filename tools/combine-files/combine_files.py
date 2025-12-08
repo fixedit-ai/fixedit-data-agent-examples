@@ -50,10 +50,8 @@ def find_file(filename, root_path):
     return None
 
 
-
-
 def expand_default_values(path_str, path_vars):
-    """
+    r"""
     Expand ${VAR:-default} patterns in a path string.
 
     Replaces patterns like ${VAR:-default} with the value from path_vars if
@@ -227,7 +225,7 @@ def resolve_script_path(path_str, file_path_root, path_vars):
 
 
 def find_matching_lines(config_content, pattern):
-    """
+    r"""
     Find all regex pattern matches in config content and return their line ranges.
 
     Searches the entire content for pattern matches (which may span multiple lines)
@@ -250,8 +248,8 @@ def find_matching_lines(config_content, pattern):
         [(0, 0)]
 
         >>> import re
-        >>> pattern = re.compile(r'items\s*=\s*\\[[^\\]]+\\]', re.MULTILINE | re.DOTALL)
-        >>> config = 'test = "hello"\\nitems = [\\n  "a",\\n  "b"\\n]'
+        >>> pattern = re.compile(r'items\s*=\s*\[[^\]]+\]', re.MULTILINE | re.DOTALL)
+        >>> config = 'test = "hello"\nitems = [\n  "a",\n  "b"\n]'
         >>> find_matching_lines(config, pattern)
         [(1, 4)]
 
@@ -263,7 +261,7 @@ def find_matching_lines(config_content, pattern):
 
         >>> import re
         >>> pattern = re.compile(r'name\s*=\s*"[^"]+"')
-        >>> config = 'name = "first"\\nother = "value"\\nname = "second"'
+        >>> config = 'name = "first"\nother = "value"\nname = "second"'
         >>> result = find_matching_lines(config, pattern)
         >>> len(result)
         2
@@ -273,132 +271,132 @@ def find_matching_lines(config_content, pattern):
         (2, 2)
 
         >>> import re
-        >>> pattern = re.compile(r'count\s*=\s*\\d+')
-        >>> config = 'test = "hello"\\ncount = 42\\nname = "end"'
+        >>> pattern = re.compile(r'count\s*=\s*\d+')
+        >>> config = 'test = "hello"\ncount = 42\nname = "end"'
         >>> find_matching_lines(config, pattern)
         [(1, 1)]
     """
     results = []
-    
+
     # Find all matches in the entire content (may span multiple lines)
     for match in pattern.finditer(config_content):
         match_start = match.start()
         match_end = match.end()
-        
+
         # Calculate which line numbers this match spans
         # Count newlines before the match to get start line
-        start_line = config_content[:match_start].count('\n')
-        end_line = config_content[:match_end].count('\n')
-        
+        start_line = config_content[:match_start].count("\n")
+        end_line = config_content[:match_end].count("\n")
+
         results.append((start_line, end_line))
-    
+
     return results
 
 
 def _find_all_keys_in_toml(data, key_name):
     """
     Find all occurrences of a key in TOML structure.
-    
+
     Searches at:
     1. Top level: key = value
     2. Inside table arrays: [[table.subtable]] with key = value
-    
+
     Args:
         data: The TOML data structure (dict from tomlkit.parse)
         key_name: The key name to search for (e.g., "script", "command")
-    
+
     Returns:
         List of values found (may be empty)
-    
+
     Examples:
         >>> _find_all_keys_in_toml({"name": "value"}, "name")
         ['value']
-        
+
         >>> data = {"processors": {"starlark": [{"script": "test1.star"}, {"script": "test2.star"}]}}
         >>> _find_all_keys_in_toml(data, "script")
         ['test1.star', 'test2.star']
-        
+
         >>> data = {"outputs": {"execd": [{"command": ["test.sh"]}]}}
         >>> _find_all_keys_in_toml(data, "command")
         [['test.sh']]
-        
+
         >>> data = {"processors": {"starlark": [{"script": "a.star"}]}, "outputs": {"execd": [{"command": ["b.sh"]}]}}
         >>> _find_all_keys_in_toml(data, "script")
         ['a.star']
     """
     results = []
-    
+
     # Check top level
     if key_name in data:
         results.append(data[key_name])
-    
+
     # Check inside table arrays: [[table.subtable]]
     # Structure: {"table": {"subtable": [{"key": value}, ...]}}
     for table_value in data.values():
         if not isinstance(table_value, dict):
             continue
-        
+
         # Iterate through subtables (e.g., "starlark", "execd")
         for subtable_value in table_value.values():
             if not isinstance(subtable_value, list):
                 continue
-            
+
             # Iterate through array elements (the [[...]] entries)
             for item in subtable_value:
                 if isinstance(item, dict) and key_name in item:
                     results.append(item[key_name])
-    
+
     return results
 
 
 def _extract_normalized_value(key_name, parsed_value_raw):
-    """
+    r"""
     Get the style-preserved TOML value string for use in regex matching.
-    
+
     Uses tomlkit.dumps() which is STYLE-PRESERVING: multi-line arrays stay
     multi-line, indentation is preserved, etc. This normalized value is used
     to build a regex pattern for finding the exact key=value in the original
     config text.
-    
+
     For example, if the config has:
         command = [
           "test.sh",
           "arg1"
         ]
-    
+
     The normalized value will preserve that formatting:
         [\n  "test.sh",\n  "arg1"\n]
-    
+
     This allows us to match the exact text from the original config.
-    
+
     Args:
         key_name: The key name
         parsed_value_raw: The value from tomlkit (preserves style info)
-    
+
     Returns:
         The style-preserved TOML value string (without the key= part)
-    
+
     Raises:
         RuntimeError: If the normalized snippet format is unexpected
-    
+
     Examples:
         >>> # Single-line array
         >>> config = 'command = ["test.sh", "arg1"]'
         >>> doc = tomlkit.parse(config)
         >>> _extract_normalized_value("command", doc["command"])
         '["test.sh", "arg1"]'
-        
+
         >>> # Multi-line array - style is preserved
-        >>> config = 'items = [\\n  1,\\n  2,\\n  3\\n]'
+        >>> config = 'items = [\n  1,\n  2,\n  3\n]'
         >>> doc = tomlkit.parse(config)
         >>> _extract_normalized_value("items", doc["items"])
-        '[\\n  1,\\n  2,\\n  3\\n]'
-        
+        '[\n  1,\n  2,\n  3\n]'
+
         >>> # Another multi-line example with different indentation preserved
-        >>> config = 'command = [\\n    "test.sh",\\n    "arg1"\\n  ]'
+        >>> config = 'command = [\n    "test.sh",\n    "arg1"\n  ]'
         >>> doc = tomlkit.parse(config)
         >>> _extract_normalized_value("command", doc["command"])
-        '[\\n    "test.sh",\\n    "arg1"\\n  ]'
+        '[\n    "test.sh",\n    "arg1"\n  ]'
     """
     normalized_snippet = tomlkit.dumps({key_name: parsed_value_raw}).strip()
     key_equals = f"{key_name} = "
@@ -406,40 +404,40 @@ def _extract_normalized_value(key_name, parsed_value_raw):
         raise RuntimeError(
             f"Internal error: unexpected normalized snippet format: {repr(normalized_snippet)}"
         )
-    return normalized_snippet[len(key_equals):]
+    return normalized_snippet[len(key_equals) :]
 
 
 def _is_valid_toml_match(config_content, start_pos, end_pos, key_name):
     """
     Check if a text snippet is a valid TOML key=value by parsing it.
-    
+
     This uses tomlkit to validate the match, which properly handles:
     - Comments (ignores them)
     - Strings containing # characters
     - All TOML syntax variations
-    
+
     Args:
         config_content: The full config content
         start_pos: Start position of the snippet
         end_pos: End position of the snippet
         key_name: The key name we're looking for
-    
+
     Returns:
         True if the snippet is valid TOML containing the key, False otherwise
-    
+
     Examples:
         >>> config = 'script = "test.star"'
         >>> _is_valid_toml_match(config, 0, len(config), "script")
         True
-        
+
         >>> config = '# script = "test.star"'
         >>> _is_valid_toml_match(config, 0, len(config), "script")
         False
-        
+
         >>> config = 'script = "file#with#hash.star"'
         >>> _is_valid_toml_match(config, 0, len(config), "script")
         True
-        
+
         >>> config = '  script = "test.star"'
         >>> _is_valid_toml_match(config, 2, len(config), "script")
         True
@@ -456,76 +454,81 @@ def _is_valid_toml_match(config_content, start_pos, end_pos, key_name):
 def _unwrap_tomlkit_value(value):
     """
     Unwrap tomlkit wrapper types to regular Python objects.
-    
+
     Args:
         value: The tomlkit value
-    
+
     Returns:
         Regular Python object (str, int, list, dict, etc.)
-    
+
     Examples:
         >>> doc = tomlkit.parse('name = "test"')
         >>> wrapped = doc['name']
         >>> _unwrap_tomlkit_value(wrapped)
         'test'
-        
+
         >>> doc = tomlkit.parse('items = [1, 2, 3]')
         >>> wrapped = doc['items']
         >>> _unwrap_tomlkit_value(wrapped)
         [1, 2, 3]
-        
+
         >>> doc = tomlkit.parse('count = 42')
         >>> wrapped = doc['count']
         >>> _unwrap_tomlkit_value(wrapped)
         42
     """
-    if hasattr(value, 'unwrap'):
+    if hasattr(value, "unwrap"):
         return value.unwrap()
     else:
         # For simple types that don't have unwrap(), convert to appropriate Python type
         return dict(value) if isinstance(value, dict) else value
 
 
-def _find_key_value_in_text(config_content, key_name, normalized_value, already_found_positions):
+def _find_key_value_in_text(
+    config_content, key_name, normalized_value, already_found_positions
+):
     """
     Find key=value occurrences in the config text.
-    
+
     Uses regex for high-sensitivity detection, then validates with tomlkit
     to filter out false positives (e.g., commented lines, strings with #).
-    
+
     Args:
         config_content: The config file content
         key_name: The key name to search for
         normalized_value: The normalized value string
         already_found_positions: Set of positions already found (to avoid duplicates)
-    
+
     Returns:
         List of tuples: (snippet, start_pos, end_pos)
     """
     # High-sensitivity regex: matches key<whitespace>=<whitespace>value
     # We use tomlkit validation below to filter out false positives
     pattern = re.compile(
-        rf'^([ \t]*)({re.escape(key_name)})([ \t]*)=([ \t]*)({re.escape(normalized_value)})',
-        re.MULTILINE | re.DOTALL  # ^ matches line start, value might span multiple lines
+        rf"^([ \t]*)({re.escape(key_name)})([ \t]*)=([ \t]*)({re.escape(normalized_value)})",
+        re.MULTILINE
+        | re.DOTALL,  # ^ matches line start, value might span multiple lines
     )
-    
+
     matches = []
     for match in pattern.finditer(config_content):
         snippet_start = match.start() + len(match.group(1))
         snippet_end = match.end()
-        
+
         # Check if we already found this position (avoid duplicates)
         if snippet_start in already_found_positions:
             continue
-        
+
         # Validate with tomlkit: this filters out comments and handles complex cases
         # like # inside strings
-        if not _is_valid_toml_match(config_content, snippet_start, snippet_end, key_name):
+        if not _is_valid_toml_match(
+            config_content, snippet_start, snippet_end, key_name
+        ):
             continue
-        
+
         key_value_snippet = config_content[snippet_start:snippet_end]
         matches.append((key_value_snippet, snippet_start, snippet_end))
-    
+
     return matches
 
 
@@ -538,7 +541,7 @@ def find_valid_toml_matches(config_content, key_name):
     - Multi-line values
     - All TOML syntax variations
     - Comments (they are naturally ignored by the parser)
-    
+
     Uses tomlkit.dumps() to get a normalized representation, then uses regex to
     find the original key=value in the config while preserving any excessive
     whitespace around the `=` sign. This allows simple string replacement while
@@ -549,7 +552,7 @@ def find_valid_toml_matches(config_content, key_name):
         key_name: The TOML key name to search for and extract (string)
 
     Returns:
-        List of tuples: [(original_snippet, parsed_value, start_pos, end_pos), ...] 
+        List of tuples: [(original_snippet, parsed_value, start_pos, end_pos), ...]
         Empty list if key not found. Each tuple contains:
         - original_snippet: The exact key=value text from the original config (string)
         - parsed_value: The parsed value for key_name from tomlkit
@@ -611,30 +614,34 @@ def find_valid_toml_matches(config_content, key_name):
         doc = tomlkit.parse(config_content)
     except tomlkit.exceptions.TOMLKitError as e:
         raise ValueError(f"Invalid TOML syntax in config: {e}") from e
-    
+
     # Recursively search for all occurrences of the key in the parsed document
     parsed_values_raw = _find_all_keys_in_toml(doc, key_name)
     if not parsed_values_raw:
         return []
-    
+
     results = []
     already_found_positions = set()
-    
+
     # For each value found, locate it in the original config
     for parsed_value_raw in parsed_values_raw:
         normalized_value = _extract_normalized_value(key_name, parsed_value_raw)
-        matches = _find_key_value_in_text(config_content, key_name, normalized_value, already_found_positions)
-        
+        matches = _find_key_value_in_text(
+            config_content, key_name, normalized_value, already_found_positions
+        )
+
         for key_value_snippet, snippet_start, snippet_end in matches:
             parsed_value = _unwrap_tomlkit_value(parsed_value_raw)
-            results.append((key_value_snippet, parsed_value, snippet_start, snippet_end))
+            results.append(
+                (key_value_snippet, parsed_value, snippet_start, snippet_end)
+            )
             already_found_positions.add(snippet_start)
-    
+
     return results
 
 
 def inline_starlark_script(config_content, file_path_root, path_vars):
-    """
+    r"""
     Replace external Starlark script references with inline source code.
 
     Replaces patterns like:
@@ -669,7 +676,7 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
         ...     config = 'script = "test.star"'
         ...     result = inline_starlark_script(config, tmpdir, {})
         ...     result
-        "source = '''\\nload('test.star', 'test')'''"
+        "source = '''\nload('test.star', 'test')'''"
 
         >>> from pathlib import Path
         >>> import tempfile
@@ -683,7 +690,7 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
         ...     # file_path_root is tmpdir, VAR points to subdirectory within it
         ...     result = inline_starlark_script(config, tmpdir, {"VAR": "scripts"})
         ...     result
-        "source = '''\\ntest content'''"
+        "source = '''\ntest content'''"
 
         >>> from pathlib import Path
         >>> import tempfile
@@ -711,12 +718,12 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
     """
     # Find all script references
     matches = find_valid_toml_matches(config_content, "script")
-    
+
     if not matches:
         return config_content
-    
+
     # Process matches in reverse order (from end to start) to avoid position shifts
-    for original_snippet, path_str, start_pos, end_pos in reversed(matches):
+    for _original_snippet, path_str, start_pos, end_pos in reversed(matches):
         script_path = resolve_script_path(path_str, file_path_root, path_vars)
 
         if not script_path:
@@ -741,13 +748,15 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
 
         # Replace using position-based replacement (more reliable than string.replace)
         replacement = f"source = '''\n{script_content}'''"
-        config_content = config_content[:start_pos] + replacement + config_content[end_pos:]
-    
+        config_content = (
+            config_content[:start_pos] + replacement + config_content[end_pos:]
+        )
+
     return config_content
 
 
 def inline_shell_script(config_content, file_path_root, path_vars):
-    """
+    r"""
     Replace external shell script references with base64-encoded inline commands.
 
     Replaces patterns like:
@@ -833,11 +842,11 @@ def inline_shell_script(config_content, file_path_root, path_vars):
 
     def replace_with_inline(script_path, script_args):
         """Replace a script reference with inline base64-encoded version.
-        
+
         Args:
             script_path: Path to the script file
             script_args: List of additional arguments to pass to the script (may be empty)
-        
+
         Returns:
             The inline command string with base64-encoded script
         """
@@ -886,12 +895,12 @@ def inline_shell_script(config_content, file_path_root, path_vars):
 
     # Find all command references
     matches = find_valid_toml_matches(config_content, "command")
-    
+
     if not matches:
         return config_content
-    
+
     # Process matches in reverse order (from end to start) to avoid position shifts
-    for original_snippet, command_array, start_pos, end_pos in reversed(matches):
+    for _original_snippet, command_array, start_pos, end_pos in reversed(matches):
         # Validate that we have at least one element
         if not command_array or not isinstance(command_array, list):
             click.echo(
@@ -930,8 +939,10 @@ def inline_shell_script(config_content, file_path_root, path_vars):
 
         # Replace using position-based replacement (more reliable than string.replace)
         replacement = replace_with_inline(script_path, script_args)
-        config_content = config_content[:start_pos] + replacement + config_content[end_pos:]
-    
+        config_content = (
+            config_content[:start_pos] + replacement + config_content[end_pos:]
+        )
+
     return config_content
 
 
@@ -1056,7 +1067,7 @@ def main(
     file_path_root,
     expand_path_var,
 ):
-    """
+    r"""
     Combine multiple Telegraf configuration files into a single file.
 
     This script can inline Starlark (.star) files and shell scripts (.sh) to create

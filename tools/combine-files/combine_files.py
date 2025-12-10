@@ -245,6 +245,33 @@ def _report_file_not_found(script_type, path_str, file_path_root, path_vars):
     sys.exit(1)
 
 
+def _validate_no_triple_quotes(content, content_type, context_info=None):
+    """
+    Validate that content doesn't contain triple single quotes.
+
+    Triple quotes would break TOML multi-line literal string format (''').
+
+    Args:
+        content: The content to check for triple quotes
+        content_type: Description of what's being checked (used for error message)
+        context_info: Optional dict with additional context for error message
+
+    Exits with error code 1 if triple quotes are found.
+    """
+    if "'''" in content:
+        click.secho(
+            f"Error: {content_type} contains triple single quotes ('''), "
+            "which would break the inline format",
+            fg="red",
+            err=True,
+            bold=True,
+        )
+        if context_info:
+            for key, value in context_info.items():
+                click.echo(f"  {key.capitalize()}: {value}", err=True)
+        sys.exit(1)
+
+
 def find_file(filename, root_path):
     """
     Find a file relative to a root path.
@@ -1010,17 +1037,9 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
             script_content = f.read()
 
         # Validate that script doesn't contain triple single quotes
-        # which would break the inline format
-        if "'''" in script_content:
-            click.secho(
-                f"Error: Starlark script '{path_str}' contains triple "
-                "single quotes ('''), which would break the inline "
-                "source format",
-                fg="red",
-                err=True,
-                bold=True,
-            )
-            sys.exit(1)
+        _validate_no_triple_quotes(
+            script_content, "Starlark script", {"script": path_str}
+        )
 
         # Build replacement preserving the original indentation
         indent_str = " " * indent
@@ -1196,6 +1215,12 @@ def inline_shell_script(  # pylint: disable=too-many-locals
         # command = ["filename.sh"]
         path_str = command_array[0]
         script_args = command_array[1:] if len(command_array) > 1 else []
+
+        # Validate that script arguments don't contain triple single quotes
+        for arg in script_args:
+            _validate_no_triple_quotes(
+                arg, "Shell script argument", {"script": path_str, "argument": arg}
+            )
 
         # Expand variables to determine the actual file path
         expanded_path = expand_path_variables(path_str, path_vars)

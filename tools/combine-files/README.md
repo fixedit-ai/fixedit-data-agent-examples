@@ -24,8 +24,10 @@ This script is kept generic and should work for any project.
   - [Configuration File Combining](#configuration-file-combining)
   - [Starlark Script Inlining](#starlark-script-inlining)
   - [Shell Script Inlining](#shell-script-inlining)
-- [Known Issues](#known-issues)
-  - [No Support for Arguments to Scripts](#no-support-for-arguments-to-scripts)
+- [Generation of TOML Files](#generation-of-toml-files)
+- [Known Limitations](#known-limitations)
+  - [Variable Expansion in Script Arguments](#variable-expansion-in-script-arguments)
+  - [General Note](#general-note)
 
 <!-- tocstop -->
 

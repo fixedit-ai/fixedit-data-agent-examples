@@ -217,31 +217,20 @@ def _extract_toml_error_context(error, config_content):
     return error_msg
 
 
-def _report_file_not_found(script_type, path_str, file_path_root, path_vars):
+def _report_file_not_found(script_type, path_str, file_path_root):
     """
     Report a helpful error message when a script file is not found.
 
     Args:
         script_type: Type of script (e.g., "Starlark script", "shell script")
-        path_str: Original path string from config
+        path_str: Path string from config
         file_path_root: Root directory where files are searched
-        path_vars: Dictionary of path variables
 
     Exits with error code 1 after printing the message.
     """
-    # Show expanded path if variables were used
-    expanded_path = expand_path_variables(path_str, path_vars)
     click.secho(f"Error: Could not find {script_type}", fg="red", err=True, bold=True)
     click.echo(f"  Script reference: {path_str}", err=True)
-    if expanded_path != path_str:
-        click.echo(f"  After expansion: {expanded_path}", err=True)
     click.echo(f"  Search location: {file_path_root}", err=True)
-    if _has_variable_syntax(path_str):
-        click.secho(
-            "  Hint: Check that variables are defined with --temporary-expand-var",
-            fg="yellow",
-            err=True,
-        )
     sys.exit(1)
 
 
@@ -290,6 +279,15 @@ def find_file(filename, root_path):
         ...     test_file = Path(tmpdir) / "test.txt"
         ...     _ = test_file.write_text("test")
         ...     result = find_file("test.txt", tmpdir)
+        ...     result is not None
+        True
+
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     subdir = Path(tmpdir) / "scripts"
+        ...     subdir.mkdir()
+        ...     test_file = subdir / "helper.sh"
+        ...     _ = test_file.write_text("test")
+        ...     result = find_file("scripts/helper.sh", tmpdir)
         ...     result is not None
         True
 
@@ -440,76 +438,6 @@ def expand_path_variables(path_str, path_vars):
             )
 
     return result
-
-
-def resolve_script_path(path_str, file_path_root, path_vars):
-    """
-    Resolve the path to a script file using variable substitution.
-
-    Expands all variables in the path string, then finds the file relative to
-    file_path_root.
-
-    Args:
-        path_str: Path string that may contain variable references (string)
-        file_path_root: Root directory path for finding files (Path object or string)
-        path_vars: Dictionary of path variables to use for resolving paths (dict)
-
-    Returns:
-        Path object of the found file, or None if not found
-
-    Example:
-        >>> from pathlib import Path
-        >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as tmpdir:
-        ...     script_file = Path(tmpdir) / "test.sh"
-        ...     _ = script_file.write_text("test")
-        ...     # No variable - direct filename
-        ...     result = resolve_script_path("test.sh", tmpdir, {})
-        ...     result is not None
-        True
-
-        >>> from pathlib import Path
-        >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as tmpdir:
-        ...     subdir = Path(tmpdir) / "scripts"
-        ...     subdir.mkdir()
-        ...     script_file = subdir / "test.sh"
-        ...     _ = script_file.write_text("test")
-        ...     # Variable points to subdirectory
-        ...     result = resolve_script_path("${VAR}/test.sh", tmpdir, {"VAR": "scripts"})
-        ...     result is not None
-        True
-
-        >>> from pathlib import Path
-        >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as tmpdir:
-        ...     # Variable is '.', results in ./test.sh which is found
-        ...     script_file = Path(tmpdir) / "test.sh"
-        ...     _ = script_file.write_text("test")
-        ...     result = resolve_script_path("${VAR}/test.sh", tmpdir, {"VAR": "."})
-        ...     result is not None
-        True
-
-        >>> from pathlib import Path
-        >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as tmpdir:
-        ...     # Multiple variables
-        ...     subdir1 = Path(tmpdir) / "dir1"
-        ...     subdir2 = subdir1 / "dir2"
-        ...     subdir2.mkdir(parents=True)
-        ...     script_file = subdir2 / "test.sh"
-        ...     _ = script_file.write_text("test")
-        ...     result = resolve_script_path(
-        ...         "${VAR1}/${VAR2}/test.sh", tmpdir,
-        ...         {"VAR1": "dir1", "VAR2": "dir2"})
-        ...     result is not None
-        True
-    """
-    # Expand all variables in the path string
-    expanded_path = expand_path_variables(path_str, path_vars)
-
-    # Find the file using the expanded path
-    return find_file(expanded_path, file_path_root)
 
 
 def _search_table_arrays_for_key(table_value, key_name):
@@ -1024,12 +952,10 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
     # Process matches in reverse order (highest line numbers first)
     # so that earlier replacements don't affect later line numbers
     for _snippet, path_str, start_line, end_line, indent in reversed(matches):
-        script_path = resolve_script_path(path_str, file_path_root, path_vars)
+        script_path = find_file(path_str, file_path_root)
 
         if not script_path:
-            _report_file_not_found(
-                "Starlark script", path_str, file_path_root, path_vars
-            )
+            _report_file_not_found("Starlark script", path_str, file_path_root)
 
         # Read the script content as UTF-8 - this should be safe since we do
         # not expect binary data in Starlark files.
@@ -1049,9 +975,119 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
     return config_obj.get_original()
 
 
-def inline_shell_script(  # pylint: disable=too-many-locals
-    config_content, file_path_root, path_vars
-):
+def _replace_shell_script_with_inline(script_path, script_args):
+    """Replace a script reference with inline base64-encoded version.
+
+    Args:
+        script_path: Path to the script file
+        script_args: List of additional arguments to pass to the script (may be empty)
+
+    Returns:
+        The inline command string with base64-encoded script
+    """
+    # Read the script content as binary (we don't care about the content, we
+    # will base64 encode it anyway)
+    with open(script_path, "rb") as f:
+        script_content = f.read()
+
+    # Encode to base64 (and decode the bytes as ASCII - we know this is safe
+    # since base64 only contains ASCII characters)
+    script_base64 = base64.b64encode(script_content).decode("ascii")
+
+    # Build the script invocation with arguments
+    # We use json.dumps() which:
+    # - Properly escapes quotes and special chars for shell double-quote context
+    # - Uses double quotes, avoiding conflicts with TOML's ''' quotes
+    # - Preserves shell variable expansion ($VAR) and cmd substitution (`cmd`)
+    if script_args:
+        quoted_args = " ".join(json.dumps(arg) for arg in script_args)
+        script_invocation = f'sh "$tmpfile" {quoted_args}'
+    else:
+        script_invocation = 'sh "$tmpfile"'
+
+    # Create the inline command using a few tricks:
+    # 1. We use a temp file approach so that we preserves stdin for the Telegraf data.
+    #    If we did pipe the script to sh, it would consume the stdin and the script would
+    #    not be able to read the Telegraf data (assuming it is an output plugin).
+    # 2. We have to use -A for openssl base64 decoder, otherwise it will break long
+    #    lines causing corruption of the script.
+    # 3. We use TOML multi-line literal string (''') to avoid escaping issues.
+    # 4. We use a trap to ensure the temp file is cleaned up on exit while preserving
+    #    the exit code from the script (since the script is the last command, the exit
+    #    code of the script will be the exit code of the entire command. Without the
+    #    trap, we would need to capture the exit code from the script and then manually
+    #    exit with that code after the cleanup.
+    inline_command = (
+        'command = ["sh", "-c", \'\'\'\n'
+        f"tmpfile=$(mktemp)\n"
+        f"trap 'rm -f \"$tmpfile\"' EXIT\n"
+        f"openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >\"$tmpfile\"\n"
+        f"{script_base64}\n"
+        f"FIXEDIT_SCRIPT_EOF\n"
+        f"{script_invocation}''']\n"
+    )
+
+    return inline_command.rstrip("\n")  # Remove trailing newline
+
+
+def _process_shell_script_match(config_obj, match, file_path_root):
+    """Process a single shell script match and replace it with inline version.
+
+    Args:
+        config_obj: ConfigContent object to apply replacements to
+        match: Tuple of (_snippet, command_array, start_line, end_line, indent)
+        file_path_root: Root directory path for finding files
+
+    This function handles validation, path resolution, and replacement for a single
+    command reference found in the config file.
+    """
+    _snippet, command_array, start_line, end_line, indent = match
+
+    # Validate that we have at least one element
+    if not command_array or not isinstance(command_array, list):
+        click.secho(
+            "Error: Invalid command array",
+            fg="red",
+            err=True,
+            bold=True,
+        )
+        sys.exit(1)
+
+    # Extract script path and arguments. E.g. the line might look like:
+    # command = ["scripts/filename.sh", "arg1", "arg2"]
+    # or it might look like:
+    # command = ["filename.sh"]
+    script_path_str = command_array[0]
+    script_args = command_array[1:] if len(command_array) > 1 else []
+
+    # Validate that script arguments don't contain triple single quotes
+    for arg in script_args:
+        _validate_no_triple_quotes(
+            arg, "Shell script argument", {"script": script_path_str, "argument": arg}
+        )
+
+    # Skip if the path doesn't end with .sh (it might be a binary executable)
+    if not script_path_str.endswith(".sh"):
+        click.secho(
+            f"Warning: Skipping '{script_path_str}' - not a shell script (.sh)",
+            fg="yellow",
+            err=True,
+        )
+        return  # Skip this match
+
+    script_path = find_file(script_path_str, file_path_root)
+
+    if not script_path:
+        _report_file_not_found("shell script", script_path_str, file_path_root)
+
+    # Build replacement preserving the original indentation
+    indent_str = " " * indent
+    replacement = _replace_shell_script_with_inline(script_path, script_args)
+    indented_replacement = indent_str + replacement
+    config_obj.replace_lines(start_line, end_line, indented_replacement)
+
+
+def inline_shell_script(config_content, file_path_root, path_vars):
     r"""
     Replace external shell script references with base64-encoded inline commands.
 
@@ -1132,61 +1168,6 @@ def inline_shell_script(  # pylint: disable=too-many-locals
         ...     result
         '# command = ["old.sh"]'
     """
-
-    def replace_with_inline(script_path, script_args):
-        """Replace a script reference with inline base64-encoded version.
-
-        Args:
-            script_path: Path to the script file
-            script_args: List of additional arguments to pass to the script (may be empty)
-
-        Returns:
-            The inline command string with base64-encoded script
-        """
-        # Read the script content as binary (we don't care about the content, we
-        # will base64 encode it anyway)
-        with open(script_path, "rb") as f:
-            script_content = f.read()
-
-        # Encode to base64 (and decode the bytes as ASCII - we know this is safe
-        # since base64 only contains ASCII characters)
-        script_base64 = base64.b64encode(script_content).decode("ascii")
-
-        # Build the script invocation with arguments
-        # We use json.dumps() which:
-        # - Properly escapes quotes and special chars for shell double-quote context
-        # - Uses double quotes, avoiding conflicts with TOML's ''' quotes
-        # - Preserves shell variable expansion ($VAR) and cmd substitution (`cmd`)
-        if script_args:
-            quoted_args = " ".join(json.dumps(arg) for arg in script_args)
-            script_invocation = f'sh "$tmpfile" {quoted_args}'
-        else:
-            script_invocation = 'sh "$tmpfile"'
-
-        # Create the inline command using a few tricks:
-        # 1. We use a temp file approach so that we preserves stdin for the Telegraf data.
-        #    If we did pipe the script to sh, it would consume the stdin and the script would
-        #    not be able to read the Telegraf data (assuming it is an output plugin).
-        # 2. We have to use -A for openssl base64 decoder, otherwise it will break long
-        #    lines causing corruption of the script.
-        # 3. We use TOML multi-line literal string (''') to avoid escaping issues.
-        # 4. We use a trap to ensure the temp file is cleaned up on exit while preserving
-        #    the exit code from the script (since the script is the last command, the exit
-        #    code of the script will be the exit code of the entire command. Without the
-        #    trap, we would need to capture the exit code from the script and then manually
-        #    exit with that code after the cleanup.
-        inline_command = (
-            'command = ["sh", "-c", \'\'\'\n'
-            f"tmpfile=$(mktemp)\n"
-            f"trap 'rm -f \"$tmpfile\"' EXIT\n"
-            f"openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >\"$tmpfile\"\n"
-            f"{script_base64}\n"
-            f"FIXEDIT_SCRIPT_EOF\n"
-            f"{script_invocation}''']\n"
-        )
-
-        return inline_command.rstrip("\n")  # Remove trailing newline
-
     # Create ConfigContent object to manage original and expanded versions
     config_obj = ConfigContent(config_content, path_vars)
 
@@ -1198,54 +1179,8 @@ def inline_shell_script(  # pylint: disable=too-many-locals
 
     # Process matches in reverse order (highest line numbers first)
     # so that earlier replacements don't affect later line numbers
-    for _snippet, command_array, start_line, end_line, indent in reversed(matches):
-        # Validate that we have at least one element
-        if not command_array or not isinstance(command_array, list):
-            click.secho(
-                "Error: Invalid command array",
-                fg="red",
-                err=True,
-                bold=True,
-            )
-            sys.exit(1)
-
-        # Extract script path and arguments. E.g. the line might look like:
-        # command = ["${HELPER_FILES_DIR}/filename.sh", "arg1", "arg2"]
-        # or it might look like:
-        # command = ["filename.sh"]
-        path_str = command_array[0]
-        script_args = command_array[1:] if len(command_array) > 1 else []
-
-        # Validate that script arguments don't contain triple single quotes
-        for arg in script_args:
-            _validate_no_triple_quotes(
-                arg, "Shell script argument", {"script": path_str, "argument": arg}
-            )
-
-        # Expand variables to determine the actual file path
-        expanded_path = expand_path_variables(path_str, path_vars)
-
-        # Skip if the expanded path doesn't end with .sh
-        # (it might be a binary executable)
-        if not expanded_path.endswith(".sh"):
-            click.secho(
-                f"Warning: Skipping '{path_str}' (expanded: "
-                f"'{expanded_path}') - not a shell script (.sh)",
-                fg="yellow",
-                err=True,
-            )
-            continue  # Skip this match but continue processing others
-
-        script_path = resolve_script_path(path_str, file_path_root, path_vars)
-
-        if not script_path:
-            _report_file_not_found("shell script", path_str, file_path_root, path_vars)
-
-        # Build replacement preserving the original indentation
-        indent_str = " " * indent
-        replacement = replace_with_inline(script_path, script_args)
-        indented_replacement = indent_str + replacement
-        config_obj.replace_lines(start_line, end_line, indented_replacement)
+    for match in reversed(matches):
+        _process_shell_script_match(config_obj, match, file_path_root)
 
     return config_obj.get_original()
 

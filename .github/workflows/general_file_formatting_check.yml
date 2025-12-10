@@ -17,6 +17,8 @@ jobs:
       PRETTIER_FILES: '"**/*.{json,yml,yaml,md}" ".github/**/*.{json,yml,yaml,md}" ".*.{yml,yaml,json,md}"'
       # Pin Prettier version to ensure deterministic CI runs and avoid unpredictable failures
       PRETTIER_VERSION: "3.6.0"
+      # Pin markdown-toc version for deterministic TOC generation
+      MARKDOWN_TOC_VERSION: "1.2.0"
 
     steps:
       - name: Checkout code
@@ -84,14 +86,66 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check markdown TOC
+        id: toc_check
+        run: |
+          # Check if markdown files need TOC updates
+          echo "🔍 Checking markdown table of contents..."
+
+          # Find all markdown files (excluding node_modules, .git, etc.)
+          MD_FILES=$(find . -name "*.md" \
+            -not -path "*/node_modules/*" \
+            -not -path "*/.git/*" \
+            -not -path "*/dist/*" \
+            -not -path "*/build/*" \
+            2>/dev/null || true)
+
+          if [ -z "$MD_FILES" ]; then
+            echo "No markdown files found"
+            echo "toc_passed=true" >> $GITHUB_OUTPUT
+            echo "toc_files=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Run markdown-toc on all .md files (one at a time)
+          # Use --bullets - to match prettier's formatting preference
+          echo "$MD_FILES" | xargs -r -n 1 npx markdown-toc@${{ env.MARKDOWN_TOC_VERSION }} --bullets - -i
+
+          # Run prettier on the markdown files to normalize formatting
+          # (markdown-toc can sometimes add/remove blank lines)
+          echo "$MD_FILES" | xargs -r npx prettier@${{ env.PRETTIER_VERSION }} --write
+
+          # Check if any files were modified
+          if git diff --exit-code --quiet; then
+            echo "✅ All markdown TOCs are up to date"
+            echo "toc_passed=true" >> $GITHUB_OUTPUT
+            echo "toc_files=" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Some markdown files need TOC updates"
+            # Get list of files that were changed
+            TOC_FILES=$(git diff --name-only)
+            echo "toc_passed=false" >> $GITHUB_OUTPUT
+            echo "toc_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$TOC_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            echo ""
+            echo "Diff of TOC changes:"
+            git diff
+
+            # Restore files to original state
+            git checkout .
+          fi
+
       - name: Comment on PR (on failure)
         continue-on-error: true # to be resilient against forks...
-        if: github.event_name == 'pull_request' && (steps.prettier_check.outputs.prettier_passed == 'false' || steps.whitespace_check.outputs.whitespace_found == 'true')
+        if: github.event_name == 'pull_request' && (steps.prettier_check.outputs.prettier_passed == 'false' || steps.whitespace_check.outputs.whitespace_found == 'true' || steps.toc_check.outputs.toc_passed == 'false')
         uses: actions/github-script@v7
         with:
           script: |
             const prettierFiles = `${{ steps.prettier_check.outputs.prettier_files }}`.trim();
             const whitespaceFiles = `${{ steps.whitespace_check.outputs.whitespace_files }}`.trim();
+            const tocFiles = `${{ steps.toc_check.outputs.toc_files }}`.trim();
 
             let comment = `## 🎨 Code Formatting Required\n\n`;
 
@@ -116,6 +170,23 @@ jobs:
               comment += `**To fix:** Remove the trailing spaces/tabs at the end of lines in your favorite editor.\n\n`;
             }
 
+            if (tocFiles) {
+              const files = tocFiles.split('\n').filter(f => f.trim());
+              comment += `### Markdown Table of Contents Issues\n\n`;
+              comment += `Some markdown files need their table of contents updated.\n\n`;
+              comment += `**Files that need TOC updates:**\n`;
+              comment += `${files.map(file => `- \`${file}\``).join('\n')}\n\n`;
+              comment += `**To fix TOC issues:**\n\n`;
+              comment += `1. Run this command for each markdown file:\n`;
+              comment += `   \`\`\`bash\n`;
+              comment += `   npx markdown-toc@${{ env.MARKDOWN_TOC_VERSION }} --bullets - -i <file.md>\n`;
+              comment += `   \`\`\`\n\n`;
+              comment += `2. Then normalize formatting:\n`;
+              comment += `   \`\`\`bash\n`;
+              comment += `   npx prettier@${{ env.PRETTIER_VERSION }} --write <file.md>\n`;
+              comment += `   \`\`\`\n\n`;
+            }
+
             comment += `**After fixing:**\n`;
             comment += `1. Commit and push the changes\n`;
             comment += `2. The formatting check will automatically pass\n`;
@@ -128,7 +199,7 @@ jobs:
             });
 
       - name: Fail if formatting issues found
-        if: steps.prettier_check.outputs.prettier_passed == 'false' || steps.whitespace_check.outputs.whitespace_found == 'true'
+        if: steps.prettier_check.outputs.prettier_passed == 'false' || steps.whitespace_check.outputs.whitespace_found == 'true' || steps.toc_check.outputs.toc_passed == 'false'
         run: |
           echo "❌ Formatting issues found"
           exit 1

@@ -130,6 +130,7 @@ python3 combine_files.py \
   --inline-starlark \
   --inline-shell-script \
   --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var TELEGRAF_DEBUG=true \
   --file-path-root $PROJECT_DIR \
   --output combined.conf
 ```
@@ -139,6 +140,8 @@ This will create a `combined.conf` file that:
 - Concatenates all configuration files in the correct order
 - Inlines Starlark scripts (`.star` files) directly into the configuration
 - Inlines shell scripts (`.sh` files) as base64-encoded commands
+
+Note the use of `--temporary-expand-var HELPER_FILES_DIR=.` to expand the path to where the helper files are found and the use of `--temporary-expand-var TELEGRAF_DEBUG=true` which is needed since `config_agent.conf` would be invalid TOML if the variable was not expanded.
 
 The resulting single file can be uploaded to the FixedIT Data Agent without needing to upload any separate helper files.
 
@@ -158,6 +161,7 @@ python3 combine_files.py \
   --inline-starlark \
   --inline-shell-script \
   --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var TELEGRAF_DEBUG=true \
   --temporary-expand-var CONSUMER_SCRIPT=test_files/sample_data_feeder.sh \
   --file-path-root $PROJECT_DIR \
   --output combined_host_test.conf

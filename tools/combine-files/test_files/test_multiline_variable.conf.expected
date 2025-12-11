@@ -1,0 +1,26 @@
+# ========================================
+# From: test_multiline_variable.conf
+# ========================================
+
+# Test that multi-line variable expansion doesn't break subsequent inlining
+[agent]
+  interval = "10s"
+  flush_interval = "10s"
+  # This variable expands to a multi-line string value
+  description = ${MULTILINE_DESC}
+
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+[[outputs.file]]
+  files = ["stdout"]
+

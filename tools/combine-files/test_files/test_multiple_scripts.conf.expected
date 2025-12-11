@@ -1,0 +1,28 @@
+# ========================================
+# From: test_multiple_scripts.conf
+# ========================================
+
+# Test multiple starlark scripts in the same file
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
+[[processors.starlark]]
+  source = '''
+def apply(metric):
+    metric.tags["processed"] = "true"
+    return metric
+
+'''
+
+[[processors.starlark]]
+  source = '''
+def process(metric):
+    metric.tags["processed_by"] = "script2"
+    return metric
+
+'''
+
+[[outputs.file]]
+  files = ["stdout"]
+

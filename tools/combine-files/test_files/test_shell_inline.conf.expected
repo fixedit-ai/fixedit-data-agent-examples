@@ -1,0 +1,20 @@
+# ========================================
+# From: test_shell_inline.conf
+# ========================================
+
+# Test shell script inlining
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
+[[outputs.execd]]
+  command = ["sh", "-c", '''
+tmpfile=$(mktemp)
+trap 'rm -f "$tmpfile"' EXIT
+openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >"$tmpfile"
+IyEvYmluL3NoCmVjaG8gIlByb2Nlc3NpbmcgZGF0YSIKY2F0Cgo=
+FIXEDIT_SCRIPT_EOF
+sh "$tmpfile"''']
+
+[[outputs.file]]
+  files = ["stdout"]

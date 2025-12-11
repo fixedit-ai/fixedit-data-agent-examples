@@ -1,0 +1,21 @@
+# ========================================
+# From: test_script_with_args.conf
+# ========================================
+
+# Test shell script with arguments including special characters
+[[inputs.cpu]]
+  percpu = false
+  totalcpu = true
+
+[[outputs.execd]]
+  command = ["sh", "-c", '''
+tmpfile=$(mktemp)
+trap 'rm -f "$tmpfile"' EXIT
+openssl base64 -d -A <<'FIXEDIT_SCRIPT_EOF' >"$tmpfile"
+IyEvYmluL3NoCiMgU2NyaXB0IHRoYXQgdmFsaWRhdGVzIGFuZCB1c2VzIGFyZ3VtZW50cwppZiBbICQjIC1sdCAyIF07IHRoZW4KICBlY2hvICJFcnJvcjogRXhwZWN0ZWQgYXQgbGVhc3QgMiBhcmd1bWVudHMiID4mMgogIGV4aXQgMQpmaQoKZWNobyAiQXJnMTogWyQxXSIKZWNobyAiQXJnMjogWyQyXSIKWyAtbiAiJDMiIF0gJiYgZWNobyAiQXJnMzogWyQzXSIKWyAtbiAiJDQiIF0gJiYgZWNobyAiQXJnNDogWyQ0XSIKCiMgUHJvY2VzcyBpbnB1dCBkYXRhCmNhdAoK
+FIXEDIT_SCRIPT_EOF
+sh "$tmpfile" "value with spaces" "it's quoted" "file=\"data.txt\"" "$USER"''']
+
+[[outputs.file]]
+  files = ["stdout"]
+

@@ -189,6 +189,27 @@ telegraf --config combined_host_test.conf --once
 
 The script reads each configuration file in the order specified and concatenates them with separator comments showing which file each section came from. The path shown in comments is relative to `--file-path-root` when possible.
 
+Each file section includes a header with git repository information (if the file is in a git repository):
+
+```toml
+# ========================================
+# From file: config1.conf
+# Git repo: my-project
+# File path in repo: configs/config1.conf
+# Commit: a1b2c3d4e5f6
+# Status: clean
+# ========================================
+```
+
+The git information includes:
+
+- **Git repo**: Name of the git repository containing the file
+- **File path in repo**: Path to the file relative to the repository root
+- **Commit**: Short commit hash (12 characters) of the current HEAD
+- **Status**: Git status of the file (`clean`, `modified (uncommitted changes)`, `staged (changes ready to commit)`, `untracked`, or `unknown (could not determine status)`)
+
+If a file is not in a git repository, the header will show "No version tracking info found" instead of git information.
+
 ### Starlark Script Inlining
 
 When `--inline-starlark` is used, the script finds all references like:

@@ -1,9 +1,13 @@
+
 # ========================================
-# From: test_multiple_mixed.conf
+# From file: test_multiple_mixed.conf
+{{REGEX:# Git repo: .*}}
+{{REGEX:# File path in repo: .*}}
+{{REGEX:# Commit: [0-9a-f]{12}}}
+{{REGEX:# Status: (clean|modified|staged|untracked|unknown)( \(.*\))?}}
 # ========================================
 
 # Test multiple scripts and commands mixed
-# Note: All entries for a given table array must be consecutive in TOML
 
 [[inputs.cpu]]
   percpu = false

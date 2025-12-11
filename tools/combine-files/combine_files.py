@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 import click
+import git
 import tomlkit
 
 
@@ -919,13 +920,16 @@ def inline_starlark_script(config_content, file_path_root, path_vars):
         >>> from pathlib import Path
         >>> import tempfile
         >>> import sys
+        >>> from contextlib import redirect_stderr
+        >>> from io import StringIO
         >>> with tempfile.TemporaryDirectory() as tmpdir:
         ...     script_file = Path(tmpdir) / "test.star"
         ...     _ = script_file.write_text("code with ''' triple quotes")
         ...     config = 'script = "test.star"'
-        ...     # This should fail with an error
+        ...     # This should fail with an error (suppress stderr to avoid doctest output)
         ...     try:
-        ...         inline_starlark_script(config, tmpdir, {})
+        ...         with redirect_stderr(StringIO()):
+        ...             inline_starlark_script(config, tmpdir, {})
         ...     except SystemExit:
         ...         pass  # Expected to exit with error
 
@@ -985,14 +989,20 @@ def _replace_shell_script_with_inline(script_path, script_args):
     Returns:
         The inline command string with base64-encoded script
     """
-    # Read the script content as binary (we don't care about the content, we
-    # will base64 encode it anyway)
-    with open(script_path, "rb") as f:
+    # Read the script content as UTF-8 - this should be safe since shell scripts
+    # are text files.
+    with open(script_path, encoding="utf-8") as f:
         script_content = f.read()
 
-    # Encode to base64 (and decode the bytes as ASCII - we know this is safe
-    # since base64 only contains ASCII characters)
-    script_base64 = base64.b64encode(script_content).decode("ascii")
+    # Normalize line endings: convert CRLF (\r\n) and CR (\r) to LF (\n).
+    # This means that we use the Linux standard also when this script is run on Windows.
+    # This ensures consistent base64 encoding across platforms.
+    script_content = script_content.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Encode to base64 (first encode string to UTF-8 bytes, then base64 encode,
+    # and decode the result as ASCII - we know this is safe since base64 only
+    # contains ASCII characters)
+    script_base64 = base64.b64encode(script_content.encode("utf-8")).decode("ascii")
 
     # Build the script invocation with arguments
     # We use json.dumps() which:
@@ -1305,10 +1315,328 @@ def _get_relative_path_or_original(config_file, file_path_root):
         root_path = Path(file_path_root).resolve()
         abs_config_path = Path(config_file).resolve()
         relative_path = abs_config_path.relative_to(root_path)
-        return str(relative_path)
+        # Normalize to forward slashes for cross-platform compatibility
+        return relative_path.as_posix()
     except (ValueError, TypeError):
         # Path is not relative to root_path or root_path is None
         return config_file
+
+
+def _get_git_status(repo, file_path_in_repo):  # pylint: disable=too-many-return-statements
+    """
+    Determine the git status of a file in a repository.
+
+    Args:
+        repo: GitPython Repo object
+        file_path_in_repo: Path object relative to repository root
+
+    Returns:
+        Tuple (file_path_normalized, status) where:
+        - file_path_normalized: POSIX-normalized path string
+        - status: One of 'untracked', 'modified', 'staged', 'clean', 'unknown'
+
+    Examples:
+        >>> import tempfile
+        >>> import subprocess
+        >>> from pathlib import Path
+        >>> import git
+        >>> # Test clean file
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "test.conf"
+        ...     _ = test_file.write_text("content")
+        ...     _ = subprocess.run(["git", "add", "test.conf"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Initial"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     status == 'clean'
+        True
+
+        >>> # Test modified file (unstaged changes)
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "test.conf"
+        ...     _ = test_file.write_text("original")
+        ...     _ = subprocess.run(["git", "add", "test.conf"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Initial"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = test_file.write_text("modified")
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     status == 'modified'
+        True
+
+        >>> # Test untracked file
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     dummy = repo_dir / "dummy.txt"
+        ...     _ = dummy.write_text("dummy")
+        ...     _ = subprocess.run(["git", "add", "dummy.txt"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Initial"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "untracked.conf"
+        ...     _ = test_file.write_text("untracked")
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     status == 'untracked'
+        True
+
+        >>> # Test staged file (no unstaged changes)
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "test.conf"
+        ...     _ = test_file.write_text("original")
+        ...     _ = subprocess.run(["git", "add", "test.conf"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Initial"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = test_file.write_text("modified")
+        ...     _ = subprocess.run(["git", "add", "test.conf"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     status == 'staged'
+        True
+
+        >>> # Test with empty git repo (no commits yet)
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "test.conf"
+        ...     _ = test_file.write_text("content")
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     # File is untracked in empty repo
+        ...     status == 'untracked'
+        True
+
+        >>> # Test with empty git repo - staged file (no commits yet)
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "test.conf"
+        ...     _ = test_file.write_text("content")
+        ...     _ = subprocess.run(["git", "add", "test.conf"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     # File is staged (in index, ready for first commit)
+        ...     status == 'staged'
+        True
+    """
+    file_path_normalized = file_path_in_repo.as_posix()
+
+    # Check if file is untracked
+    try:
+        untracked_normalized = {Path(path).as_posix() for path in repo.untracked_files}
+        if file_path_normalized in untracked_normalized:
+            return file_path_normalized, "untracked"
+    except git.exc.GitCommandError:
+        return file_path_normalized, "unknown"
+
+    # Check if file has unstaged changes (working tree differs from index)
+    try:
+        if repo.index.diff(None, paths=file_path_normalized):
+            return file_path_normalized, "modified"
+    except (git.exc.GitCommandError, ValueError):
+        return file_path_normalized, "unknown"
+
+    # Check if file has staged changes (index differs from HEAD)
+    try:
+        if repo.index.diff(repo.head.commit, paths=file_path_normalized):
+            return file_path_normalized, "staged"
+    except (ValueError, AttributeError):
+        # No commits yet (ValueError: Reference does not exist) or detached HEAD
+        # If we got here, the file is not untracked and has no unstaged changes,
+        # so it must be in the index. With no commits, this means it's staged
+        # (ready for the first commit).
+        return file_path_normalized, "staged"
+    except git.exc.GitCommandError:
+        # Other git errors - we can't determine the status
+        return file_path_normalized, "unknown"
+
+    return file_path_normalized, "clean"
+
+
+def _get_git_info(file_path):
+    """
+    Get git repository information for a file using GitPython.
+
+    Args:
+        file_path: Path to the file to check
+
+    Returns:
+        Dictionary with git info or None if not in a git repo.
+        Keys: 'repo_name', 'file_path_in_repo', 'commit', 'status'
+        Status values: 'clean', 'modified', 'staged', 'untracked', 'unknown'
+
+    Examples:
+        >>> # File not in git repo returns None
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     test_file = Path(tmpdir) / "test.txt"
+        ...     test_file.touch()
+        ...     _get_git_info(str(test_file)) is None
+        True
+
+        >>> # Test with a git repo - clean file
+        >>> import tempfile
+        >>> import subprocess
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     # Initialize git repo
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test User"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     # Create and commit a file
+        ...     test_file = repo_dir / "test.conf"
+        ...     _ = test_file.write_text("test content")
+        ...     _ = subprocess.run(["git", "add", "test.conf"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Initial commit"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     # Get git info
+        ...     info = _get_git_info(str(test_file))
+        ...     info is not None and info['repo_name'] == 'test_repo'
+        True
+
+        >>> # Test with a git repo - verify all properties returned
+        >>> import tempfile
+        >>> import subprocess
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "my_project"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test User"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     test_file = repo_dir / "config.conf"
+        ...     _ = test_file.write_text("content")
+        ...     _ = subprocess.run(["git", "add", "config.conf"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Add config"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     info = _get_git_info(str(test_file))
+        ...     # Check all properties (status tested in _get_git_status)
+        ...     (info['file_path_in_repo'] == 'config.conf' and
+        ...      info['status'] == 'clean' and
+        ...      info['repo_name'] == 'my_project' and
+        ...      len(info['commit']) == 12)
+        True
+
+        >>> # Test with a git repo - file in subdirectory
+        >>> import tempfile
+        >>> import subprocess
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test User"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     # Create subdirectory and file
+        ...     subdir = repo_dir / "configs"
+        ...     subdir.mkdir()
+        ...     test_file = subdir / "test.conf"
+        ...     _ = test_file.write_text("content")
+        ...     _ = subprocess.run(["git", "add", "configs/test.conf"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "commit", "-m", "Add config"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     info = _get_git_info(str(test_file))
+        ...     info is not None and info['file_path_in_repo'] == 'configs/test.conf'
+        True
+
+    """
+    try:
+        file_path_obj = Path(file_path).resolve()
+
+        # Find the git repository containing this file
+        repo = git.Repo(file_path_obj, search_parent_directories=True)
+        try:
+            # Get repository name from the root directory
+            repo_root = Path(repo.working_dir)
+            repo_name = repo_root.name
+
+            # Get file path relative to repo root
+            file_path_in_repo = file_path_obj.relative_to(repo_root)
+
+            # Get current commit (short hash)
+            try:
+                commit = repo.head.commit.hexsha[:12]
+            except (ValueError, AttributeError):
+                # No commits yet or detached HEAD
+                commit = "unknown"
+
+            # Determine the specific status of the file
+            file_path_normalized, status = _get_git_status(repo, file_path_in_repo)
+
+            return {
+                "repo_name": repo_name,
+                "file_path_in_repo": file_path_normalized,
+                "commit": commit,
+                "status": status,
+            }
+        finally:
+            # Close repo to release file handles (important on Windows)
+            repo.close()
+
+    except (git.exc.InvalidGitRepositoryError, git.exc.GitError):
+        # Not in a git repository or git error
+        return None
 
 
 def _add_config_header(combined_content, config_file, file_path_root):
@@ -1321,18 +1649,27 @@ def _add_config_header(combined_content, config_file, file_path_root):
         file_path_root: Root directory path for relative path computation
 
     Examples:
-        >>> # First file - no separator before
+        >>> # First file - blank line before header
         >>> content = []
         >>> _add_config_header(content, "test.conf", "/tmp")
         >>> result = "".join(content)
-        >>> "# From: test.conf" in result
+        >>> "# From file: test.conf" in result
+        True
+        >>> result.startswith("\\n# ========================================")
+        True
+
+        >>> # Git info is included in header
+        >>> ("# From file: test.conf" in result and
+        ...  ("# Git repo:" in result or "# No version tracking" in result))
         True
 
         >>> # Second file - separator added before
+        >>> first_len = len(content)
         >>> _add_config_header(content, "test2.conf", "/tmp")
-        >>> content[3]
-        '\\n'
-        >>> "# From: test2.conf" in "".join(content)
+        >>> # Check that a newline separator was added between files
+        >>> len(content) > first_len and content[first_len] == "\\n"
+        True
+        >>> "# From file: test2.conf" in "".join(content)
         True
 
         >>> # Verify relative path handling
@@ -1344,15 +1681,36 @@ def _add_config_header(combined_content, config_file, file_path_root):
         ...     cfg.touch()
         ...     content = []
         ...     _add_config_header(content, str(cfg), tmpdir)
-        ...     "# From: subdir/config.conf\\n" in "".join(content)
+        ...     "# From file: subdir/config.conf\\n" in "".join(content)
         True
     """
     if combined_content:
         combined_content.append("\n")
+    combined_content.append("\n")
     combined_content.append("# ========================================\n")
 
     display_path = _get_relative_path_or_original(config_file, file_path_root)
-    combined_content.append(f"# From: {display_path}\n")
+    combined_content.append(f"# From file: {display_path}\n")
+
+    # Add git information
+    git_info = _get_git_info(config_file)
+    if git_info:
+        combined_content.append(f"# Git repo: {git_info['repo_name']}\n")
+        combined_content.append(
+            f"# File path in repo: {git_info['file_path_in_repo']}\n"
+        )
+        combined_content.append(f"# Commit: {git_info['commit']}\n")
+        # Format status for display
+        status_display = {
+            "clean": "clean",
+            "modified": "modified (uncommitted changes)",
+            "staged": "staged (changes ready to commit)",
+            "untracked": "untracked",
+            "unknown": "unknown (could not determine status)",
+        }.get(git_info["status"], git_info["status"])
+        combined_content.append(f"# Status: {status_display}\n")
+    else:
+        combined_content.append("# No version tracking info found\n")
 
     combined_content.append("# ========================================\n\n")
 
@@ -1391,17 +1749,12 @@ def combine_configs(
         ...     result = combine_configs(
         ...         [str(config1), str(config2)], False, False,
         ...         str(Path(tmpdir)), {})
-        ...     # Relative paths when configs are within file_path_root
-        ...     expected = (
-        ...         "# ========================================\\n"
-        ...         "# From: config1.conf\\n"
-        ...         "# ========================================\\n\\n"
-        ...         "# Config 1\\n"
-        ...         "# ========================================\\n"
-        ...         "# From: config2.conf\\n"
-        ...         "# ========================================\\n\\n"
-        ...         "# Config 2")
-        ...     result == expected
+        ...     # Check that key elements are present (git info may vary)
+        ...     ("# From file: config1.conf" in result and
+        ...      "# Config 1" in result and
+        ...      "# From file: config2.conf" in result and
+        ...      "# Config 2" in result and
+        ...      result.count("# ========================================") >= 4)
         True
     """
     combined_content = []

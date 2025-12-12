@@ -1,5 +1,10 @@
+
 # ========================================
-# From: test_multiple_commands.conf
+# From file: test_multiple_commands.conf
+{{REGEX:# Git repo: .*}}
+{{REGEX:# File path in repo: .*}}
+{{REGEX:# Commit: [0-9a-f]{12}}}
+{{REGEX:# Status: (clean|modified|staged|untracked|unknown)( \(.*\))?}}
 # ========================================
 
 # Test multiple shell commands in the same file

@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - "tools/combine-files/**"
+      - ".github/workflows/tools-combine-files-quality.yml"
   pull_request:
     paths:
       - "tools/combine-files/**"
+      - ".github/workflows/tools-combine-files-quality.yml"
 
 permissions:
   contents: read
@@ -28,7 +30,7 @@ jobs:
           working-directory: tools/combine-files
           additional-types: types-toml==0.10.8.20240310
 
-  integration-tests:
+  integration-tests-linux:
     runs-on: ubuntu-latest
     needs: python-quality
     defaults:
@@ -48,6 +50,38 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Run integration tests
+        run: |
+          python test_files/run_tests.py
+
+  integration-tests-windows:
+    runs-on: windows-latest
+    needs: python-quality
+    defaults:
+      run:
+        working-directory: tools/combine-files
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run doctests
+        # Run doctests here too since the python-quality-check action
+        # only runs on Linux. This will catch any platform dependent
+        # issues.
+        run: |
+          python -m doctest combine_files.py
 
       - name: Run integration tests
         run: |

@@ -1,5 +1,10 @@
+
 # ========================================
-# From: test_multiline.conf
+# From file: test_multiline.conf
+{{REGEX:# Git repo: .*}}
+{{REGEX:# File path in repo: .*}}
+{{REGEX:# Commit: [0-9a-f]{12}}}
+{{REGEX:# Status: (clean|modified|staged|untracked|unknown)( \(.*\))?}}
 # ========================================
 
 [[inputs.cpu]]

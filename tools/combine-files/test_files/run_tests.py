@@ -1,11 +1,130 @@
 #!/usr/bin/env python3
 """Test runner for combine_files.py"""
 
+import re
 import subprocess
 import sys
 import tempfile
 from difflib import unified_diff
 from pathlib import Path
+
+
+def compare_with_regex(expected_lines, actual_lines):
+    """
+    Compare expected and actual lines, supporting regex patterns in expected.
+
+    Expected lines can contain {{REGEX:pattern}} which will be matched
+    against the corresponding actual line using regex.
+
+    Args:
+        expected_lines: List of expected lines (may contain {{REGEX:pattern}})
+        actual_lines: List of actual lines
+
+    Returns:
+        Tuple (bool, list): (True if match, list of mismatch details)
+    """
+    if len(expected_lines) != len(actual_lines):
+        return False, [
+            f"Line count mismatch: expected {len(expected_lines)}, got {len(actual_lines)}"
+        ]
+
+    mismatches = []
+    for i, (expected, actual) in enumerate(zip(expected_lines, actual_lines)):
+        # Check if this line uses regex pattern
+        regex_match = re.search(r"\{\{REGEX:(.+?)\}\}", expected)
+        if regex_match:
+            pattern = regex_match.group(1)
+            # Replace the {{REGEX:...}} with the pattern for matching
+            expected_pattern = expected.replace(f"{{{{REGEX:{pattern}}}}}", pattern)
+            # Ensure pattern matches the full line (strip newlines for comparison)
+            expected_stripped = expected_pattern.rstrip("\n\r")
+            actual_stripped = actual.rstrip("\n\r")
+            # Use fullmatch to ensure the entire line matches the pattern
+            if not re.fullmatch(expected_stripped, actual_stripped):
+                mismatches.append(
+                    f"Line {i+1}: regex pattern '{pattern}' did not match '{actual_stripped}'"
+                )
+        else:
+            # Exact match required
+            if expected != actual:
+                mismatches.append(f"Line {i+1}: expected '{expected}', got '{actual}'")
+
+    return len(mismatches) == 0, mismatches
+
+
+def _run_combine_command(script_path, config_file, test_files_dir, output_file, *args):
+    """
+    Run the combine_files.py command and validate the result.
+
+    Args:
+        script_path: Path to combine_files.py
+        config_file: Path to config file
+        test_files_dir: Path to test_files directory
+        output_file: Path to output file
+        *args: Additional arguments for combine_files.py
+
+    Returns:
+        Tuple (bool, str): (True if command succeeded, error message if failed)
+    """
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--config",
+        str(config_file),
+        "--file-path-root",
+        str(test_files_dir),
+        "--output",
+        str(output_file),
+        *args,
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+    if result.returncode != 0:
+        error_msg = f"Command failed with exit code {result.returncode}"
+        if result.stderr:
+            error_msg += f": {result.stderr[:200]}"
+        return False, error_msg
+
+    if "Successfully" not in result.stderr:
+        return False, "No success message in output"
+
+    return True, ""
+
+
+def _report_test_failure(mismatches, expected_lines, actual_lines, expected_file):
+    """
+    Report test failure with mismatch details or unified diff.
+
+    Args:
+        mismatches: List of mismatch messages
+        expected_lines: Expected output lines
+        actual_lines: Actual output lines
+        expected_file: Path to expected file
+    """
+    print("  X FAILED: Output differs from expected")
+    if mismatches:
+        print("  Mismatches:")
+        for mismatch in mismatches[:10]:  # Show first 10 mismatches
+            print(f"    {mismatch}")
+        if len(mismatches) > 10:
+            print(f"    ... and {len(mismatches) - 10} more")
+    else:
+        # Fallback to unified diff if regex comparison didn't provide details
+        print("  Diff (first 20 lines):")
+        diff = unified_diff(
+            expected_lines,
+            actual_lines,
+            fromfile=str(expected_file),
+            tofile="actual output",
+            lineterm="",
+        )
+        for i, line in enumerate(diff):
+            if i >= 20:
+                print("  ...")
+                break
+            print(f"  {line.rstrip()}")
+    print()
 
 
 def run_test(
@@ -36,33 +155,12 @@ def run_test(
         output_file = Path(tmp_dir) / "output.txt"
 
         try:
-            # Prepare command
-            # --file-path-root is where to find referenced scripts (test_files_dir)
-            cmd = [
-                sys.executable,
-                str(script_path),
-                "--config",
-                str(config_file),
-                "--file-path-root",
-                str(test_files_dir),
-                "--output",
-                str(output_file),
-                *args,
-            ]
-
-            # Run command
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-
-            if result.returncode != 0:
-                print("  ✗ FAILED: Command failed")
-                print(f"  Exit code: {result.returncode}")
-                if result.stderr:
-                    print(f"  Error: {result.stderr[:200]}")
-                print()
-                return False
-
-            if "Successfully" not in result.stderr:
-                print("  ✗ FAILED: No success message")
+            # Run command and validate
+            success, error_msg = _run_combine_command(
+                script_path, config_file, test_files_dir, output_file, *args
+            )
+            if not success:
+                print(f"  X FAILED: {error_msg}")
                 print()
                 return False
 
@@ -70,31 +168,24 @@ def run_test(
             expected_content = expected_file.read_text()
             actual_content = output_file.read_text()
 
-            # Compare
-            if expected_content == actual_content:
-                print("  ✓ PASSED")
+            # Compare with regex support
+            expected_lines = expected_content.splitlines(keepends=True)
+            actual_lines = actual_content.splitlines(keepends=True)
+
+            matches, mismatches = compare_with_regex(expected_lines, actual_lines)
+
+            if matches:
+                print("  [OK]")
                 print()
                 return True
-            else:
-                print("  ✗ FAILED: Output differs from expected")
-                print("  Diff (first 20 lines):")
-                diff = unified_diff(
-                    expected_content.splitlines(keepends=True),
-                    actual_content.splitlines(keepends=True),
-                    fromfile=str(expected_file),
-                    tofile="actual output",
-                    lineterm="",
-                )
-                for i, line in enumerate(diff):
-                    if i >= 20:
-                        print("  ...")
-                        break
-                    print(f"  {line.rstrip()}")
-                print()
-                return False
+
+            _report_test_failure(
+                mismatches, expected_lines, actual_lines, expected_file
+            )
+            return False
 
         except Exception as e:
-            print(f"  ✗ FAILED: Exception: {e}")
+            print(f"  X FAILED: Exception: {e}")
             print()
             return False
 
@@ -232,10 +323,10 @@ def main():
     print("=" * 60)
 
     if tests_failed == 0:
-        print("All tests passed! ✓")
+        print("All tests passed!")
         return 0
     else:
-        print("Some tests failed! ✗")
+        print("Some tests failed! X")
         return 1
 
 

@@ -1,5 +1,10 @@
+
 # ========================================
-# From: test_multiple_scripts.conf
+# From file: test_multiple_scripts.conf
+{{REGEX:# Git repo: .*}}
+{{REGEX:# File path in repo: .*}}
+{{REGEX:# Commit: [0-9a-f]{12}}}
+{{REGEX:# Status: (clean|modified|staged|untracked|unknown)( \(.*\))?}}
 # ========================================
 
 # Test multiple starlark scripts in the same file

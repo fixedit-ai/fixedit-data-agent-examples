@@ -1,4 +1,9 @@
 click
 
+# Pin major for stability.
+# Require at least 3.1.41 due to vulnerabilities.
+# See: https://security.snyk.io/package/pip/gitpython
+GitPython>=3.1.41,<4.0.0
+
 # 0.x release might be unstable, so we pin to 0.13.x
 tomlkit>=0.13.0,<0.14.0

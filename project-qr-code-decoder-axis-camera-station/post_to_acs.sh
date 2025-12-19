@@ -214,7 +214,6 @@ if ! _json_payload=$(jq -n \
     --arg source "$ACS_SOURCE" \
     --arg externalDataType "$ACS_EXTERNAL_DATA_TYPE" \
     --arg decodedValue "$_decoded_value" \
-    --arg decodedTime "$_occurrence_time" \
     --arg codeType "$_code_type" \
     --arg codePositionSize "$_code_position_size" \
     '{
@@ -224,7 +223,6 @@ if ! _json_payload=$(jq -n \
             "externalDataType": $externalDataType,
             "data": {
                 "Decoded Value": $decodedValue,
-                "Decoded at Time": $decodedTime,
                 "Code Type": $codeType,
                 "Position and Size": $codePositionSize
             }

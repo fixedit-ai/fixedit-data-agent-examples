@@ -11,7 +11,8 @@
 # - ACS_SOURCE: Source identifier for the data (required)
 # - ACS_USERNAME: Username for basic authentication (required)
 # - ACS_PASSWORD: Password for basic authentication (required)
-# - HELPER_FILES_DIR: Directory for debug log files (required, set automatically by the FixedIT Data Agent)
+# - HELPER_FILES_DIR: Directory where to write the debug log file
+#   (required, set automatically by the FixedIT Data Agent)
 # - ACS_EXTERNAL_DATA_TYPE: Type identifier for the external data (defaults to "QRCodeDetection")
 # - ACS_PORT: Port number for the ACS server API (defaults to "55756")
 # - CURL_INSECURE: Set to "true" to skip SSL certificate verification (defaults to "false")
@@ -56,6 +57,14 @@ if [ "${CURL_INSECURE:-false}" = "true" ]; then
     _curl_insecure_flag="--insecure"
 fi
 
+# Temp file for capturing curl stderr, cleaned up on exit
+_api_stderr_file=""
+cleanup() {
+    [ -n "$_api_stderr_file" ] && rm -f "$_api_stderr_file"
+    return 0
+}
+trap cleanup EXIT INT TERM
+
 # Function to log debug messages to a file
 debug_log_file() {
     _dbg_log_message="$1"
@@ -70,7 +79,7 @@ debug_log_file() {
 has_api_error() {
     _check_exit_code="$1"
     _check_http_code="$2"
-    
+
     # Check if the API call was successful
     # Non-zero exit code indicates network error, authentication failure,
     # or invalid request parameters
@@ -91,20 +100,19 @@ log_api_error() {
     _err_http_code="$3"
     _err_response_body="$4"
     _err_api_url="$5"
-    
+
     # Read any curl errors from stderr
     _err_curl_error=""
     if [ -f "$_err_stderr_file" ]; then
         _err_curl_error=$(cat "$_err_stderr_file" 2>/dev/null)
-        rm -f "$_err_stderr_file"
     fi
-    
+
     debug_log_file "ERROR: ACS API call failed - exit code: $_err_exit_code, HTTP status: $_err_http_code"
     debug_log_file "ERROR: Response body: $_err_response_body"
     if [ -n "$_err_curl_error" ]; then
         debug_log_file "ERROR: Curl error: $_err_curl_error"
     fi
-    
+
     # Provide specific error message based on error type
     if [ -n "$_err_http_code" ] && [ "$_err_http_code" -ge 400 ] 2>/dev/null; then
         printf "Error: HTTP error response from server (status code: %s)" "$_err_http_code" >&2
@@ -122,11 +130,11 @@ log_api_error() {
                 ;;
         esac
     fi
-    
+
     if [ -n "$_err_curl_error" ]; then
         printf "\nCurl error: %s" "$_err_curl_error" >&2
     fi
-    
+
     if [ -n "$_err_response_body" ]; then
         printf "\nResponse: %s" "$_err_response_body" >&2
     fi

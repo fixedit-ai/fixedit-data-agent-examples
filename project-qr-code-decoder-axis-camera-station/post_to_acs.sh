@@ -58,9 +58,9 @@ if [ "${CURL_INSECURE:-false}" = "true" ]; then
 fi
 
 # Temp file for capturing curl stderr, cleaned up on exit
-_api_stderr_file=""
+_api_curl_stderr_file=$(mktemp)
 cleanup() {
-    [ -n "$_api_stderr_file" ] && rm -f "$_api_stderr_file"
+    [ -n "$_api_curl_stderr_file" ] && rm -f "$_api_curl_stderr_file"
     return 0
 }
 trap cleanup EXIT INT TERM
@@ -243,27 +243,26 @@ fi
 
 debug_log_file "JSON payload: $_json_payload"
 
-# Make the API call using curl
-# The endpoint uses HTTPS and requires basic authentication and proper JSON content type
-# Error responses are captured for debugging purposes
-# We capture both the response body and HTTP status code
-_api_stderr_file=$(mktemp)
+# Make the API call using curl.
+# The endpoint uses HTTPS and requires basic authentication and proper JSON content type.
+# HTTP error responses (code and body) are captured for debugging purposes and also the
+# curl exit code is captured.
+_api_curl_exit=0
 _api_response=$(curl --silent --show-error $_curl_insecure_flag \
     --user "${ACS_USERNAME}:${ACS_PASSWORD}" \
     -X POST \
     -H "Content-Type: application/json" \
     -d "$_json_payload" \
     --write-out "\n%{http_code}" \
-    "$_api_url" 2>"$_api_stderr_file")
-_api_exit=$?
+    "$_api_url" 2>"$_api_curl_stderr_file") || _api_curl_exit=$?
 
 # Extract HTTP status code (last line) and response body (everything else)
 _api_http_code=$(echo "$_api_response" | tail -n 1)
 _api_response_body=$(echo "$_api_response" | sed '$d')
 
 # Check if API call has errors
-if has_api_error "$_api_exit" "$_api_http_code"; then
-    log_api_error "$_api_stderr_file" "$_api_exit" "$_api_http_code" "$_api_response_body" "$_api_url"
+if has_api_error "$_api_curl_exit" "$_api_http_code"; then
+    log_api_error "$_api_curl_stderr_file" "$_api_curl_exit" "$_api_http_code" "$_api_response_body" "$_api_url"
 fi
 
 debug_log_file "ACS API call successful - HTTP status: $_api_http_code, Response: $_api_response_body"

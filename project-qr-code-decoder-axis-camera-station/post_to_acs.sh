@@ -199,9 +199,9 @@ fi
 
 debug_log_file "Extracted fields - decoded_value: $_decoded_value, time: $_decoded_time, code_type: $_code_type, code_position_size: $_code_position_size"
 
-# Convert Unix timestamp to ACS format "YYYY-MM-DD HH:MM:SS"
+# Convert Unix timestamp to ACS format "YYYY-MM-DD HH:MM:SS" in UTC
 # The frame_timestamp is in seconds since epoch
-if ! _occurrence_time=$(date -d "@$_decoded_time" '+%Y-%m-%d %H:%M:%S' 2>/dev/null); then
+if ! _occurrence_time=$(date -u -d "@$_decoded_time" '+%Y-%m-%d %H:%M:%S' 2>/dev/null); then
     debug_log_file "ERROR: Failed to format timestamp: $_decoded_time"
     printf "Error: Failed to format timestamp '%s'" "$_decoded_time" >&2
     exit 13

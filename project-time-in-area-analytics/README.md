@@ -26,8 +26,17 @@ flowchart TD
         CX --> C3
     end
 
-    C5 -->|detection_frame_with_duration| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
+    C5 -.->|OPTION 2<br/>detection_frame_with_duration| D1
+
+        subgraph MetricCopy ["config_output_time_in_area.conf"]
+        D1["Duplicate metric"]
+        D1 -->|time_in_area_frame| D2["Send metrics to InfluxDB"]
+
+    end
+
+    D1 -.->|detection_frame_with_duration| D
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
+    C5 -.->|OPTION 1<br/>detection_frame_with_duration| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
 
     D -->|alerting_frame_two| E0["config_process_alarming_state.conf:<br/>Check if any alerting detections have happened during the last second"]
     E0 -->|alerting_state_metric| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
@@ -49,9 +58,12 @@ flowchart TD
     style C4 fill:#ffffff,stroke:#673ab7
     style C5 fill:#ffffff,stroke:#673ab7
     style CX fill:#fff3e0,stroke:#fb8c00
+    style MetricCopy fill:#f3e5f5,stroke:#8e24aa,stroke-dasharray: 5 5
     style D fill:#f3e5f5,stroke:#8e24aa
+    style D1 fill:#ffffff,stroke:#673ab7
+    style D2 fill:#ffebee,stroke:#e53935
     style E0 fill:#f3e5f5,stroke:#8e24aa
-    style E01 fill:#f3e5f5,stroke:#8e24aa
+    style E01 fill:#ffebee,stroke:#e53935
     style E fill:#ffebee,stroke:#e53935
     style E1 fill:#f3e5f5,stroke:#8e24aa
     style F fill:#f3e5f5,stroke:#8e24aa
@@ -101,6 +113,7 @@ Color scheme:
   - [config_process_rate_limit.conf](#config_process_rate_limitconf)
   - [config_process_overlay_transform.conf](#config_process_overlay_transformconf)
   - [config_output_overlay.conf and overlay_manager.sh](#config_output_overlayconf-and-overlay_managersh)
+  - [config_output_time_in_area.conf](#config_output_time_in_areaconf)
   - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
   - [test_files/sample_data_feeder.sh](#test_filessample_data_feedersh)
 - [Future Enhancements](#future-enhancements)
@@ -144,23 +157,58 @@ Color scheme:
 
 ### TODO
 
-Create a combined file by running:
+You can use the `combine_files.py` script to create a combined configuration file, which includes the content of the `.star` and `.sh` files:
 
 ```bash
-cat config_agent.conf \
-    config_input_scene_detections.conf \
-    config_process_class_filter.conf \
-    config_process_zone_filter.conf \
-    config_process_track_duration.conf \
-    config_process_threshold_filter.conf \
-    config_process_rate_limit.conf \
-    config_process_overlay_transform.conf \
-    config_output_overlay.conf \
-    config_process_alarming_state.conf \
-    config_output_events.conf > combined.conf
+export PROJECT_DIR=/path/to/time-in-area-analytics-project
+cd ../tools/combine-files/
+python3 combine_files.py \
+  --config $PROJECT_DIR/config_agent.conf \
+  --config $PROJECT_DIR/config_input_scene_detections.conf \
+  --config $PROJECT_DIR/config_process_class_filter.conf \
+  --config $PROJECT_DIR/config_process_zone_filter.conf \
+  --config $PROJECT_DIR/config_process_track_duration.conf \
+  --config $PROJECT_DIR/config_process_threshold_filter.conf \
+  --config $PROJECT_DIR/config_process_rate_limit.conf \
+  --config $PROJECT_DIR/config_process_overlay_transform.conf \
+  --config $PROJECT_DIR/config_output_overlay.conf \
+  --config $PROJECT_DIR/config_process_alarming_state.conf \
+  --config $PROJECT_DIR/config_output_events.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var TELEGRAF_DEBUG=true \
+  --file-path-root $PROJECT_DIR \
+  --output combined.conf
 ```
 
-Then upload `combined.conf` as a config file and `overlay_manager.sh`, `axis_scene_detection_consumer.sh`, `zone_filter.star` and `track_duration_calculator.star` as helper files.
+If you want to send metrics to InfluxDB containing information about detections and how long they have been detected for, you can include the `config_output_time_in_area.conf` file to the combined file. Note that it should be listed between the `config_process_track_duration.conf` and `config_process_threshold_filter.conf` files, as shown below.
+
+```bash
+export PROJECT_DIR=/path/to/time-in-area-analytics-project
+cd ../tools/combine-files/
+python3 combine_files.py \
+  --config $PROJECT_DIR/config_agent.conf \
+  --config $PROJECT_DIR/config_input_scene_detections.conf \
+  --config $PROJECT_DIR/config_process_class_filter.conf \
+  --config $PROJECT_DIR/config_process_zone_filter.conf \
+  --config $PROJECT_DIR/config_process_track_duration.conf \
+  --config $PROJECT_DIR/config_output_time_in_area.conf \
+  --config $PROJECT_DIR/config_process_threshold_filter.conf \
+  --config $PROJECT_DIR/config_process_rate_limit.conf \
+  --config $PROJECT_DIR/config_process_overlay_transform.conf \
+  --config $PROJECT_DIR/config_output_overlay.conf \
+  --config $PROJECT_DIR/config_process_alarming_state.conf \
+  --config $PROJECT_DIR/config_output_events.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var TELEGRAF_DEBUG=true \
+  --file-path-root $PROJECT_DIR \
+  --output combined.conf
+```
+
+Then, upload the `combined.conf` file as a config file.
 
 Set `Extra Env` to:
 
@@ -168,6 +216,16 @@ Set `Extra Env` to:
 - `INCLUDE_ZONE_POLYGON=[[[-1,-1],[-1,1],[1,1],[1,-1]]]` (configure for your zone polygon)
 
 Set valid credentials in the parameters `Vapix username` and `Vapix password`.
+
+**Optional - If using InfluxDB output (`config_output_time_in_area.conf`):**
+
+Set the following application parameters:
+
+- Influx DB host
+- Influx DB port
+- Influx DB token
+- Influx DB organization
+- Influx DB bucket
 
 To export the zone from AXIS Object Analytics, see [README_INCLUDE_ZONE.md](README_INCLUDE_ZONE.md).
 
@@ -293,6 +351,27 @@ Displays text overlays on the video. This configuration:
 - Displays time in area, object class, and size information
 - Positions overlays using pre-calculated coordinates from the Starlark processor
 - Automatically removes overlays after 1 second for clean video display
+
+### config_output_time_in_area.conf
+
+Sends track metrics to InfluxDB for telemetry and analytics. This configuration:
+
+- Sends `time_in_area_frame` metrics to InfluxDB
+- Includes comprehensive track information: time in area, track ID, object type, bounding box coordinates, and timestamps
+- Uses InfluxDB v2 API with token-based authentication
+- Supports querying by track ID and object type through tags
+
+**Environment Variables:**
+
+- `INFLUX_HOST`: InfluxDB server hostname or IP address (required)
+- `INFLUX_PORT`: InfluxDB server port (required, typically 8086)
+- `INFLUX_TOKEN`: InfluxDB API token for authentication (required)
+- `INFLUX_ORG`: InfluxDB organization name (required)
+- `INFLUX_BUCKET`: InfluxDB bucket name for storing metrics (required)
+
+**Measurement Name:**
+
+Metrics are written to the `time_in_area_frame` measurement in InfluxDB, which corresponds to the duplicated metric name from the duplicate processor.
 
 ### test_files/config_output_stdout.conf
 

@@ -393,6 +393,9 @@ def parse_jsonl_file(file_path: Path) -> TrackData:
                 line = line.strip()
                 if not line:
                     continue
+                # Annotated sample files use # comments (same convention as other test_scripts)
+                if line.startswith("#"):
+                    continue
 
                 try:
                     frame = _parse_jsonl_line(line, line_num)

@@ -229,7 +229,9 @@ def apply(metric):
 
     Returns:
         The metric renamed to detection_frame_in_zone. If no zone is configured, all metrics
-        pass through. If a zone is configured, only metrics with centers inside the zone pass through.
+        pass through (including those without a bounding box). If a zone is configured, only
+        metrics with centers inside the zone pass through; metrics missing bounding box fields
+        are dropped (None) so they are not left under detection_frame_class_filtered.
     """
     # Get or parse the zone (uses Telegraf's state dict for caching)
     zone_vertices, zone_vertices_normalized = get_or_parse_zone(state, zone_polygon_json)
@@ -252,7 +254,7 @@ def apply(metric):
 
     if bbox_left == None or bbox_right == None or bbox_top == None or bbox_bottom == None:
         log.warning("apply: Metric missing bounding box fields")
-        return metric
+        return None
 
     # Calculate center point of bounding box
     center_x, center_y = get_bounding_box_center(bbox_left, bbox_right, bbox_top, bbox_bottom)

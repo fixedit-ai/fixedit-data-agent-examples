@@ -52,7 +52,11 @@ def get_time_in_area_seconds(track_id, current_seconds, track_state):
             "last_seen_seconds": current_seconds
         }
         log.debug("get_time_in_area_seconds: track_id=" + track_id + " first detection at " + str(current_seconds))
-        return 0  # Time in area is 0 on first detection
+        # Time in area is 0 on first detection.
+        # We set it to 0.0 since subsequent values will be floats,
+        # and 0 gets interpreted as an integer, which can result in
+        # errors when sending metrics to InfluxDB.
+        return 0.0
 
     # Update last seen time
     track_state[track_id]["last_seen_seconds"] = current_seconds

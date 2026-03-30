@@ -14,12 +14,12 @@ This directory contains helper scripts for testing and visualizing the time-in-a
   - [Authentication](#authentication)
   - [AXIS OS Compatibility](#axis-os-compatibility)
   - [Use Cases](#use-cases)
+  - [Troubleshooting](#troubleshooting)
 - [Track Heatmap Visualization](#track-heatmap-visualization)
   - [Basic Usage](#basic-usage-1)
   - [Advanced Usage](#advanced-usage-1)
   - [Features & Example Output](#features--example-output)
     - [Activity Percentage Calculation](#activity-percentage-calculation)
-- [Prerequisites](#prerequisites)
 
 <!-- tocstop -->
 

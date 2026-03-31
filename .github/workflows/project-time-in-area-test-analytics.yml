@@ -177,7 +177,7 @@ jobs:
           sudo apt-get install -y jq wget gnupg
 
           # Add InfluxDB repository using jammy (22.04) for compatibility with ubuntu-24
-          wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo gpg --dearmor -o /usr/share/keyrings/influxdata-archive-keyring.gpg
+          wget -qO- https://repos.influxdata.com/influxdata-archive_compat-exp2029.key | sudo gpg --dearmor -o /usr/share/keyrings/influxdata-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/influxdata-archive-keyring.gpg] https://repos.influxdata.com/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
 
           # Install Telegraf and bc (for floating point math)

@@ -1,38 +1,16 @@
-load("time.star", "time")
 load("logging.star", "log")
 
-def parse_timestamp_to_float_seconds(timestamp_str):
-    """Parse ISO 8601 timestamp string to Unix seconds as float
+def detection_time_seconds(metric):
+    """Return detection instant as Unix seconds (float).
 
-    Returns the timestamp as seconds since Unix epoch (float with microsecond precision).
-
-    Args:
-        timestamp_str: ISO 8601 timestamp string (e.g., "2024-01-15T10:00:03.345678Z")
-
-    Returns:
-        Float representing seconds since Unix epoch with microsecond precision
+    Telegraf always attaches metric.time. With json_time_key on the scene JSON input,
+    that time is the detection instant (nanoseconds since epoch). Duration math uses
+    only that, no ISO string parsing is needed.
     """
-    if "." in timestamp_str:
-        # Split timestamp into seconds and fractional parts
-        parts = timestamp_str.split(".")
-        seconds_part = parts[0]
-        fractional_part = parts[1].rstrip("Z")
-
-        # Parse microseconds (pad to at least 6 digits, then truncate to exactly 6)
-        fractional_part = (fractional_part + "000000")[:6]
-
-        microseconds_fraction = int(fractional_part)
-        timestamp_str = seconds_part + "Z"
-    else:
-        microseconds_fraction = 0
-
-    time_format = "2006-01-02T15:04:05Z"
-    time_obj = time.parse_time(timestamp_str, format=time_format)
-
-    # Convert to float seconds: seconds + (microseconds / 1,000,000)
-    unix_float_seconds = float(time_obj.unix) + float(microseconds_fraction) / 1000000.0
-
-    return unix_float_seconds
+    mt = metric.time
+    if mt == None or mt == 0:
+        return None
+    return float(mt) / 1000000000.0
 
 def get_time_in_area_seconds(track_id, current_seconds, track_state):
     """Get the time in area for a track ID and update its last seen time
@@ -102,16 +80,16 @@ def apply(metric):
     Returns:
         The input metric but with the time in area added.
     """
-    # Get track_id and timestamp from the metric
+    # Get track_id from the metric
     track_id = metric.fields.get("track_id", "")
-    timestamp = metric.fields.get("timestamp", "")
-
     # Skip messages without track_id
-    if track_id == "" or timestamp == "":
+    if track_id == "":
         return metric
 
     # Parse timestamp to float seconds since Unix epoch
-    current_seconds = parse_timestamp_to_float_seconds(timestamp)
+    current_seconds = detection_time_seconds(metric)
+    if current_seconds == None:
+        return metric
 
     # Initialize track state subdict if it doesn't exist
     if "track_state" not in state:

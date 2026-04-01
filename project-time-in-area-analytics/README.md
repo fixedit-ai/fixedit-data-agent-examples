@@ -132,8 +132,6 @@ Color scheme:
   - [Raw Analytics Data (from camera)](#raw-analytics-data-from-camera)
   - [Data Transformed for Telegraf](#data-transformed-for-telegraf)
   - [Data Transformed for Overlay](#data-transformed-for-overlay)
-- [Recording Real Device Data](#recording-real-device-data)
-- [Track Activity Visualization](#track-activity-visualization)
 - [Automated Testing](#automated-testing)
   - [GitHub Workflow](#github-workflow)
   - [Test Data](#test-data)
@@ -448,13 +446,7 @@ We have two files with fake detections that are good for testing the zone filter
 - `test_files/simple_tracks.jsonl` - simple tracks that are good for testing the zone filter
 - `test_files/test_zone_filter_complex.jsonl` - complex tracks that are good for testing the zone filter with a complex polygon
 
-You can use the [visualize_zone_tests.py](test_scripts/visualize_zone_tests.py) script to visualize the zone and detections:
-
-```bash
-python test_scripts/visualize_zone_tests.py test_files/test_zone_filter_simple.jsonl
-```
-
-This will show an image like the following where you can see the zone the test is intended to be used with (parsed from a comment in the `.jsonl` file) and the sample detections. That way, it is easy to see which points are inside and which are outside and therefore to know what you should expect from the Telegraf pipeline test using this test file.
+The figure below shows the zone the test is intended to be used with (from a comment in the `.jsonl` file) and the sample detections, so you can see which points are inside or outside and what to expect from the Telegraf pipeline test using this file.
 
 ![Complex zone test](.images/simple-zone-test.png)
 
@@ -779,47 +771,17 @@ The `config_process_overlay_transform.conf` processor transforms the `detection_
 
 Note that when we draw the overlay text in `overlay_manager.sh`, the coordinate for the text indicates the top-left corner of the text box. This is also where we place the arrow pointing to the object center.
 
-## Recording Real Device Data
-
-You can record real analytics scene description data from your Axis camera for deterministic testing and analysis. This allows you to run the analytics pipeline on your host machine with reproducible results.
-
-```bash
-python test_scripts/record_real_data.py --host <device_ip> --username <username>
-```
-
-The recorded data works with the track heatmap visualization and other analysis tools. For detailed usage instructions, see the [test_scripts README](test_scripts/README.md).
-
-## Track Activity Visualization
-
-This project includes a track heatmap visualization script that shows when different track IDs are active over time, helping you analyze track patterns and activity density in your data.
-
-```bash
-python test_scripts/track_heatmap_viewer.py test_files/simple_tracks.jsonl
-```
-
-For installation, usage details, and examples, see the [test_scripts README](test_scripts/README.md).
-
-![Track Heatmap Example](.images/track-heatmap-120s.png)
-_Example heatmap showing track activity over time with labeled components (10s alarm threshold)_
-
 ## Automated Testing
 
-This project includes comprehensive automated testing to ensure both the visualization script and Telegraf pipeline work correctly and produce consistent results.
+This project includes automated testing for the Telegraf pipeline so time-in-area behavior stays consistent.
 
 ### GitHub Workflow
 
-The automated tests run on every push and pull request via the `project-time-in-area-test-analytics.yml` workflow, which includes:
-
-**Three Independent Test Jobs:**
+The automated tests run on every push and pull request via the `project-time-in-area-test-analytics.yml` workflow:
 
 In file `project-time-in-area-test-analytics.yml`:
 
 - `test-telegraf-pipeline`: Validates time-in-area algorithms and workflows in Telegraf
-- `test-visualization-script`: Validates alarm detection in the test visualization script
-
-In file `project-time-in-area-analytics-python-quality.yml`:
-
-- `python-quality`: Validates Python code quality in the test scripts
 
 If you have [Act](https://github.com/nektos/act) installed, you can run the tests locally from the terminal. Note that you need to run them from the root of the repo. Run e.g. the following:
 
@@ -849,4 +811,4 @@ The workflow automatically posts detailed comments to pull requests with:
 - ✅ Success confirmation when all tests pass
 - ❌ Specific failure diagnostics and troubleshooting steps when tests fail
 
-This ensures both tools maintain consistent alarm detection behavior and helps catch regressions early in the development process.
+This helps catch regressions early in the development process.

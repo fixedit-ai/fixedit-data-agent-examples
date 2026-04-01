@@ -97,7 +97,6 @@ Color scheme:
   - [AXIS OS Compatibility](#axis-os-compatibility)
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
 - [Quick Setup](#quick-setup)
-  - [TODO](#todo)
   - [Troubleshooting](#troubleshooting)
     - [Make sure AXIS Object Analytics is enabled](#make-sure-axis-object-analytics-is-enabled)
     - [Verbose Logging](#verbose-logging)
@@ -143,17 +142,17 @@ Color scheme:
 
 ### AXIS OS Compatibility
 
-- **Minimum AXIS OS version**: AXIS OS 12+
-- **Required tools**: Uses `message-broker-cli` which was not stable before AXIS OS 12. Uses `jq` for JSON processing which was not available in older AXIS OS versions, `sed` for text filtering, and standard Unix utilities (`sh`). Uses the analytics scene description message broker topic `com.axis.analytics_scene_description.v0.beta` which is available in AXIS OS 12.
+- **Minimum AXIS OS version**: AXIS OS 12.X. Note that the beta topic will be replaced by a new one in AXIS OS 13.
+- **Required tools**: Uses `message-broker-cli` which was not stable before AXIS OS 12. Uses `jq` for JSON processing which was not available in older AXIS OS versions, `sed` for text filtering, and standard Unix utilities (`sh`). Uses the analytics scene description message broker topic `com.axis.analytics_scene_description.v0.beta` which is available in AXIS OS 12. Uses `curl` (to send requests to the VAPIX Dynamic Overlay API), `grep` (error checks on API responses), and typical POSIX shell utilities including `cat`, `cut`, or `echo` that already come installed.
 
 ### FixedIT Data Agent Compatibility
 
-- **Minimum Data Agent version**: <TODO: TBD>
-- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application <TODO: TBD> and above.
+- **Minimum Data Agent version**: v1.4.0.
+- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application 1.4.0 and above.
 
 ## Quick Setup
 
-### TODO
+This section includes quick setup instructions for the project. You can find more detailed instructions, including images showing the process step-by-step, in [this blog post](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-trigger-alarms-and-get-detailed-statistics-about-time-in-area-using-the-fixedit-data-agent).
 
 You can use the `combine_files.py` script to create a combined configuration file, which includes the content of the `.star` and `.sh` files:
 
@@ -206,16 +205,13 @@ python3 combine_files.py \
   --output combined.conf
 ```
 
-Then, upload the `combined.conf` file as a config file.
+Then, upload the `combined.conf` file as a config file and enable it.
 
-Set `Extra Env` to:
+Go to the custom UI tab and upload the `frontend/time_in_area.html` file.
 
-- `ALERT_THRESHOLD_SECONDS=30`
-- `INCLUDE_ZONE_POLYGON=[[[-1,-1],[-1,1],[1,1],[1,-1]]]` (configure for your zone polygon)
+Modify the `App settings` to adapt to your use case and press `Save`.
 
-Set valid credentials in the parameters `Vapix username` and `Vapix password`.
-
-**Optional - If using InfluxDB output (`config_output_time_in_area.conf`):**
+**Optional: If using InfluxDB output (`config_output_time_in_area.conf`)**
 
 Set the following application parameters:
 
@@ -231,7 +227,7 @@ To export the zone from AXIS Object Analytics, see [README_INCLUDE_ZONE.md](READ
 
 #### Make sure AXIS Object Analytics is enabled
 
-This project is making use of scene detection data from AXIS Object Analytics. Make sure the AXIS Object Analytics app is running in the camera. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
+If you want to import zones from AXIS Object Analytics in the user interface, it needs to be running. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
 
 #### Verbose Logging
 
@@ -264,7 +260,7 @@ If you see an error like this:
 [2025-08-20 11:43:40] 2025-08-20T09:43:40Z E! [telegraf] Error running agent: could not initialize processor processors.starlark: :6:23: unexpected input character '$'
 ```
 
-It usually means an environment variable (like `ALERT_THRESHOLD_SECONDS`) is not set correctly as an `Extra Env` variable.
+It usually means an environment variable (like `ALERT_THRESHOLD_SECONDS`) is not set correctly as an `Extra Env` variable. These environment variables are automatically set when you save the `App settings` in the time-in-area user interface; make sure you have set and saved these settings.
 
 #### "Text area is too big!" in overlay
 
@@ -348,7 +344,6 @@ Displays text overlays on the video. This configuration:
 - Shows overlay text at the center of detected objects using the VAPIX overlay API
 - Displays time in area, object class, and size information
 - Positions overlays using pre-calculated coordinates from the Starlark processor
-- Automatically removes overlays after 1 second for clean video display
 
 ### config_output_time_in_area.conf
 
@@ -386,8 +381,7 @@ This example should implement a minimal viable solution and can be easily extend
 - **Warning Threshold**: Add a warning level before the main alert threshold
 - **Deactivation Messages**: Send alerts when objects leave the area after being alerted
 - **Time-of-Day Rules**: Apply different thresholds based on time of day
-- **Multiple Areas**: Monitor multiple rectangular areas with different configurations
-- **Advanced Shapes**: Implement polygon-based areas instead of simple rectangles
+- **Multiple Areas**: Monitor multiple include zones with different configurations
 
 ## Local Testing on Host
 
@@ -401,15 +395,9 @@ You can test the processing logic locally using Telegraf before deploying to you
 
 ### Host Testing Limitations
 
-**Works on Host:**
-
-- Starlark processor logic testing with sample data
-- MQTT output configuration validation (TODO)
-- Alert threshold configuration testing
-
 **Only works in the Axis Device:**
 
-- Real object detection metadata consumption (camera-specific message broker) - in host testing, you can use the `sample_data_feeder.sh` script to simulate the camera metadata stream using pre-recorded data in the `test_files/simple_tracks.jsonl` or `test_files/real_device_data.jsonl` files.
+- Real object detection metadata consumption (camera-specific message broker): in host testing, you can use the `sample_data_feeder.sh` script to simulate the camera metadata stream using pre-recorded data in the `test_files/simple_tracks.jsonl` or `test_files/real_device_data.jsonl` files.
 - The VAPIX overlay API requires direct access to the Axis device and cannot be tested on host systems.
 
 ### Test Commands
@@ -443,8 +431,8 @@ When set to `Human`, only detections with a class name of `Human` are passed thr
 
 We have two files with fake detections that are good for testing the zone filter:
 
-- `test_files/simple_tracks.jsonl` - simple tracks that are good for testing the zone filter
-- `test_files/test_zone_filter_complex.jsonl` - complex tracks that are good for testing the zone filter with a complex polygon
+- `test_files/simple_tracks.jsonl`: simple tracks that are good for testing the zone filter
+- `test_files/test_zone_filter_complex.jsonl`: complex tracks that are good for testing the zone filter with a complex polygon
 
 The figure below shows the zone the test is intended to be used with (from a comment in the `.jsonl` file) and the sample detections, so you can see which points are inside or outside and what to expect from the Telegraf pipeline test using this file.
 
@@ -558,7 +546,7 @@ telegraf --config config_agent.conf \
          --once
 ```
 
-**How it works:** Same as above - we use the file reader script to simulate camera data on the host by reading from the file specified in `SAMPLE_FILE`, allowing us to test the complete pipeline including threshold filtering without needing live camera hardware.
+**How it works:** Same as above, we use the file reader script to simulate camera data on the host by reading from the file specified in `SAMPLE_FILE`, allowing us to test the complete pipeline including threshold filtering without needing live camera hardware.
 
 **Expected Output:**
 Only detections with time in area (`time_in_area_seconds`) > `ALERT_THRESHOLD_SECONDS`.
@@ -651,7 +639,6 @@ This should now have created an overlay in the camera and a file in your current
 2. `config_process_overlay_transform.conf` transforms coordinates and standardizes fields
 3. `config_output_overlay.conf` receives the transformed data and executes the overlay manager
 4. Creates an overlay on the video showing the object information
-5. Removes the overlay after 1 second
 
 **Expected Result:** A red text overlay will appear on the video showing:
 
@@ -701,7 +688,7 @@ Each line contains a JSON object with this structure:
 
 ### Data Transformed for Telegraf
 
-The raw analytics data needs transformation for Telegraf's JSON parser because metrics must be flat - the contained list of detections would cause strange concatenations if parsed directly. Both the `sample_data_feeder.sh` script and the real `axis_metadata_consumer.sh` running on the camera perform this transformation.
+The raw analytics data needs transformation for Telegraf's JSON parser because metrics must be flat, the contained list of detections would cause strange concatenations if parsed directly. Both the `sample_data_feeder.sh` script and the real `axis_metadata_consumer.sh` running on the camera perform this transformation.
 
 **From:** Frame-based format (multiple observations per frame)
 

@@ -1,0 +1,37 @@
+# Test data for zone filter with asymmetric rectangular zone
+# Use zone: [[[-0.6, -0.4], [0.2, -0.4], [0.2, 0.2], [-0.6, 0.2]]]
+#
+# Test coverage with 9 detections:
+#
+# INSIDE zone:
+#   a: inside zone
+#   b: inside zone
+#
+# BOUNDARY:
+#   c: on zone boundary (x=0.2, right edge)
+#
+# OUTSIDE zone:
+#   d: outside zone (above, y > 0.2)
+#   e: outside zone (above, y > 0.2)
+#
+# CROSSING edge (movement pattern):
+#   f: on zone boundary (y=-0.4, bottom edge)
+#   g: inside zone
+#   h: outside zone (below, y < -0.4)
+#
+# OUTSIDE zone:
+#   i: outside zone (left, x < -0.6)
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.55, "left": 0.25, "right": 0.65, "top": 0.35}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:01.000000Z", "track_id": "inside_zone_a"}], "timestamp": "2024-01-15T10:00:01.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.55, "left": 0.25, "right": 0.75, "top": 0.35}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:02.000000Z", "track_id": "inside_zone_b"}], "timestamp": "2024-01-15T10:00:02.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.6, "left": 0.6, "right": 0.6, "top": 0.5}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:03.000000Z", "track_id": "on_boundary_c"}], "timestamp": "2024-01-15T10:00:03.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.3, "left": 0.2, "right": 0.7, "top": 0.1}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:04.000000Z", "track_id": "above_zone_d"}], "timestamp": "2024-01-15T10:00:04.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.2, "left": 0.3, "right": 0.8, "top": 0.0}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:05.000000Z", "track_id": "above_zone_e"}], "timestamp": "2024-01-15T10:00:05.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.8, "left": 0.0, "right": 0.5, "top": 0.6}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:06.000000Z", "track_id": "crossing_edge_f"}], "timestamp": "2024-01-15T10:00:06.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.55, "left": 0.2, "right": 0.6, "top": 0.35}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:07.000000Z", "track_id": "crossing_edge_g"}], "timestamp": "2024-01-15T10:00:07.000000Z"}}
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.2, "left": 0.2, "right": 0.6, "top": 0.0}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:08.000000Z", "track_id": "crossing_edge_h"}], "timestamp": "2024-01-15T10:00:08.000000Z"}}
+
+{"frame": {"observations": [{"bounding_box": {"bottom": 0.5, "left": -0.2, "right": 0.2, "top": 0.3}, "class": {"type": "Human"}, "timestamp": "2024-01-15T10:00:09.000000Z", "track_id": "left_of_zone_i"}], "timestamp": "2024-01-15T10:00:09.000000Z"}}

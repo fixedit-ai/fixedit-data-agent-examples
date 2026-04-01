@@ -221,8 +221,6 @@ Set the following application parameters:
 - Influx DB organization
 - Influx DB bucket
 
-To export the zone from AXIS Object Analytics, see [README_INCLUDE_ZONE.md](README_INCLUDE_ZONE.md).
-
 ### Troubleshooting
 
 #### Make sure AXIS Object Analytics is enabled

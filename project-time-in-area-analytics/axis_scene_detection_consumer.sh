@@ -23,7 +23,7 @@
 # - Uses jq to parse and restructure JSON data
 # - Outputs one detection per line for Telegraf processing
 
-# Analytics scene description topic (camera-specific)
+# Analytics scene description topic
 TOPIC="com.axis.analytics_scene_description.v0.beta"
 SOURCE="1"
 

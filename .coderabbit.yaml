@@ -1,4 +1,7 @@
 language: en-US
+# Code style and PR review standards for contributors to this repository.
+# Product background, tool explanations, and guidance for forking/cloning with
+# LLM agents live in AGENTS.md (which is automatically found by CodeRabbit).
 reviews:
   profile: chill
   poem: false
@@ -32,6 +35,7 @@ reviews:
         practices including table of contents with `<!-- toc -->` markers. The README should
         consider that users might use Windows, Linux or MacOS and should explain how the tools
         work in the different environments or which environments it does work under.
+        For platform context (Telegraf, Grafana, InfluxDB), see AGENTS.md.
     - path: "project-*/**"
       instructions: >-
         Each example project for the FixedIT Data Agent should be self-contained and
@@ -82,6 +86,7 @@ reviews:
         - Use `pathlib` instead of `os.path` for platform portability in Python
         - If the project contains Python files, ensure there's a GitHub Actions workflow called
           `project-<project-dir-name>-python-quality.yml`
+        For how examples are meant to be learned and extended, see AGENTS.md.
     - path: "project-*/**/*.sh"
       instructions: >-
         Shell scripts should be written in portable shell (/bin/sh) syntax since bash is not
@@ -142,6 +147,8 @@ reviews:
         Images used for the README should be placed in a directory called .images/ in the affected
         project folder. These images might also be referred to from other sources like the top-level
         README.md file.
+        Product and tool background (Telegraf, Starlark, InfluxDB, Grafana, host testing) is in
+        AGENTS.md.
   auto_review:
     enabled: true
     auto_incremental_review: true

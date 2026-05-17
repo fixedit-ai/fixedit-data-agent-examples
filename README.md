@@ -2,6 +2,8 @@
 
 This repository provides resources for the [FixedIT Data Agent ACAP](https://fixedit.ai/products-data-agent/) for the Axis network cameras and other Axis devices.
 
+This README explains the high-level overview of the different projects. Each project has its own README file. If there's an example that you don't understand, try cloning the repo and using your favourite AI agent to ask how it is working (see [Using LLM agents for development](#using-llm-agents-for-development)).
+
 ## Table of Contents
 
 <!-- toc -->
@@ -15,6 +17,7 @@ This repository provides resources for the [FixedIT Data Agent ACAP](https://fix
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
 - [Developer Tools](#developer-tools)
   - [Combine Configuration Files and Scripts](#combine-configuration-files-and-scripts)
+- [Using LLM agents for development](#using-llm-agents-for-development)
 
 <!-- tocstop -->
 
@@ -157,3 +160,11 @@ The [combine-files](./tools/combine-files) tool solves a common deployment chall
 This Python script combines multiple configuration files into a single file and can inline both Starlark and shell scripts, creating a self-contained configuration that's easy to deploy. The tool supports variable expansion, making it possible to generate different configurations for production vs. testing.
 
 For detailed usage instructions and examples, see the [README](./tools/combine-files/README.md) in the combine-files directory.
+
+## Using LLM agents for development
+
+If you clone this repository to build or adapt your own FixedIT Data Agent projects, the [AGENTS.md](./AGENTS.md) file can guide your AI agents. That file explains how the examples are structured, how Telegraf, Starlark, InfluxDB, and Grafana fit together, and how to learn from existing `project-*` folders (including running host-side tests with native Telegraf before deploying to a device).
+
+For a dedicated guide on working with LLMs on this platform, see [Using LLMs and AI agents when coding for the FixedIT Data Agent](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-using-llms-and-ai-agents-when-coding-for-the-fixedit-data-agent) in [our e-learning platform](https://learning.fixedit.ai/spaces/21130101/content).
+
+Contributors opening pull requests against this repo should follow the review standards in [.coderabbit.yaml](./.coderabbit.yaml) which is what our automated review agent will use.

@@ -8,27 +8,53 @@ _Click the image above to watch the timelapse video on YouTube_
 
 ## How It Works
 
-The system captures images at regular intervals and uploads them to AWS S3 with timestamped filenames, creating a chronological sequence perfect for timelapse generation. Images are encoded as base64 strings within JSON files due to the Telegraf data format limitations. Telegraf does not generally support binary data, so base64 encoding is used as a workaround. The [remotefile](https://github.com/influxdata/telegraf/blob/master/plugins/outputs/remotefile/README.md) plugin only supports structured data, therefore the files are saved as json files with the base64 encoded image in them.
+The system captures images at regular intervals and uploads them to AWS S3 with timestamped filenames, creating a chronological sequence perfect for timelapse generation.
+
+Since Telegraf in the Data Agent automatically handles buffering if an output is not available, you don't need to worry about losing frames if the device is offline for a short time. They will simply be buffered in memory and uploaded when the connection is restored. In this particular example, the buffering works a little differently than usual since the `remotefile` output will accept metrics even if the remote connection is temporarily unavailable, it will buffer these internally until the connection is restored. Internally in the `remotefile` plugin, `rsync` is used to upload the files to the S3 bucket. This means that you can change to uploading the images to e.g. an SFTP server by changing the remote URL.
+
+JPEGs are fetched from the camera, then internally represented as a [base64 string](https://en.wikipedia.org/wiki/Base64) inside Telegraf. Two [remotefile](https://github.com/influxdata/telegraf/blob/master/plugins/outputs/remotefile/README.md) outputs receive the same metric: one uses `data_format = "template"` and `b64dec` to write a binary image file (`.jpg`); the other writes a small `.json` metadata file with `timestamp` and tags copied from the metric. This works around the standardized format for Telegraf metrics not carrying raw binary fields.
 
 ```mermaid
 flowchart TD
-    A["⏳ Wait<br/>Sleep for interval"] --> B1["📥 VAPIX API Call<br/>Fetch JPEG image"]
-    B3 --> C["☁️ AWS S3<br/>Upload with local buffer"]
-    C --> A
+    A["⏳ Interval<br/>Trigger capture"] --> B1["📥 VAPIX API Call<br/>Fetch JPEG image"]
+    B4 --> J["☁️ S3<br/>.jpg object"]
+    B5 --> M["☁️ S3<br/>.json metadata"]
+
+    GT["📌 Telegraf:<br/>[global_tags]"]
+
+    XMeta["DEVICE_PROP_*<br/>AREA, SITE, GEO, …<br/>APP_VERSION, …"]
+    XMeta --> GT
+
+    XVapix["VAPIX_USERNAME<br/>VAPIX_PASSWORD"]
+    XVapix --> B1
+
+    XAws["AWS_ACCESS_KEY_ID<br/>AWS_SECRET_ACCESS_KEY<br/>AWS_REGION<br/>S3_BUCKET"]
+    XAws --> B4
+    XAws --> B5
 
     subgraph "axis_image_consumer.sh"
-        B1["📥 VAPIX API Call<br/>Fetch JPEG image"] --> B2["🔄 Base64 Encode<br/>Convert to text string"]
-        B2 --> B3["📤 Output Metric<br/>Structured JSON data"]
+        B1["📥 VAPIX API Call<br/>Fetch JPEG image"] --> B2["🔄 Base64 Encode<br/>Metric field only"]
+        B2 --> B3["📤 Exec metric<br/>image field + resolution tag"]
+    end
+
+    subgraph "outputs.remotefile (×2)"
+        B3 --> B4["Template:<br/>b64dec → JPEG bytes"]
+        B3 --> B5["Template:<br/>metadata JSON"]
     end
 
     style A fill:#f1f8e9
-    style C fill:#e8f5e8
+    style GT fill:#f3e5f5
+    style J fill:#e8f5e8
+    style M fill:#e8f5e8
     style B1 fill:#fff3e0
     style B2 fill:#fff3e0
     style B3 fill:#fff3e0
+    style B4 fill:#e3f2fd
+    style B5 fill:#e3f2fd
+    style XMeta fill:#f5f5f5,stroke:#9e9e9e
+    style XVapix fill:#f5f5f5,stroke:#9e9e9e
+    style XAws fill:#f5f5f5,stroke:#9e9e9e
 ```
-
-The `remotefile` plugin will buffer frames in memory if an internet connection is not available. This means that you will not lose any frames if the device is offline for a short time. Do however note the [known issue](#known-issues) below affecting the startup of the workflow when no internet connection is available.
 
 ## Why Choose This Approach?
 
@@ -80,8 +106,8 @@ This approach makes timelapse functionality accessible to system integrators and
 
 ### FixedIT Data Agent Compatibility
 
-- **Minimum Data Agent version**: 1.0
-- **Required features**: Uses the `input.exec` and `output.remotefile` plugins. Uses the `TELEGRAF_DEBUG`, `HELPER_FILES_DIR` and `DEVICE_PROP_SERIAL` environment variables which are available in all FixedIT Data Agent versions.
+- **Minimum Data Agent version**: 1.5.0
+- **Required features**: Uses the `serializers.template` plugin which was added in FixedIT Data Agent 1.5.0. Uses the `input.exec` and `output.remotefile` plugins. Uses the `TELEGRAF_DEBUG`, `HELPER_FILES_DIR` and `DEVICE_PROP_*` environment variables which are available in all FixedIT Data Agent versions. Uses the `VAPIX_USERNAME` and `VAPIX_PASSWORD` environment variables which was added in FixedIT Data Agent v1.1.
 
 ## Create an S3 Bucket in AWS
 
@@ -147,22 +173,26 @@ After creating the user and setting up the permissions, create access keys follo
 
 1. **Configure FixedIT Data Agent variables:**
 
+   Click the three dots next to the FixedIT Data Agent application in the camera's "Apps" section and select "Settings". Then set the following parameters:
+   - `VAPIX Username`: The username for a viewer in the camera
+   - `VAPIX Password`: The password for a viewer in the camera
+
    Set the following environment variables in the `Extra env` parameter as a semicolon-separated list:
 
    ```txt
-   VAPIX_USER=your_vapix_username;VAPIX_PASS=your_vapix_password;AWS_ACCESS_KEY_ID=your_aws_access_key;AWS_SECRET_ACCESS_KEY=your_aws_secret_key;AWS_REGION=your_aws_region;S3_BUCKET=your_timelapse_bucket;CAPTURE_INTERVAL_SEC=300
+   AWS_ACCESS_KEY_ID=your_aws_access_key;AWS_SECRET_ACCESS_KEY=your_aws_secret_key;AWS_REGION=your_aws_region;S3_BUCKET=your_timelapse_bucket;CAPTURE_INTERVAL_SEC=300
    ```
 
    **Required variables:**
-   - `VAPIX_USER` / `VAPIX_PASS`: Camera authentication credentials
+   - `VAPIX_USERNAME` / `VAPIX_PASSWORD`: These are configured in the Data Agent settings and used to fetch the images using the network API
    - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: AWS credentials for S3 access
    - `AWS_REGION`: AWS region (depends on your S3 bucket setup)
    - `S3_BUCKET`: Target S3 bucket name
    - `CAPTURE_INTERVAL_SEC`: Image capture interval in seconds (default: 300 = 5 minutes)
 
    **Optional variables:**
-   - `RESOLUTION`: Image resolution (optional - if not set, camera default will be used)
-   - `CAMERA_IP`: Camera IP address for image capture (optional - if not set, `localhost` will be used). If you want to use images from the camera that is running the FixedIT Data Agent, this does not need to be set.
+   - `RESOLUTION`: Image resolution (optional; if not set, camera default will be used)
+   - `CAMERA_IP`: Camera IP address for image capture (optional; if not set, `localhost` will be used). If you want to use images from the camera that is running the FixedIT Data Agent, this does not need to be set.
 
 2. **Upload the files to the FixedIT Data Agent**
 
@@ -231,38 +261,51 @@ If the AWS permissions are not enough, you should see an error like this in the 
 ### Image Capture Process
 
 1. **Exec Input Plugin**: Runs `axis_image_consumer.sh` at specified intervals
-2. **Image Processing**: Script fetches JPEG from camera's VAPIX API and encodes as base64
-3. **JSON Output**: Creates structured JSON with image data and metadata
-4. **S3 Upload**: remotefile plugin uploads each image as individual JSON file
+2. **Image Processing**: Script fetches JPEG from camera's VAPIX API and encodes as base64 for the `image_base64` field
+3. **JSON metric**: Exec plugin parses stdout into a Telegraf metric (string field + metadata)
+4. **S3 upload**: Two remotefile outputs write `timelapse-HH-MM-SS.jpg` (binary) and `timelapse-HH-MM-SS.json` (metadata) under the same folder
 
 ### AWS S3 Integration
 
-- **File Naming**: Uses template `DEVICE_SERIAL/YYYY-MM-DD/timelapse-HH-MM-SS.json`
-- **Data Format**: JSON with base64-encoded image and metadata
+- **File naming**: `${DEVICE_PROP_SERIAL}/YYYY-MM-DD/timelapse-HH-MM-SS.(jpg|json)` objects
+- **JPEG object**: Raw bytes (`image/jpeg`)
+- **JSON object**: Metadata file with image tags
 - **Access Control**: Uses AWS IAM credentials for authentication
 
-### Output File Format
+### Output file layout
 
-Each uploaded file contains a JSON object with the following structure:
+Each capture produces a pair of objects with the same path prefix and clock-based name:
+
+- **`*.jpg`**: The frame as a normal JPEG file.
+- **`*.json`**: Metadata only, for example:
 
 ```json
 {
-  "fields": {
-    "image_base64": "/9j/4AAQSkZJRgABAQAAAQABA...",
-    "length": 182812
-  },
+  "timestamp": 1691328000,
   "tags": {
-    "host": "device-hostname"
-  },
-  "timestamp": 1691328000
+    "host": "axis-b8a44f717321",
+    "area": "Europe",
+    "geography": "Sweden",
+    "region": "Lund",
+    "site": "Office",
+    "latitude": "55.714794",
+    "longitude": "13.214984",
+    "type": "Construction Site",
+    "resolution": "1920x1080",
+    "device_brand": "AXIS",
+    "device_model": "M3045-LVE",
+    "device_variant": "48mm",
+    "device_type": "Dome Camera",
+    "product_full_name": "AXIS M3045-LVE Dome Camera",
+    "device_serial": "B8A44F717321",
+    "firmware_version": "12.5.56",
+    "architecture": "aarch64",
+    "soc": "Axis Artpec-7",
+    "data_agent_version": "1.5.0",
+    "data_agent_start_time": "1760454197"
+  }
 }
 ```
-
-**Fields:**
-
-- `image_base64`: Base64-encoded JPEG image data (starts with `/9j/` for JPEG)
-- `length`: Size of the base64-encoded image data in characters
-- `timestamp`: Unix timestamp in seconds when the image was captured
 
 ### S3 Bucket Structure
 
@@ -272,11 +315,13 @@ The timelapse images are organized in the S3 bucket with the following structure
 s3://your-timelapse-bucket/
 ├── DEVICE_SERIAL_001/
 │   ├── 2025-08-06/
+│   │   ├── timelapse-10-38-33.jpg
 │   │   ├── timelapse-10-38-33.json
+│   │   ├── timelapse-10-38-37.jpg
 │   │   ├── timelapse-10-38-37.json
-│   │   ├── timelapse-10-38-42.json
 │   │   └── ...
 │   ├── 2025-08-07/
+│   │   ├── timelapse-09-15-30.jpg
 │   │   ├── timelapse-09-15-30.json
 │   │   └── ...
 │   └── ...
@@ -307,8 +352,8 @@ First, set up the environment variables:
 
 ```bash
 # Required variables (must be configured)
-export VAPIX_USER="your_vapix_username"
-export VAPIX_PASS="your_vapix_password"
+export VAPIX_USERNAME="your_vapix_username"
+export VAPIX_PASSWORD="your_vapix_password"
 export CAMERA_IP="your.camera.ip"
 
 export AWS_ACCESS_KEY_ID="your_access_key"
@@ -322,7 +367,10 @@ export HELPER_FILES_DIR="$(pwd)"
 # Set the capture interval in seconds.
 export CAPTURE_INTERVAL_SEC="60"
 
-# Set image resolution (optional - if not set, camera default will be used)
+# Device serial, used for the S3 path prefix
+export DEVICE_PROP_SERIAL="host-test"
+
+# Set image resolution (optional, otherwise camera default will be used)
 export RESOLUTION="1920x1080"
 
 # Enable debug mode (optional)
@@ -332,19 +380,15 @@ export TELEGRAF_DEBUG="true"
 Then run the test:
 
 ```bash
-# Test configuration
-telegraf --config timelapse-to-s3.conf --test
-
-# Run once to capture and upload a single image
-telegraf --config timelapse-to-s3.conf --once
-
 # Run continuously (use Ctrl+C to stop)
 telegraf --config timelapse-to-s3.conf
 ```
 
+Note that running `--once` will not work as expected since it will only run one of the outputs and either write the image or the metadata file, but not both. Running with `--test` should be avoided since it will print the whole base64 encoded image to the console.
+
 ## Known issues
 
-Although the `remotefile` output will buffer frames in memory for later upload if no internet connection is available, it seems like it is blocking the initialization of the workflow until it can connect to the S3 bucket the first time. This means that if the device boots up with no internet connection, the workflow will not start capturing frames until it has managed to connect to the S3 bucket at least once. This can be seen in the logs below:
+Although the `remotefile` output will buffer frames in memory for later upload if no internet connection is available, it is blocking the initialization of the workflow until it can connect to the S3 bucket the first time. This means that if the device boots up with no internet connection, the workflow will not start capturing frames until it has managed to connect to the S3 bucket at least once. This can be seen in the logs below:
 
 ![No internet connection will block the start of the e workflow](./.images/logs-offline-boot.png)
 

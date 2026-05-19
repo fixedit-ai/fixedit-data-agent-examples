@@ -5,31 +5,28 @@
 # =============================================================================
 #
 # PURPOSE:
-#   Fetches images from an Axis camera via VAPIX API and returns them as
-#   base64-encoded JSON for MQTT transmission.
+#   Fetches a JPEG from the camera VAPIX API and prints a JSON object containing
+#   the base64-encoded image and the optional resolution.
 #
 # INPUT VARIABLES:
-#   VAPIX_USER     - Username for camera authentication (default: root)
-#   VAPIX_PASS     - Password for camera authentication (default: pass)
-#   CAMERA_IP      - IP address of the Axis camera (default: 127.0.0.1)
-#   RESOLUTION     - Image resolution in format "widthxheight" (e.g., "1920x1080")
-#   TELEGRAF_DEBUG - Enable debug logging when set to "true"
+#   VAPIX_USERNAME  - Username for camera authentication (default: root)
+#   VAPIX_PASSWORD  - Password for camera authentication (default: pass)
+#   CAMERA_IP       - IP address or hostname of the Axis camera (default: 127.0.0.1)
+#   RESOLUTION      - Optional image resolution (e.g. 1920x1080) for the JPEG URL query;
+#                     if unset the camera uses its default resolution for the JPEG request.
+#   TELEGRAF_DEBUG  - Enable debug logging when set to "true"
 #   HELPER_FILES_DIR - Directory for debug log files
 #
 # OUTPUT:
-#   JSON string with format: {"image_base64":"<base64_data>","length":<size>}
-#   or error JSON: {"error":"<message>","image_base64":null,"length":0}
-#
-# USAGE:
-#   Called by mqtt_image_request_handler.sh as part of the MQTT image request
-#   pipeline. The script fetches images from the camera's CGI endpoint and
-#   encodes them for transmission over MQTT.
+#   Success: JSON with format {"image_base64":"<base64_data>","resolution":"<resolution>"}
+#   The resolution key is always present; when RESOLUTION is unset it is an empty string.
+#   Failure: {"error":"<message>","image_base64":null}
 #
 # =============================================================================
 
 # Configuration
-VAPIX_USER="${VAPIX_USER:-root}"
-VAPIX_PASS="${VAPIX_PASS:-pass}"
+VAPIX_USERNAME="${VAPIX_USERNAME:-root}"
+VAPIX_PASSWORD="${VAPIX_PASSWORD:-pass}"
 CAMERA_IP="${CAMERA_IP:-127.0.0.1}"
 
 # We use HTTP for the image fetch. Since the request is to localhost, this is quite safe.
@@ -68,10 +65,10 @@ fetch_image() {
     fi
 
     debug_log_file "Fetching image from: $url"
-    debug_log_file "Using credentials: $VAPIX_USER:****"
+    debug_log_file "Using credentials: $VAPIX_USERNAME:****"
 
     # Test connectivity first
-    test_response=$(curl -s --digest -u "${VAPIX_USER}:${VAPIX_PASS}" "$url" --head 2>&1)
+    test_response=$(curl -s --digest -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" --head 2>&1)
     test_exit=$?
 
     if [ $test_exit -ne 0 ]; then
@@ -81,7 +78,7 @@ fetch_image() {
 
     # Fetch image with authentication and pipe directly to base64 encoding
     # This avoids storing binary data in shell variables which can corrupt it
-    encoded_data=$(curl -s --digest -u "${VAPIX_USER}:${VAPIX_PASS}" "$url" 2>/dev/null | openssl base64 -A)
+    encoded_data=$(curl -s --digest -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" 2>/dev/null | openssl base64 -A)
     curl_exit=$?
 
     if [ $curl_exit -ne 0 ]; then
@@ -132,23 +129,26 @@ FETCH_EXIT=$?
 # Check if image fetch was successful
 if [ $FETCH_EXIT -ne 0 ] || [ -z "$IMAGE_BASE64" ]; then
     debug_log_file "Image fetch failed or returned empty data"
-    jq -n '{"error": "Failed to fetch or encode image", "image_base64": null, "length": 0}'
+    jq -n '{"error": "Failed to fetch or encode image", "image_base64": null}'
     exit 1
 fi
 
-# Create JSON output using herefile to avoid command line argument length limits
+# Build the JSON line Telegraf will parse....
+# A JPEG is hundreds of KB once base64-encoded, so we use a here-document instead of e.g.
+# passing the variable as an argument to `jq -n --arg img "$IMAGE_BASE64" '{image_base64:$img,...}'`.
+# On many systems each program invocation has a tight limit on total argument size.
+# Passing the entire base64 blob as argv to jq can fail with "argument list too long" errors.
 JSON_OUTPUT=$(cat <<EOF
-{"image_base64":"$IMAGE_BASE64","length":${#IMAGE_BASE64}}
+{"image_base64":"$IMAGE_BASE64","resolution":"${RESOLUTION:-}"}
 EOF
 )
 
 # Validate JSON using jq
-if command -v jq >/dev/null 2>&1; then
-    if echo "$JSON_OUTPUT" | jq . >/dev/null 2>&1; then
-        debug_log_file "JSON validation successful"
-    else
-        debug_log_file "JSON validation failed"
-    fi
+if echo "$JSON_OUTPUT" | jq . >/dev/null 2>&1; then
+    debug_log_file "JSON validation successful"
+else
+    echo "axis_image_consumer.sh: JSON validation failed: invalid JSON payload (jq parse error)" >&2
+    exit 1
 fi
 
 # Log the actual JSON size

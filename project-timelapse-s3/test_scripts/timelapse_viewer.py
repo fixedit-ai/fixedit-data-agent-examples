@@ -5,11 +5,10 @@ This module provides functionality to view and analyze timelapse videos
 created by the FixedIT Data Agent and stored in AWS S3.
 """
 
-import base64
 import io
 import json
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterator, List, Optional, Tuple
 
 import boto3
@@ -50,8 +49,8 @@ def handle_s3_client_error(e: ClientError, bucket: str) -> None:
 class TimelapseViewer:
     """A viewer for timelapse videos stored in AWS S3.
 
-    This class provides functionality to fetch, decode, and display timelapse
-    images stored as JSON files in S3 buckets.
+    This class provides functionality to fetch and display timelapse
+    images stored as JPEG files and JSON metadata in S3 buckets.
     """
 
     def __init__(self, bucket_name: str, aws_region: Optional[str] = None):
@@ -63,6 +62,10 @@ class TimelapseViewer:
         """
         self.bucket_name = bucket_name
         self.s3_client = boto3.client("s3", region_name=aws_region)
+
+    @staticmethod
+    def _jpeg_key_from_metadata_key(json_key: str) -> str:
+        return str(PurePosixPath(json_key).with_suffix(".jpg"))
 
     def _paginated_s3_request(self, **request_params) -> Iterator[dict]:
         """Generate S3 API responses across all pages.
@@ -142,7 +145,7 @@ class TimelapseViewer:
             date: Optional date filter in YYYY-MM-DD format
 
         Returns:
-            List of S3 keys for timelapse JSON files
+            List of S3 keys for timelapse metadata JSON files
         """
         prefix = f"{device_serial}/"
         if date:
@@ -153,7 +156,8 @@ class TimelapseViewer:
         # Use pagination helper to get all objects
         for obj in self._paginated_s3_list(Bucket=self.bucket_name, Prefix=prefix):
             key = obj["Key"]
-            if "timelapse-" in key and key.endswith(".json"):
+            lower_k = key.lower()
+            if "timelapse-" in lower_k and lower_k.endswith(".json"):
                 timelapse_files.append(key)
 
         # Sort by filename (which includes timestamp)
@@ -161,69 +165,56 @@ class TimelapseViewer:
         return timelapse_files
 
     def fetch_image_from_s3(self, s3_key: str) -> Tuple[Image.Image, datetime]:
-        """Fetch a single image from S3 and decode it.
+        """Load one frame from a metadata key and its paired JPEG object.
 
         Args:
-            s3_key: The S3 key for the JSON file containing the image
+            s3_key: Object key for a timelapse-*.json metadata file.
 
         Returns:
             Tuple of (PIL Image, UTC datetime timestamp)
 
         Raises:
-            ValueError: If JSON structure is invalid or image data is corrupted
+            ValueError: If keys, JSON structure, or image bytes are invalid
         """
-        # Download the JSON file
-        response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
-        json_data = json.loads(response["Body"].read().decode("utf-8"))
-
-        # Validate required JSON structure
-        if "fields" not in json_data:
-            raise ValueError(f"Missing 'fields' key in JSON data from {s3_key}")
-
-        fields = json_data["fields"]
-        if "image_base64" not in fields:
-            raise ValueError(f"Missing 'image_base64' key in fields from {s3_key}")
-
-        # Extract base64 image data
-        image_base64 = fields["image_base64"]
-
-        # Validate that image_base64 is not empty
-        if not image_base64:
-            raise ValueError(f"Empty image_base64 data in {s3_key}")
-
-        # Decode base64 image data
-        try:
-            image_data = base64.b64decode(image_base64)
-        except Exception as e:
-            raise ValueError(f"Invalid base64 data in {s3_key}: {e}") from e
-
-        # Convert to PIL Image
-        try:
-            image = Image.open(io.BytesIO(image_data))
-        except Exception as e:
-            raise ValueError(f"Failed to decode image data from {s3_key}: {e}") from e
-
-        # Extract UTC timestamp from JSON timestamp field (nanoseconds)
-        # The timestamp is at the root level, not inside fields
-        if "timestamp" not in json_data:
+        lower_k = s3_key.lower()
+        if not lower_k.endswith(".json"):
             raise ValueError(
-                f"Missing 'timestamp' field in JSON data from {s3_key}. "
-                f"JSON structure: {json_data.keys()}"
+                f"Expected a timelapse metadata key ending in .json, got: {s3_key}"
             )
 
-        # Convert timestamp to datetime
-        timestamp_s = json_data["timestamp"]
+        meta_resp = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
+        meta = json.loads(meta_resp["Body"].read().decode("utf-8"))
 
-        # Validate that timestamp is a number
+        # Get the timestamp, validate it and convert to UTC datetime
+        if "timestamp" not in meta:
+            raise ValueError(f"Missing 'timestamp' in metadata {s3_key}")
+        timestamp_s = meta["timestamp"]
         if not isinstance(timestamp_s, (int, float)):
             raise ValueError(
                 f"Invalid timestamp type in {s3_key}: expected number, "
                 f"got {type(timestamp_s)}"
             )
+        timestamp = datetime.fromtimestamp(float(timestamp_s), tz=timezone.utc)
 
-        timestamp = datetime.fromtimestamp(timestamp_s, tz=timezone.utc)
+        # Get the JPEG image (stored as a separate object)
+        jpg_key = self._jpeg_key_from_metadata_key(s3_key)
+        try:
+            img_resp = self.s3_client.get_object(Bucket=self.bucket_name, Key=jpg_key)
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code == "NoSuchKey":
+                raise ValueError(
+                    f"No paired JPEG for {s3_key} (expected object {jpg_key})"
+                ) from e
+            raise
 
-        return image, timestamp
+        payload = img_resp["Body"].read()
+        try:
+            image = Image.open(io.BytesIO(payload))
+        except Exception as e:
+            raise ValueError(f"Failed to decode JPEG data from {jpg_key}: {e}") from e
+
+        return image.convert("RGB"), timestamp
 
     def _prepare_image_for_display(
         self, img: Image.Image, timestamp: datetime

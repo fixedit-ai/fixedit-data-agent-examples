@@ -38,6 +38,8 @@ Human-oriented overview and example links: [README.md](./README.md).
   - [Detecting the absence of a message (“nothing happened”)](#detecting-the-absence-of-a-message-nothing-happened)
   - [Immediate output (no batching delay)](#immediate-output-no-batching-delay)
   - [Preserving event timestamps on metrics](#preserving-event-timestamps-on-metrics)
+  - [Adding metadata to metrics with `[global_tags]`](#adding-metadata-to-metrics-with-global_tags)
+  - [Working with raw binary data in metrics by base64 encoding](#working-with-raw-binary-data-in-metrics-by-base64-encoding)
   - [Viewing pipeline data in the Logs tab](#viewing-pipeline-data-in-the-logs-tab)
 - [Example projects in this repo](#example-projects-in-this-repo)
   - [Deploying a project in the Data Agent UI](#deploying-a-project-in-the-data-agent-ui)
@@ -532,6 +534,49 @@ Put the event time in a JSON field (e.g. `timestamp` from Scene Metadata) and te
 Ensure the upstream script or parser **includes** that field on every line. [axis_scene_detection_consumer.sh](./project-time-in-area-analytics/axis_scene_detection_consumer.sh) copies `.timestamp` from each observation into `"timestamp"` in the flattened JSON.
 
 **In-repo reference:** [project-time-in-area-analytics/config_input_scene_detections.conf](./project-time-in-area-analytics/config_input_scene_detections.conf) (add or verify `json_time_key` / `json_time_format` when event time must drive downstream logic).
+
+### Adding metadata to metrics with `[global_tags]`
+
+The Data Agent automatically sets a bunch of metadata variables (some from application configuration and some automatically read from the device). To add these variables as tags to every metric, use `[global_tags]`. Example:
+
+```toml
+[global_tags]
+# Geo/site (from Data Agent UI)
+  area             = "${AREA}"
+  geography        = "${GEOGRAPHY}"
+  region           = "${REGION}"
+  site             = "${SITE}"
+  latitude         = "${DEVICE_LOCATION_LATITUDE}"
+  longitude        = "${DEVICE_LOCATION_LONGITUDE}"
+  type             = "${TYPE}"
+
+# Device information automatically read from the device
+  device_brand      = "${DEVICE_PROP_BRAND}"
+  device_model      = "${DEVICE_PROP_MODEL}"
+  device_variant    = "${DEVICE_PROP_VARIANT}"
+  device_type       = "${DEVICE_PROP_TYPE}"
+  product_full_name = "${DEVICE_PROP_FULL_NAME}"
+  device_serial       = "${DEVICE_PROP_SERIAL}"
+  firmware_version    = "${DEVICE_PROP_FIRMWARE}"
+  architecture        = "${DEVICE_PROP_ARCH}"
+  soc                 = "${DEVICE_PROP_SOC}"
+
+# Runtime metadata set by the Data Agent
+  data_agent_version     = "${APP_VERSION}"
+  data_agent_start_time  = "${APP_START_TIME}"
+```
+
+### Working with raw binary data in metrics by base64 encoding
+
+In Telegraf JSON inputs (e.g. `[[inputs.exec]]`), you usually express values as typed fields like numbers, and strings. Raw binary (JPEG files, audio chunks, etc.) can't be parsed by Telegraf since it does not have any binary data types.
+
+**Recommended pattern:**
+
+1. **Encode at the producer** — In the shell (or whichever plugin produces the ingest line), **base64**-encode the bytes and emit a JSON object with one string field (e.g. `image_base64`) holding that text.
+2. **Keep as string internally** — In the Telegraf workflow, keep the field as a string and forward it downstream.
+3. **Decode where you need bytes** — On `[[outputs.remotefile]]`, `[[outputs.file]]`, `[[outputs.http]]`, etc., use `data_format = "template"` so the [template serializer](https://github.com/influxdata/telegraf/blob/master/plugins/serializers/template/README.md) can turn the metric back into file bytes. For example `{{ .Field "image_base64" | b64dec }}` for a single binary object per metric.
+
+`telegraf --test`: Test mode gathers inputs once and prints every metric. A field that contains a whole image as base64 is large. Prefer `telegraf ... --once` with real sinks, or a slim host-only config that does not funnel that field to stdout.
 
 ### Viewing pipeline data in the Logs tab
 

@@ -537,33 +537,35 @@ Ensure the upstream script or parser **includes** that field on every line. [axi
 
 ### Adding metadata to metrics with `[global_tags]`
 
-The Data Agent automatically sets a bunch of metadata variables (some from application configuration and some automatically read from the device). To add these variables as tags to every metric, use `[global_tags]`. Example:
+The Data Agent automatically sets a bunch of metadata variables (some from application configuration and some automatically read from the device). To add these variables as tags to every metric, use `[global_tags]`. To make sure that the variables name is not used as a fallback value if no value is set for it, you can use the `:-` pattern to set the default value to an empty string.
+
+Example:
 
 ```toml
 [global_tags]
 # Geo/site (from Data Agent UI)
-  area             = "${AREA}"
-  geography        = "${GEOGRAPHY}"
-  region           = "${REGION}"
-  site             = "${SITE}"
-  latitude         = "${DEVICE_LOCATION_LATITUDE}"
-  longitude        = "${DEVICE_LOCATION_LONGITUDE}"
-  type             = "${TYPE}"
+  area             = "${AREA:-}"
+  geography        = "${GEOGRAPHY:-}"
+  region           = "${REGION:-}"
+  site             = "${SITE:-}"
+  latitude         = "${DEVICE_LOCATION_LATITUDE:-}"
+  longitude        = "${DEVICE_LOCATION_LONGITUDE:-}"
+  type             = "${TYPE:-}"
 
 # Device information automatically read from the device
-  device_brand      = "${DEVICE_PROP_BRAND}"
-  device_model      = "${DEVICE_PROP_MODEL}"
-  device_variant    = "${DEVICE_PROP_VARIANT}"
-  device_type       = "${DEVICE_PROP_TYPE}"
-  product_full_name = "${DEVICE_PROP_FULL_NAME}"
-  device_serial       = "${DEVICE_PROP_SERIAL}"
-  firmware_version    = "${DEVICE_PROP_FIRMWARE}"
-  architecture        = "${DEVICE_PROP_ARCH}"
-  soc                 = "${DEVICE_PROP_SOC}"
+  device_brand      = "${DEVICE_PROP_BRAND:-}"
+  device_model      = "${DEVICE_PROP_MODEL:-}"
+  device_variant    = "${DEVICE_PROP_VARIANT:-}"
+  device_type       = "${DEVICE_PROP_TYPE:-}"
+  product_full_name = "${DEVICE_PROP_FULL_NAME:-}"
+  device_serial       = "${DEVICE_PROP_SERIAL:-}"
+  firmware_version    = "${DEVICE_PROP_FIRMWARE:-}"
+  architecture        = "${DEVICE_PROP_ARCH:-}"
+  soc                 = "${DEVICE_PROP_SOC:-}"
 
 # Runtime metadata set by the Data Agent
-  data_agent_version     = "${APP_VERSION}"
-  data_agent_start_time  = "${APP_START_TIME}"
+  data_agent_version     = "${APP_VERSION:-}"
+  data_agent_start_time  = "${APP_START_TIME:-}"
 ```
 
 ### Working with raw binary data in metrics by base64 encoding

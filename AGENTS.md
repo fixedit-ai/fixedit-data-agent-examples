@@ -40,6 +40,7 @@ Human-oriented overview and example links: [README.md](./README.md).
   - [Preserving event timestamps on metrics](#preserving-event-timestamps-on-metrics)
   - [Adding metadata to metrics with [global_tags]](#adding-metadata-to-metrics-with-global_tags)
   - [Working with raw binary data in metrics by base64 encoding](#working-with-raw-binary-data-in-metrics-by-base64-encoding)
+  - [Passing large images between pipeline stages via a Unix socket](#passing-large-images-between-pipeline-stages-via-a-unix-socket)
   - [Viewing pipeline data in the Logs tab](#viewing-pipeline-data-in-the-logs-tab)
 - [Example projects in this repo](#example-projects-in-this-repo)
   - [Deploying a project in the Data Agent UI](#deploying-a-project-in-the-data-agent-ui)
@@ -576,6 +577,24 @@ In Telegraf JSON inputs (e.g. `[[inputs.exec]]`), you usually express values as 
 
 `telegraf --test`: Test mode gathers inputs once and prints every metric. A field that contains a whole image as base64 is large. Prefer `telegraf ... --once` with real sinks, or a slim host-only config that does not funnel that field to stdout.
 
+### Passing large images between pipeline stages via a Unix socket
+
+A common workflow is to react to a small detection metric (for example a QR decode from `[[inputs.socket_listener]]`) by fetching a JPEG snapshot and forwarding both the trigger metadata and the image to a file upload or other output. Base64 encoding is still required (see [Working with raw binary data in metrics by base64 encoding](#working-with-raw-binary-data-in-metrics-by-base64-encoding)) but the hard part is how you move that large string through Telegraf without hitting buffer limits.
+
+**Typical mistake:** Using `processors.execd` to enrich the detection metric in place, or relying on `[[outputs.exec]]` to return the image on the script’s stdout and expecting Telegraf to ingest it as a new metric. `processors.execd` caps the size of stdout it will read from the helper process; a full-resolution JPEG as base64 can exceed that limit and fail silently or truncate. This size limit is platform dependent, it might work on your computer but not on the device.
+
+**Recommended workaround:** trigger metric → exec output → Unix socket → socket_listener input
+
+Split capture into a short bridge outside Telegraf’s exec stdout buffer:
+
+1. **Trigger** — A normal metric (e.g. `barcode_reader_app` with `decoded_data`) flows to `[[outputs.exec]]` with `metric_batch_size = 1` for immediate reaction (see [Immediate output](#immediate-output-no-batching-delay)).
+2. **Capture script** — The exec command runs a shell helper (e.g. `axis_image_consumer.sh`) that calls VAPIX and prints a large JSON object with `image_base64` (and optional metadata like `resolution`). Instead of ingesting this object, pipe it to a Unix domain socket with `socat` (optionally after adding some extra metadata to the object).
+3. **Re-ingest** — An `[[inputs.socket_listener]]` listens on the same socket path, uses `json_v2` to read the data (e.g. `input_data.fields.decoded_data` → `decoded_data`, `image_data.image_base64` → `image_base64`), and sets `name_override` (e.g. `image_capture`) for upload processors and outputs.
+
+**Why sockets:** `inputs.socket_listener` is designed for large, line-delimited payloads from external producers. It does not share the small stdout buffer limit that makes `processors.execd` unsuitable for multi-megabyte base64 strings.
+
+**In-repo reference:** [project-sftp-upload-of-qr-codes](./project-sftp-upload-of-qr-codes/) — [config_output_capture.conf](./project-sftp-upload-of-qr-codes/config_output_capture.conf) (exec + `socat`), [config_input_image_capture.conf](./project-sftp-upload-of-qr-codes/config_input_image_capture.conf) (socket_listener + `json_v2`), and [README](./project-sftp-upload-of-qr-codes/README.md) (end-to-end QR → snapshot → SFTP).
+
 ### Viewing pipeline data in the Logs tab
 
 To see metrics or debug lines in the FixedIT Data Agent Logs tab, write them to Telegraf stdout via the [file output plugin](https://github.com/influxdata/telegraf/tree/master/plugins/outputs/file). Do not rely on Telegraf printing metrics by itself—by convention only `outputs.file` → `stdout` should use stdout for data; Telegraf diagnostics go to stderr.
@@ -612,6 +631,7 @@ Use `metric_batch_size = 1` here if each line should appear in the Logs tab as s
 | [project-hello-world](./project-hello-world/)                                             | Minimal inputs/outputs, config overrides                     |
 | [project-strobe-color-from-github-workflow](./project-strobe-color-from-github-workflow/) | HTTP input, Starlark processors, exec output to shell        |
 | [project-timelapse-s3](./project-timelapse-s3/)                                           | Binary/image handling, AWS S3 output                         |
+| [project-sftp-upload-of-qr-codes](./project-sftp-upload-of-qr-codes/)                     | QR trigger, JPEG capture, socket bridge, SFTP upload         |
 | [project-time-in-area-analytics](./project-time-in-area-analytics/)                       | Scene Metadata, zones, Starlark, overlays, rich test_scripts |
 
 Browse [README.md](./README.md) for summaries and diagrams.

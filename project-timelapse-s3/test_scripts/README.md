@@ -4,7 +4,7 @@ This directory contains scripts for testing and viewing the timelapse system.
 
 ## Timelapse Viewer
 
-The `timelapse_viewer.py` script allows you to view timelapse videos created by the FixedIT Data Agent timelapse system. It fetches the json files from AWS S3, extracts the base64 encoded image, and displays them as a video or saves them as an MP4 file.
+The `timelapse_viewer.py` script allows you to view timelapse videos using the images uploaded by the FixedIT Data Agent timelapse system. It fetches the metadata and image files from AWS S3, and displays them as a video or saves them as an MP4 file.
 
 ### Use the viewer
 

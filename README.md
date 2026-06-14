@@ -128,23 +128,47 @@ The following diagram shows the data flow of the "Timelapse with AWS S3 Upload" 
 
 ```mermaid
 flowchart TD
-    A["⏳ Wait<br/>Sleep for interval"] --> B1["📥 VAPIX API Call<br/>Fetch JPEG image"]
-    B3 --> C["☁️ AWS S3<br/>Upload with local buffer"]
-    C --> A
+    A["⏳ Interval<br/>Trigger capture"] --> B1["📥 VAPIX API Call<br/>Fetch JPEG image"]
+    B4 --> J["☁️ S3<br/>.jpg object"]
+    B5 --> M["☁️ S3<br/>.json metadata"]
+
+    GT["📌 Telegraf:<br/>[global_tags]"]
+
+    XMeta["DEVICE_PROP_*<br/>AREA, SITE, GEO, …<br/>APP_VERSION, …"]
+    XMeta --> GT
+
+    XVapix["VAPIX_USERNAME<br/>VAPIX_PASSWORD"]
+    XVapix --> B1
+
+    XAws["AWS_ACCESS_KEY_ID<br/>AWS_SECRET_ACCESS_KEY<br/>AWS_REGION<br/>S3_BUCKET"]
+    XAws --> B4
+    XAws --> B5
 
     subgraph "axis_image_consumer.sh"
-        B1["📥 VAPIX API Call<br/>Fetch JPEG image"] --> B2["🔄 Base64 Encode<br/>Convert to text string"]
-        B2 --> B3["📤 Output Metric<br/>Structured JSON data"]
+        B1["📥 VAPIX API Call<br/>Fetch JPEG image"] --> B2["🔄 Base64 Encode<br/>Metric field only"]
+        B2 --> B3["📤 Exec metric<br/>image field + resolution tag"]
+    end
+
+    subgraph "outputs.remotefile (×2)"
+        B3 --> B4["Template:<br/>b64dec → JPEG bytes"]
+        B3 --> B5["Template:<br/>metadata JSON"]
     end
 
     style A fill:#f1f8e9
-    style C fill:#e8f5e8
+    style GT fill:#f3e5f5
+    style J fill:#e8f5e8
+    style M fill:#e8f5e8
     style B1 fill:#fff3e0
     style B2 fill:#fff3e0
     style B3 fill:#fff3e0
+    style B4 fill:#e3f2fd
+    style B5 fill:#e3f2fd
+    style XMeta fill:#f5f5f5,stroke:#9e9e9e
+    style XVapix fill:#f5f5f5,stroke:#9e9e9e
+    style XAws fill:#f5f5f5,stroke:#9e9e9e
 ```
 
-The system leverages the FixedIT Data Agent's built-in capabilities to create sophisticated data workflow graphs without traditional embedded programming. This shows that it is possible to work with binary data such as images and video in the FixedIT Data Agent, it also shows how to use the AWS S3 output integration in the FixedIT Data Agent.
+The system leverages the FixedIT Data Agent's built-in capabilities to create sophisticated data workflow graphs without traditional embedded programming. Frames are transported through Telegraf as base64 inside a metric; two remotefile sinks write the same basename JPEG plus a lightweight JSON metadata file with timestamps and tags. This also demonstrates the AWS S3 output integration via the Telegraf remotefile plugin.
 
 ## Developer Tools
 

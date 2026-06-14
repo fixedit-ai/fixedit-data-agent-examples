@@ -64,7 +64,7 @@ reviews:
         - Use visual diagrams (mermaid) to explain system flows
         - Emphasize "no C/C++ development required" value proposition
         - Include comprehensive table of contents with proper anchor links
-        - Template values for environment variables should use format like `VAPIX_PASS="your_vapix_password"`
+        - Template values for environment variables should use format like `VAPIX_PASSWORD="your_vapix_password"`
         - In bash commands, use format like `--bucket <my_s3_bucket_name>` for template values
         - When using credentials, specify minimum required privileges (e.g., viewer/operator/admin) and
           encourage not using higher than needed

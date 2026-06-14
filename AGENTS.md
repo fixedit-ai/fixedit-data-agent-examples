@@ -1,12 +1,12 @@
 # Agent instructions
 
-This file is for **developers who clone this repository** and use it as a starting point to build or adapt FixedIT Data Agent projects—often with help from an LLM coding agent (Cursor, Copilot, Claude Code, etc.).
+This file is intended for AI agents who are assisting developers who clone this repository and use it as a starting point to build or adapt FixedIT Data Agent projects.
 
-It explains **what this repository is**, **how the pieces fit together**, and **how to learn from the existing examples**. It does not define pull-request style rules; those live in [.coderabbit.yaml](./.coderabbit.yaml) for contributors who open PRs against this repo.
+It explains what this repository is, how the pieces fit together, and how to learn from the existing examples. It does not define pull-request style rules; those live in [.coderabbit.yaml](./.coderabbit.yaml) for contributors who open PRs against this repo.
 
 Human-oriented overview and example links: [README.md](./README.md).
 
-**Official guides** (PDF quick start and config spec, plus learning.fixedit.ai articles): see [Official learning resources](#official-learning-resources) below.
+**Official guides**: see [Official learning resources](#official-learning-resources) below.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ Human-oriented overview and example links: [README.md](./README.md).
 
 - [What this repository contains](#what-this-repository-contains)
   - [Repository layout](#repository-layout)
-  - [How to learn from existing examples (for LLM agents)](#how-to-learn-from-existing-examples-for-llm-agents)
+  - [How to learn from existing examples](#how-to-learn-from-existing-examples)
 - [Axis device environment](#axis-device-environment)
   - [Shell on devices](#shell-on-devices)
 - [Components](#components)
@@ -38,7 +38,7 @@ Human-oriented overview and example links: [README.md](./README.md).
   - [Detecting the absence of a message (“nothing happened”)](#detecting-the-absence-of-a-message-nothing-happened)
   - [Immediate output (no batching delay)](#immediate-output-no-batching-delay)
   - [Preserving event timestamps on metrics](#preserving-event-timestamps-on-metrics)
-  - [Adding metadata to metrics with `[global_tags]`](#adding-metadata-to-metrics-with-global_tags)
+  - [Adding metadata to metrics with [global_tags]](#adding-metadata-to-metrics-with-global_tags)
   - [Working with raw binary data in metrics by base64 encoding](#working-with-raw-binary-data-in-metrics-by-base64-encoding)
   - [Viewing pipeline data in the Logs tab](#viewing-pipeline-data-in-the-logs-tab)
 - [Example projects in this repo](#example-projects-in-this-repo)
@@ -55,11 +55,13 @@ Human-oriented overview and example links: [README.md](./README.md).
 
 This repository holds **example programs and dashboards** for the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) on Axis devices.
 
-- **`project-*/`** — Edge workflows: Telegraf configuration (`.conf`), optional Starlark (`.star`), portable shell helpers (`.sh`), and documentation. Each project is a self-contained project/tutorial.
+- **`project-*/`** — Edge workflows: Telegraf configuration (`.conf`), optional Starlark scripts (`.star`), portable shell scripts (`.sh`), and documentation. Each project is a self-contained project/tutorial.
 - **`dashboard-deployments/`** — **Server-side only** reference stacks (InfluxDB, Grafana, etc.) for visualizing data the agent sends off-device. These do not run on the Axis device.
-- **Tests on the host** — Most projects include `test_scripts/` (and sometimes `test_files/`) so you can run **system or unit tests on your development machine** using **Telegraf installed natively**, without an Axis device or a FixedIT Data Agent ACAP installed. Host tests do not replace on-device validation but speed up iteration on processors, Starlark, and data shapes. This works since the FixedIT Data Agent is built on top of Telegraf, but some features implemented in the Data Agent will be missing when running on host and needs to be mocked/stubbed out.
+- **Tests on the host** — Most projects include `test_scripts/` (and sometimes `test_files/` for static test data) so you can run system or unit tests on your development machine using Telegraf installed natively, without an Axis device or a FixedIT Data Agent ACAP installed. Host tests do not replace on-device validation but speed up iteration on processors, Starlark, and data shapes. This works since the FixedIT Data Agent is built on top of Telegraf, but some features implemented in the Data Agent will be missing when running on host and needs to be mocked/stubbed out.
 
-Example projects demonstrate real patterns: Scene Metadata filtering, GitHub API polling, S3 upload, zone analytics, overlays, and more. When starting something new, **find the closest existing project**, read its README and config layout, then adapt rather than inventing structure from scratch.
+Example projects demonstrate real patterns: Scene Metadata filtering, GitHub API polling, S3 upload, zone analytics, overlays, and more. When starting something new, find the closest existing project, read its README and config layout, then adapt rather than inventing structure from scratch.
+
+Each project should specify the compatibility with the FixedIT Data Agent and the AXIS OS version. Some projects might be more outdated and might do things in a more complex way than necessary. If a project that depends on a newer version of the FixedIT Data Agent is doing something in a simpler way, then that is probably a better approach. People should not be limited to an old version of the FixedIT Data Agent, so it should be safe to assume they run the latest version. Compatibility with AXIS OS is however more complex since some cameras does not support the latest version of AXIS OS.
 
 ### Repository layout
 
@@ -73,9 +75,7 @@ Example projects demonstrate real patterns: Scene Metadata filtering, GitHub API
 | `.coderabbit.yaml`            | PR review and code-quality rules for this repo              |
 | `.github/workflows/`          | CI (Prettier, Python quality per project)                   |
 
-Dashboards for a project belong under `dashboard-deployments/`, not inside the `project-*` folder.
-
-### How to learn from existing examples (for LLM agents)
+### How to learn from existing examples
 
 Read [Using LLMs and AI agents when coding for the FixedIT Data Agent](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-using-llms-and-ai-agents-when-coding-for-the-fixedit-data-agent) for platform-specific guidance before generating configs or scripts.
 
@@ -85,53 +85,53 @@ When the user asks you to add or change a FixedIT Data Agent project:
 2. **Mirror structure** — Same config naming (`config_agent.conf`, `config_input_*.conf`, `config_process_*.conf`, `config_output_*.conf`), same split between device configs and `test_files/` / `test_scripts/`.
 3. **Respect Telegraf load order** — Processors that depend on earlier stages must be enabled **after** their inputs in the FixedIT Data Agent UI (later load order = later in the pipeline).
 4. **Use host testing** — Run Telegraf locally with the project’s test configs where documented; use `test_scripts/` to record or visualize JSONL streams; use `inputs.mock` or `inputs.file` in `test_files/` when real device inputs are unavailable (see [Host testing with Telegraf](#host-testing-with-telegraf)).
-5. **Do not copy deployment-specific values** — No real hostnames, buckets, or credentials from one customer environment into examples.
+5. **Do not copy deployment-specific values** — No real hostnames, buckets, or credentials should be used in the examples, instead use environment variables or secrets.
 6. **Shell on devices** — Any `.sh` deployed to the device must be portable `/bin/sh`, not bash; see [Shell on devices](#shell-on-devices).
 
 For terminology (AXIS product names, FixedIT Data Agent capitalization, audience framing), follow the same conventions as existing READMEs.
 
 ## Axis device environment
 
-Axis devices run a **custom Linux distribution**, but the environment is **heavily restricted** compared to a normal server or developer machine:
+Axis devices run a custom Linux distribution, but the environment is heavily restricted compared to a normal server or developer machine:
 
 - **No package manager** — you cannot `apt install` tools on the device.
 - **Mostly read-only filesystem** — limited writable areas; not a general-purpose platform for dropping binaries.
 - **No root access** — you cannot freely install or reconfigure system software.
 
-The **only supported way to install an edge application** on the device is as an **ACAP** (Axis Camera Application Platform package), built and signed for the platform, then installed through the device’s ACAP mechanism.
+The only supported way to install an edge application on the device is as an ACAP (Axis Camera Application Platform package), built and signed for the platform, then installed through the device’s ACAP mechanism.
 
-That is why custom edge logic traditionally means **C/C++ ACAP development**, cross-compilation, packaging, deployment, and ongoing maintenance for every change.
+That is why custom edge logic traditionally means C/C++ ACAP development, cross-compilation, packaging, deployment, and ongoing maintenance for every change.
 
-The **FixedIT Data Agent** addresses this differently: you install **one standardized ACAP** (the FixedIT Data Agent). Behavior is then changed by **uploading interpreted configuration** (Telegraf `.conf` files) and optional **Starlark** or **portable shell** scripts that run inside that ACAP—without building and shipping a new native application for each workflow.
+The FixedIT Data Agent addresses this differently: you install one standardized ACAP (the FixedIT Data Agent). Behavior is then changed by uploading interpreted configuration (Telegraf `.conf` files) and optional Starlark or portable shell scripts that run inside that ACAP—without building and shipping a new native application for each workflow.
 
 ### Shell on devices
 
-**Shell on devices**: Bash is not available on Axis devices. Any `.sh` used on-device must be portable `/bin/sh` (see [.coderabbit.yaml](./.coderabbit.yaml) for full shell rules when contributing here). Host-only test scripts may use bash if documented as host-only.
+Bash is not available on Axis devices. Any `.sh` used on-device must be portable `/bin/sh` (see [.coderabbit.yaml](./.coderabbit.yaml) for full shell rules when contributing here). Host-only test scripts may use bash if documented as host-only.
 
 Getting this wrong is one of the most common reasons an example works on a developer laptop but fails on the device.
 
 ## Components
 
-The examples in this repository combine several products and open-source tools. **On the Axis device**, the FixedIT Data Agent ACAP (with the Telegraf runtime) is the main integration hub; **AXIS Scene Metadata** and companion ACAPs (QR decoder, YOLOv5 object detection, etc.) supply detection streams. **Off the device**, InfluxDB and Grafana store and visualize metrics. The sections below describe each component and how they connect.
+The examples in this repository combine several products and open-source tools. On the Axis device, the FixedIT Data Agent ACAP (with the Telegraf runtime) is the main integration hub; AXIS Scene Metadata and companion ACAPs (QR decoder, YOLOv5 object detection, etc.) supply detection streams. Off the device, InfluxDB and Grafana store and visualize metrics. The sections below describe each component and how they connect.
 
 ### FixedIT Data Agent
 
-The [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) is an **ACAP application for Axis devices** that turns cameras and other Axis products into **programmable edge data-processing agents**. It wraps **Telegraf** and adds configuration management, an on-device UI for uploading configs, optional custom UIs, and Axis-specific plugins.
+The [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) is an ACAP application for Axis devices that turns cameras and other Axis products into programmable edge data-processing agents. It wraps Telegraf and adds configuration management, an on-device UI for uploading configs, optional custom UIs, and Axis-specific plugins. This allows people to build both automation workflows and data integration between other applications and systems fully on the edge without low-level programming skills. The FixedIT Data Agent allows programmers to use built-in plugins combined with Python-like Starlark scripts. The Starlark scripts are sandboxed and can't interact with the system or environment other than consuming and producing metrics. This keeps them safe and robust. Shell scripts are also supported and are mainly used for file and network operations. Starlark scripts or existing plugins should be preferred over shell scripts whenever possible since they are simpler, more safe and more robust to use.
 
-Integrators and system developers define **workflows with configuration files** plus optional **Starlark** or **portable shell** scripts instead of maintaining a separate custom ACAP per use case.
+Engineers and system developers define workflows with configuration files plus optional Starlark or portable shell scripts. A system integrator can then easily deploy these workflows by installing the FixedIT Data Agent ACAP on the device and uploading the configuration files.
 
 #### Live Logs in the Data Agent UI
 
-The application includes a **Logs** page that streams **Telegraf’s stdout and stderr separately** in near real time—primary way to debug configs on device.
+The application includes a Logs page that streams Telegraf’s stdout and stderr separately in near real time—primary way to debug configs on device.
 
-| Stream     | Typical content                                                                                                                                                       |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **stderr** | Telegraf’s own log messages (plugin errors, config warnings, `[inputs.*]` / `[outputs.*]` diagnostics). By convention, treat stderr as **Telegraf internal logging**. |
-| **stdout** | Reserved for **pipeline data you choose to emit**—not Telegraf’s default logs.                                                                                        |
+| Stream     | Typical content                                                                                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **stderr** | Telegraf’s own log messages (plugin errors, config warnings, `[inputs.*]` / `[outputs.*]` diagnostics). By convention, treat stderr as Telegraf internal logging. |
+| **stdout** | Reserved for pipeline data you choose to emit and is not used fby Telegraf itself.                                                                                |
 
-To show metrics or custom text in the Logs tab, add **`[[outputs.file]]` with `files = ["stdout"]`**. The Data Agent captures that output and displays it in the UI. See [Viewing pipeline data in the Logs tab](#viewing-pipeline-data-in-the-logs-tab) under Common challenges.
+To show metrics or custom text in the Logs tab, add `[[outputs.file]]` with `files = ["stdout"]`. The Data Agent captures that output and displays it in the UI. See [Viewing pipeline data in the Logs tab](#viewing-pipeline-data-in-the-logs-tab) under Common challenges. It is recommended to use the `template` serializer to format the output for easy consumption by humans.
 
-Enable **Debug mode** in the UI (`TELEGRAF_DEBUG`) for more detail on stderr; avoid leaving it on in production (large logs on flash).
+For more verbose logging, enable Debug mode in the UI which will set the `TELEGRAF_DEBUG` environment variable to `true`. This can then be used in the configs as `[agent] debug = ${TELEGRAF_DEBUG}` to log more information such as when outputs are flushed and how long the internal queue is for each output.
 
 #### Data pipeline (Telegraf model)
 
@@ -150,7 +150,7 @@ Data flows through a modular pipeline:
 2. **Real-time edge processing** — Consume live analytics (e.g. AXIS Scene Metadata), filter, aggregate, integrate with APIs, route to enterprise systems.
 3. **Automation / event-driven** — Conditions trigger actions (HTTP, strobes, overlays, PTZ, local API calls) on the device with low latency and resilience during network outages.
 
-Design goal: **modularity** — separate perception, processing, transport, business logic, automation, visualization, and integration so teams can reuse and reconfigure without rebuilding binaries.
+Design goal: modularity. Separate ingestion, processing/business logic, automation, visualization, and integration so teams can reuse and reconfigure by picking and choosing the files they need.
 
 #### Common environment variables
 
@@ -175,7 +175,7 @@ The Data Agent maps settings to environment variables that Telegraf and helper s
 
 **Device identity (`DEVICE_PROP_*`, automatic on device)**
 
-Read from the camera’s parameter system and exposed to Telegraf configs and scripts. Commonly used as **metric tags**, in log messages, or when branching on model/firmware. Do not set these in `ExtraEnv`.
+Read from the camera’s parameter system and exposed to Telegraf configs and scripts. Commonly used as metric tags, in log messages, or when branching on model/firmware. Do not set these in `ExtraEnv`.
 
 | Variable                | Example value             | Typical use                             |
 | ----------------------- | ------------------------- | --------------------------------------- |
@@ -193,12 +193,12 @@ Also set automatically: `APP_VERSION`, `APP_START_TIME`, and `HOME` (dummy path 
 
 **Host vs device: `HELPER_FILES_DIR` pattern**
 
-| Where         | `HELPER_FILES_DIR` points to                                                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **On device** | Set by the Data Agent to the folder where you **uploaded** helper files in the UI.                                                                               |
-| **On host**   | You set it manually—convention in this repo: **`export HELPER_FILES_DIR="$(pwd)"`** from the **project root**, so the same relative paths work as on the camera. |
+| Where         | `HELPER_FILES_DIR` points to                                                                                                                             |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **On device** | Set by the Data Agent to the folder where you uploaded helper files in the UI.                                                                           |
+| **On host**   | You set it manually—convention in this repo: `export HELPER_FILES_DIR="$(pwd)"` from the project root, so the same relative paths work as on the camera. |
 
-Project configs always use `${HELPER_FILES_DIR}/…` (scripts, Starlark, paths in `inputs.execd`). That way **processor and output configs stay identical** on device and laptop; only the **input** side is stubbed for host runs.
+Project configs always use `${HELPER_FILES_DIR}/…` (scripts, Starlark, paths in `inputs.execd`). That way processor and output configs stay identical on device and laptop; only the input side is stubbed for host runs.
 
 **Pattern A — stubbed input script (same input `.conf`, override via env)**
 
@@ -254,7 +254,7 @@ Host run swaps the **input config file** in the `telegraf --config` list, but st
 
 ### AXIS Scene Metadata
 
-[AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/) is **built into Axis devices** (not a separate FixedIT ACAP). Cameras and other sensors publish structured JSON about tracked objects—humans, vehicles, faces, license plates, and more—for real-time analytics and integrations.
+[AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/) is built into Axis devices (not a separate FixedIT ACAP). Cameras and other sensors publish structured JSON about tracked objects—humans, vehicles, faces, license plates, and more—for real-time analytics and integrations.
 
 **Key references (Axis developer documentation):**
 
@@ -262,24 +262,24 @@ Host run swaps the **input config file** in the `telegraf --config` list, but st
 - [Classification types](https://developer.axis.com/analytics/axis-scene-metadata/reference/data-formats/analytics-data-format/classification-types/) — e.g. `Human`, `Car`, `Face`, `LicensePlate`, with scores and attributes
 - [Data sources & topics](https://developer.axis.com/analytics/axis-scene-metadata/reference/data-sources/) — frame-by-frame tracking, consolidated tracks, snapshots; MQTT, message broker, RTSP
 
-On **AXIS OS 12.8+**, stable Analytics Data Format (ADF) v1 topics such as `com.axis.scene.frame.v1` are available (see the data-sources table). Older integrations often use the beta message-broker topic `com.axis.analytics_scene_description.v0.beta` (deprecated but still common in examples). This CLI will be removed in AXIS OS 13. There will be a new plugin coming for the FixedIT Data Agent.
+On AXIS OS 12.8+ (or later), stable Analytics Data Format (ADF) v1 topics such as `com.axis.scene.frame.v1` are available (see the data-sources table). Older integrations often use the beta message-broker topic `com.axis.analytics_scene_description.v0.beta` (deprecated but still common in examples). This CLI will be removed in AXIS OS 13. There will be a new plugin coming for the FixedIT Data Agent.
 
 #### Consume Scene Metadata with Telegraf (FixedIT Data Agent)
 
-Configure **Telegraf through the FixedIT Data Agent UI**: upload `.conf` files and helper scripts, enable them, and verify metrics in the **Logs** tab or your chosen outputs.
+Configure Telegraf through the FixedIT Data Agent UI: upload `.conf` files and helper scripts, enable them, and verify metrics in the Logs tab or your chosen outputs.
 
 **In-repo reference (developers):** [project-time-in-area-analytics](./project-time-in-area-analytics/) — `config_input_scene_detections.conf`, `axis_scene_detection_consumer.sh`, and related processors. See the project README for Telegraf config, host testing, and load order.
 
-The consumer script calls `message-broker-cli` only **on the device** inside the Data Agent process. `message-broker-cli` is expected to be removed in **AXIS OS 13**; a dedicated FixedIT Data Agent input for Scene Metadata is planned.
+The consumer script calls `message-broker-cli` only on the device inside the Data Agent process. `message-broker-cli` is expected to be removed in AXIS OS 13; a dedicated FixedIT Data Agent input for Scene Metadata is planned.
 
 **vs custom models:** Built-in Scene Metadata (this section) differs from the [YOLOv5 object detection ACAP](#yolov5-object-detection-acap), which runs your own trained detector.
 
 ### FixedIT QR Code Decoder ACAP
 
-The **FixedIT QR Code Decoder** is a **separate ACAP app** you install on the Axis device alongside the FixedIT Data Agent. It is not part of the Data Agent itself; the two applications cooperate on the same camera.
+The FixedIT QR Code Decoder is a separate ACAP app you install on the Axis device alongside the FixedIT Data Agent. It is not part of the Data Agent itself; the two applications cooperate on the same camera.
 
 - **Product overview:** [FixedIT ACAP applications](https://fixedit.ai/products-acaps/) (QR / barcode reader section)
-- **What it does on-device:** Detects and decodes 1D and 2D barcodes (QR, EAN, Code 128, etc.), draws **live overlays** on the video stream, and publishes each detection as **JSON over a Unix domain socket**
+- **What it does on-device:** Detects and decodes 1D and 2D barcodes (QR, EAN, Code 128, etc.), draws live overlays on the video stream, and publishes each detection as JSON over a Unix domain socket
 - **Default socket path:** `/dev/shm/fixedit.qr_code_decoder.sock`
 - **Typical use cases:** Access control at doors and gates, logistics parcel tracking, searchable video by shipment ID—see [From searchable video to access control: real QR code workflows at the edge](https://www.linkedin.com/pulse/from-searchable-video-access-control-real-qr-code-workflows-edge-dejze/)
 
@@ -329,36 +329,32 @@ Use `[[inputs.socket_listener]]` with `data_format = "json_v2"` to read newline-
 
 `disable_prepend_keys = true` avoids a `message_` prefix on fields nested under `message` (e.g. `decoded_data` stays `decoded_data`, not `message_decoded_data`).
 
-**Downstream processing:** Add Starlark processors to interpret codes (allowlists, door open/closed logic), `[[outputs.execd]]` for Axis application events, or `[[outputs.influxdb_v2]]` for history. If you must detect when **no** code has been seen for a while (door closed, gate idle), pair this input with a **heartbeat + Starlark counter**—see [Detecting the absence of a message](#detecting-the-absence-of-a-message-nothing-happened).
+**Downstream processing:** Add Starlark processors to interpret codes (allowlists, door open/closed logic), `[[outputs.execd]]` for Axis application events, or `[[outputs.influxdb_v2]]` for history. If you must detect when no code has been seen for a while (door closed, gate idle), pair this input with a heartbeat + Starlark counter—see [Detecting the absence of a message](#detecting-the-absence-of-a-message-nothing-happened).
 
 ### YOLOv5 object detection ACAP
 
-For **your own** object-detection models (not only built-in AXIS analytics), use the **YOLOv5 ACAP**—a separate application you install on the camera to run custom YOLOv5 models at the edge. Product context: [FixedIT ACAP applications](https://fixedit.ai/products-acaps/) (deploy your own deep learning models).
+For your own object-detection models (not only built-in AXIS analytics), use the YOLOv5 ACAP—a separate application you install on the camera to run custom YOLOv5 models at the edge. Product context: [FixedIT ACAP applications](https://fixedit.ai/products-acaps/) (deploy your own deep learning models).
 
 | Step                                                          | Guide                                                                                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Train and deploy the YOLOv5 detection ACAP on Axis            | [How to train and deploy your own edge-based object detection models (ACAP ultimate guide)](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-how-to-train-and-deploy-your-own-edge-based-object-detection-models-using-deep-learning-for-the-axis-ip-cameras-with-acap-the-ultimate-guide) |
 | Consume detections in the Data Agent and visualize in Grafana | [Video analytics performance dashboards: CV metrics, anomaly detection, and Grafana](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-video-analytics-performance-dashboards-combining-cv-metrics-with-ai-driven-anomaly-detection-and-a-natural-language-chat-interface)                  |
 
-**Architecture:** YOLOv5 ACAP (inference on-device) → detection stream into **FixedIT Data Agent** (filtering, aggregation, business logic via Telegraf) → **InfluxDB** + **Grafana** (server-side dashboards). The second guide above walks through reading model output in the agent and building operational dashboards—useful as a **Grafana pattern** beyond the bundled system-monitoring stack in this repo.
-
-**Built-in vs custom vision:** [AXIS Scene Metadata](#axis-scene-metadata) covers camera-native analytics (see [project-time-in-area-analytics](./project-time-in-area-analytics/)). The YOLOv5 ACAP follows the same Data Agent integration patterns but ingests metrics from your own deployed model.
-
 ### Telegraf
 
-[Telegraf](https://docs.influxdata.com/telegraf/) is an open-source **data collection and processing engine** (InfluxData). It is widely used for infrastructure monitoring: metrics, logs, and health from servers, apps, and networks, forwarded to InfluxDB, MQTT, cloud endpoints, or dashboards.
+[Telegraf](https://docs.influxdata.com/telegraf/) is an open-source data collection and processing engine (InfluxData). It is widely used for infrastructure monitoring: metrics, logs, and health from servers, apps, and networks, forwarded to InfluxDB, MQTT, cloud endpoints, or dashboards.
 
-**Classic deployment:** one Telegraf agent per machine, collecting locally and pushing to a central time-series store—scale-out collection at the edge, aggregation in the center.
+**Classic deployment:** one Telegraf agent per machine, collecting locally and pushing to a central time-series database.
 
-**On Axis devices:** Telegraf runs **inside** the device via the FixedIT Data Agent ACAP. The agent is the wrapper and config/runtime manager.
+**On Axis devices:** Telegraf runs inside the device via the FixedIT Data Agent ACAP. The agent is the wrapper and config/runtime manager. In this case, Telegraf is not a "data collection agent", but more or a workflow engine for building complex pipelines. Pipelines might or might not send data off the device.
 
-**Why it matters here:** Telegraf is not only a metrics agent. Its **plugin architecture** makes it a **lightweight real-time workflow engine**:
+**Why it matters here:** Telegraf is not only a metrics agent. Its plugin architecture makes it a lightweight real-time workflow engine:
 
 - Inputs → Processors → Aggregators → Outputs
 
-In this repo, that engine is used for observability **and** for analytics integration, automation, and bridging metadata between systems.
+In this repo, that engine is only sometimes used for observability, but more often for analytics integration, automation, and bridging metadata between systems.
 
-**Plugin support in the Data Agent:** Telegraf upstream has hundreds of plugins, but **not every plugin is included in the FixedIT Data Agent**. The shipped ACAP contains a curated set plus Axis-specific plugins. Adding plugins that are not already in your build requires **requesting a tailored version** of the application. Before relying on a plugin in a design, confirm it exists in your agent version. See [Are all Telegraf plugins supported in the FixedIT Data Agent?](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-are-all-telegraf-plugins-supported-in-the-fixedit-data-agent)
+**Plugin support in the Data Agent:** Telegraf upstream has hundreds of plugins, but not every plugin is included in the FixedIT Data Agent. The shipped ACAP contains a curated set plus Axis-specific plugins. Adding plugins that are not already in your build requires requesting a tailored version of the application. Before relying on a plugin in a design, confirm it exists in your agent version. See [Are all Telegraf plugins supported in the FixedIT Data Agent?](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-are-all-telegraf-plugins-supported-in-the-fixedit-data-agent)
 
 **Further reading:** [Telegraf: the workflow manager in the FixedIT Data Agent](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-telegraf-the-workflow-manager)
 
@@ -373,13 +369,13 @@ In this repo, that engine is used for observability **and** for analytics integr
 
 ### Starlark
 
-[Starlark](https://github.com/bazelbuild/starlark/blob/master/doc/spec.md) is a **small, Python-like, sandboxed** language for embedded logic. It is deterministic and cannot freely access the OS unless the host allows it—suited to safe edge pipelines.
+[Starlark](https://github.com/bazelbuild/starlark/blob/master/doc/spec.md) is a small, Python-like, sandboxed language for embedded logic. It is deterministic and cannot freely access the OS unless the host allows it—suited to safe edge pipelines.
 
-Telegraf’s **Starlark processor** runs scripts inside the pipeline on the device (via FixedIT Data Agent). Use it for filtering, stateful selection, mapping statuses to actions, and algorithms that are awkward in pure config.
+Telegraf’s Starlark processor runs scripts inside the pipeline on the device (via FixedIT Data Agent). Use it for filtering, stateful selection, mapping statuses to actions, and algorithms that are awkward in pure config.
 
 **In this repo:** see `.star` files (e.g. `project-time-in-area-analytics/track_duration_calculator.star`) and Starlark processors in `project-strobe-color-from-github-workflow`.
 
-**Important:** Telegraf’s Starlark API differs from Bazel’s. For Data Agent scripts, treat **[Telegraf Starlark processor docs](https://docs.influxdata.com/telegraf/latest/processors/starlark/)** as the primary API reference, and **[Starlark: the Python-like scripting language (FixedIT learning guide)](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-starlark-the-python-like-scripting-language)** for how Starlark is used in this platform.
+**Important:** Telegraf’s Starlark API differs from Bazel’s. For Data Agent scripts, treat [Telegraf Starlark processor docs](https://docs.influxdata.com/telegraf/latest/processors/starlark/) as the primary API reference, and [Starlark: the Python-like scripting language (FixedIT learning guide)](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-starlark-the-python-like-scripting-language) for how Starlark is used in this platform.
 
 **Intro articles:**
 
@@ -388,9 +384,9 @@ Telegraf’s **Starlark processor** runs scripts inside the pipeline on the devi
 
 ### InfluxDB (server-side)
 
-[InfluxDB](https://www.influxdata.com/products/influxdb/) is a **time-series database** optimized for timestamped telemetry: fast writes, efficient retention, and time-range queries (averages, trends, downsampling). It pairs naturally with Telegraf as a sink for metrics and analytics **sent from the device**.
+[InfluxDB](https://www.influxdata.com/products/influxdb/) is a time-series database optimized for timestamped telemetry: fast writes, efficient retention, and time-range queries (averages, trends, downsampling). It pairs naturally with Telegraf as a sink for metrics and analytics sent from the device.
 
-**InfluxDB does not run on the Axis device.** It runs on a **server, VM, or cloud** that receives data from FixedIT Data Agent outputs (for example via the InfluxDB output plugin). This repository includes InfluxDB in `dashboard-deployments/` as **reference deployments** used together with some examples—not as something installed on the camera.
+**InfluxDB does not run on the Axis device.** It runs on a server, VM, or cloud that receives data from FixedIT Data Agent outputs (for example via the InfluxDB output plugin). This repository includes InfluxDB in `dashboard-deployments/` as reference deployments used together with some examples—not as something installed on the camera.
 
 Typical use cases: device health, inference rates, detection counts, occupancy, latency, and other streams exported from edge workflows. Supports local or cloud deployment and retention policies for long-running fleets.
 
@@ -400,11 +396,11 @@ Typical use cases: device health, inference rates, detection counts, occupancy, 
 
 ### Grafana (server-side)
 
-[Grafana](https://grafana.com/) is a **visualization and observability UI** for time-series and other sources (including InfluxDB). You build dashboards—graphs, heatmaps, alerts, custom panels—for real-time and historical analysis.
+[Grafana](https://grafana.com/) is a visualization and observability UI for time-series and other sources (including InfluxDB). You build dashboards—graphs, heatmaps, alerts, custom panels—for real-time and historical analysis.
 
-**Grafana does not run on the Axis device.** Like InfluxDB, it is **server-side**. The FixedIT Data Agent on the device collects and forwards data; Grafana (and InfluxDB) visualize and explore it elsewhere. The `dashboard-deployments/` folder in this repo provides **ready-made server stacks** for projects that document an InfluxDB/Grafana path.
+**Grafana does not run on the Axis device.** Like InfluxDB, it is server-side. The FixedIT Data Agent on the device collects and forwards data; Grafana (and InfluxDB) visualize and explore it elsewhere. The `dashboard-deployments/` folder in this repo provides ready-made server stacks for projects that document an InfluxDB/Grafana path.
 
-With FixedIT Data Agent + InfluxDB, Grafana is the usual window into fleet health and analytics. It is also used for **domain dashboards** (occupancy, heatmaps, traffic congestion) when business metrics are exported from edge workflows.
+With FixedIT Data Agent + InfluxDB, Grafana is the usual window into fleet health and analytics. It is also used for domain dashboards (occupancy, heatmaps, traffic congestion) when business metrics are exported from edge workflows. It can also be used for system debugging, e.g. plotting measurements to find good threshold values for automated alerts.
 
 Official overview: [Grafana dashboards](https://grafana.com/grafana/dashboards/)
 
@@ -414,7 +410,7 @@ Example in this repo: [system-monitoring-influxdb2-flux-grafana](./dashboard-dep
 
 ## Host testing with Telegraf
 
-Install [Telegraf](https://docs.influxdata.com/telegraf/) on your development machine. On **Windows**, follow [Running Telegraf locally on Windows](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-running-telegraf-locally-on-windows). Linux/macOS/WSL steps are in individual project READMEs.
+Install [Telegraf](https://docs.influxdata.com/telegraf/) on your development machine. On Windows, follow [Running Telegraf locally on Windows](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-running-telegraf-locally-on-windows). Linux/macOS/WSL steps are in individual project READMEs.
 
 Most `project-*` examples document how to run:
 
@@ -424,7 +420,7 @@ telegraf --config config_agent.conf \
   ...
 ```
 
-On the host you run **stock Telegraf**, not the FixedIT Data Agent ACAP. That means **Axis-specific and Data-Agent-only plugins may be missing** (see [plugin support](#telegraf)); tests often **swap or mock inputs** while exercising processors, Starlark, and outputs (for example `stdout` or `file`).
+On the host you run stock Telegraf, not the FixedIT Data Agent ACAP. That means Axis-specific and Data-Agent-only plugins may be missing (see [plugin support](#telegraf)); tests often swap or mock inputs while exercising processors, Starlark, and outputs (for example `stdout` or `file`).
 
 For normalizing arbitrary JSON into Telegraf’s metric format on the device, see [Parsing complex JSON with the json_v2 parser](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-parsing-complex-json-with-the-json_v2-parser).
 
@@ -438,30 +434,30 @@ A common pattern is to replace a device-only input with something Telegraf can r
 | **`[[inputs.file]]`** | Replay captured JSON/JSONL lines from `test_files/` (recorded earlier from a device or hand-written fixtures). Used in several projects’ `test_files/config_input_*.conf`.                                                                                |
 | **`test_scripts/`**   | Python tools to record live device data, visualize results, or validate pipeline output offline.                                                                                                                                                          |
 
-The mock plugin is especially useful when developing **processors and Starlark** logic: you control metric names, fields, and tags in config instead of depending on hardware. Example workflow and motivation (filtering overwhelming streams into actionable metrics): [Learning pattern: from overwhelming data streams to meaningful actions](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-pattern-from-overwhelming-data-streams-to-meaningful-actions).
+The mock plugin is especially useful when developing processors and Starlark logic: you control metric names, fields, and tags in config instead of depending on hardware. Example workflow and motivation (filtering overwhelming streams into actionable metrics): [Learning pattern: from overwhelming data streams to meaningful actions](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-pattern-from-overwhelming-data-streams-to-meaningful-actions).
 
 Typical layout: production configs in the project root; host-only configs under `test_files/` that swap `inputs.mock` or `inputs.file` for `inputs.execd` / device APIs, then reuse the same processor and output configs.
 
 Other patterns in the repo:
 
-- **`TELEGRAF_DEBUG`** — Verbose device-side logging when enabled (see project READMEs); avoid persistent file logging on device when debug is off
+- `TELEGRAF_DEBUG` — Verbose device-side logging when enabled (see project READMEs); avoid persistent file logging on device when debug is off
 
-Host tests validate **data shapes and pipeline logic**; always verify on a real Axis device before production.
+Host tests validate data shapes and pipeline logic; always verify on a real Axis device before production.
 
 ## Common challenges
 
 ### Detecting the absence of a message (“nothing happened”)
 
-Telegraf pipelines are **event-driven**: inputs produce metrics when data arrives. There is no built-in “timeout” or “no message received for N seconds” on a socket, HTTP poll, or analytics stream. If you need to react when activity **stops**—door closed again, person left the zone, QR reader went quiet—you must **design that logic explicitly**.
+Telegraf pipelines are data-driven: inputs produce messages and those messages trigger other processors and outputs. There is no built-in “timeout” or “no message received for N seconds” on a socket, HTTP poll, or analytics stream. If you need to react when activity stops—door closed again, person left the zone, QR reader went quiet—you must design that logic explicitly.
 
 **Typical mistake:** Only processing positive detections and assuming silence means “cleared.” Without a tick, downstream outputs (events, strobes, dashboards) never receive a “back to normal” update.
 
 **Recommended pattern: heartbeat + counter in Starlark**
 
 1. **Primary input** — Consumes the real stream (e.g. `[[inputs.socket_listener]]` on the [FixedIT QR Code Decoder](#fixedit-qr-code-decoder-acap) socket (see [Components](#components)), AXIS Scene Metadata, HTTP, etc.).
-2. **Heartbeat input** — `[[inputs.exec]]` on a fixed `interval` that always emits a small metric (e.g. `alarming_state_heartbeat` with `data_format = "influx"`).
-3. **Starlark processor** — `namepass` includes **both** the heartbeat and the detection measurement names so the script runs on every tick even when there were zero detections in that period.
-4. **Persistent `state` in Starlark** — Between invocations, count how many detection metrics arrived since the last heartbeat; on each heartbeat, emit a summary metric (e.g. `door_state` with `closed=true/false`) and **reset the counter**.
+2. **Heartbeat input** — `[[inputs.exec]]` on a fixed `interval` that always emits a small message (e.g. `alarming_state_heartbeat` with `data_format = "influx"`).
+3. **Starlark processor** — `namepass` includes both the heartbeat and the detection measurement names so the script runs on every tick even when there were zero detections in that period.
+4. **Persistent `state` in Starlark** — Between invocations, count how many detection messages arrived since the last heartbeat; on each heartbeat, emit a summary metric (e.g. `door_state` with `closed=true/false`) and reset the counter.
 
 **Behavior (door / QR example):**
 
@@ -472,7 +468,7 @@ Telegraf pipelines are **event-driven**: inputs produce metrics when data arrive
 | Heartbeat with counter > 0            | End of active period; optionally report `alert_count` for the interval.  |
 | Heartbeat with counter == 0           | No detections in the interval → emit “cleared” / normal state.           |
 
-**Timing:** The cool-off is tied to the heartbeat `interval`, not wall-clock alone. Documentation in production configs often notes that processing load can delay metrics slightly, so the interval should be **longer than the maximum gap you expect between real detections**—and that in the worst case, clearing can take **almost two heartbeat periods** (one full interval with zero detections after the last active one).
+**Timing:** The cool-off is tied to the heartbeat `interval`, not wall-clock alone. Documentation in production configs often notes that processing load can delay messages slightly, so the interval should be longer than the maximum gap you expect between real detections—and that in the worst case, clearing can take almost two heartbeat periods (one full interval with zero detections after the last active one).
 
 **In-repo reference:** The same inactivity pattern appears in [project-time-in-area-analytics/config_process_alarming_state.conf](./project-time-in-area-analytics/config_process_alarming_state.conf) (`alarming_state_heartbeat` + Starlark counting `alerting_frame_two` metrics).
 
@@ -480,9 +476,9 @@ Telegraf pipelines are **event-driven**: inputs produce metrics when data arrive
 
 ### Immediate output (no batching delay)
 
-For **real-time actions**—strobe color changes, opening a gate, triggering an HTTP call via a shell script—Telegraf’s default output buffering can add a very large delay. Batched metrics mean the downstream script or binary runs only after a buffer fills or a flush interval, which is good for sending large amounts of data to InfluxDB but wrong for actuators.
+For real-time actions—strobe color changes, opening a gate, triggering an HTTP call via a shell script—Telegraf’s default output buffering can add a very large delay. Batched metrics mean the downstream script or binary runs only after a buffer fills or a flush interval, which is good for sending large amounts of data to InfluxDB but wrong for actuators.
 
-On **`[[outputs.exec]]`** and **`[[outputs.execd]]`**, configure **immediate, one-metric-at-a-time** delivery:
+On `[[outputs.exec]]` and `[[outputs.execd]]`, configure immediate, one-metric-at-a-time delivery:
 
 ```toml
 [[outputs.exec]]
@@ -497,21 +493,21 @@ On **`[[outputs.exec]]`** and **`[[outputs.execd]]`**, configure **immediate, on
   metric_batch_size = 1
 ```
 
-| Setting                    | Why                                                                                                                                     |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `metric_batch_size = 1`    | **Main lever for low latency:** each metric is passed to the output plugin as soon as it is ready, instead of waiting for a batch of N. |
-| `use_batch_format = false` | Script receives a **single** JSON object per run, not an array of metrics.                                                              |
-| `namepass`                 | Restrict to the measurement that should trigger hardware (ignore heartbeats, debug metrics, etc.).                                      |
+| Setting                    | Why                                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `metric_batch_size = 1`    | Main lever for low latency: each metric is passed to the output plugin as soon as it is ready, instead of waiting for a batch of N. |
+| `use_batch_format = false` | Script receives a single JSON object per run, not an array of metrics.                                                              |
+| `namepass`                 | Restrict to the measurement that should trigger hardware (ignore heartbeats, debug metrics, etc.).                                  |
 
-**Do not confuse with `metric_buffer_limit`:** That setting caps how many metrics Telegraf queues when an output is slow or offline. A **low** limit can **drop metrics** under burst load. It does not by itself make exec run faster—the important setting for “actuate immediately” is **`metric_batch_size = 1`**. Choose `metric_buffer_limit` separately for your reliability vs. memory trade-off.
+**Do not confuse with `metric_buffer_limit`:** That setting caps how many metrics Telegraf queues when an output is slow or offline. A low limit can drop metrics under burst load. It does not by itself make exec run faster—the important setting for “actuate immediately” is `metric_batch_size = 1`. Choose `metric_buffer_limit` separately for your reliability vs. memory trade-off.
 
-Also check **`flush_interval`**. The `flush_interval` affects how often outputs are flushed if they have not received a full batch of N metrics.
+Also check `flush_interval`. The `flush_interval` affects how often outputs are flushed if they have not received a full batch of N metrics.
 
 **In-repo reference:** [project-strobe-color-from-github-workflow/config_output_strobe.conf](./project-strobe-color-from-github-workflow/config_output_strobe.conf) and [trigger_strobe.sh](./project-strobe-color-from-github-workflow/trigger_strobe.sh) (parses one metric per invocation). Similar settings appear in [project-time-in-area-analytics/config_output_overlay.conf](./project-time-in-area-analytics/config_output_overlay.conf) for low-latency overlay updates.
 
 ### Preserving event timestamps on metrics
 
-When JSON comes from a **shell script**, **file**, or **socket** input, Telegraf defaults the metric **time** to **when the line was parsed** (wall clock at ingest). That is wrong for analytics where the payload already carries the **detection or event time**—durations, InfluxDB charts, and ordering will be off.
+When JSON comes from a shell script, file, or socket input, Telegraf defaults the metric time to when the line was parsed (wall clock at ingest). That is wrong for analytics where the payload already carries the detection or event time—durations, InfluxDB charts, and ordering will be off.
 
 Put the event time in a JSON field (e.g. `timestamp` from Scene Metadata) and tell the input plugin to use it:
 
@@ -531,11 +527,11 @@ Put the event time in a JSON field (e.g. `timestamp` from Scene Metadata) and te
 | `json_time_key`    | JSON field name whose value becomes the Telegraf metric timestamp.                                |
 | `json_time_format` | Layout of that string (`RFC3339`, `RFC3339Nano`, `unix`, etc.—must match what your script emits). |
 
-Ensure the upstream script or parser **includes** that field on every line. [axis_scene_detection_consumer.sh](./project-time-in-area-analytics/axis_scene_detection_consumer.sh) copies `.timestamp` from each observation into `"timestamp"` in the flattened JSON.
+Ensure the upstream script or parser includes that field on every line. [axis_scene_detection_consumer.sh](./project-time-in-area-analytics/axis_scene_detection_consumer.sh) copies `.timestamp` from each observation into `"timestamp"` in the flattened JSON.
 
 **In-repo reference:** [project-time-in-area-analytics/config_input_scene_detections.conf](./project-time-in-area-analytics/config_input_scene_detections.conf) (add or verify `json_time_key` / `json_time_format` when event time must drive downstream logic).
 
-### Adding metadata to metrics with `[global_tags]`
+### Adding metadata to metrics with [global_tags]
 
 The Data Agent automatically sets a bunch of metadata variables (some from application configuration and some automatically read from the device). To add these variables as tags to every metric, use `[global_tags]`. To make sure that the variables name is not used as a fallback value if no value is set for it, you can use the `:-` pattern to set the default value to an empty string.
 
@@ -574,7 +570,7 @@ In Telegraf JSON inputs (e.g. `[[inputs.exec]]`), you usually express values as 
 
 **Recommended pattern:**
 
-1. **Encode at the producer** — In the shell (or whichever plugin produces the ingest line), **base64**-encode the bytes and emit a JSON object with one string field (e.g. `image_base64`) holding that text.
+1. **Encode at the producer** — In the shell (or whichever plugin produces the ingest line), base64-encode the bytes and emit a JSON object with one string field (e.g. `image_base64`) holding that text.
 2. **Keep as string internally** — In the Telegraf workflow, keep the field as a string and forward it downstream.
 3. **Decode where you need bytes** — On `[[outputs.remotefile]]`, `[[outputs.file]]`, `[[outputs.http]]`, etc., use `data_format = "template"` so the [template serializer](https://github.com/influxdata/telegraf/blob/master/plugins/serializers/template/README.md) can turn the metric back into file bytes. For example `{{ .Field "image_base64" | b64dec }}` for a single binary object per metric.
 
@@ -582,7 +578,7 @@ In Telegraf JSON inputs (e.g. `[[inputs.exec]]`), you usually express values as 
 
 ### Viewing pipeline data in the Logs tab
 
-To see **metrics or debug lines** in the FixedIT Data Agent **Logs** tab, write them to Telegraf **stdout** via the [file output plugin](https://github.com/influxdata/telegraf/tree/master/plugins/outputs/file). Do not rely on Telegraf printing metrics by itself—by convention only **`outputs.file` → `stdout`** should use stdout for data; Telegraf diagnostics go to **stderr**.
+To see metrics or debug lines in the FixedIT Data Agent Logs tab, write them to Telegraf stdout via the [file output plugin](https://github.com/influxdata/telegraf/tree/master/plugins/outputs/file). Do not rely on Telegraf printing metrics by itself—by convention only `outputs.file` → `stdout` should use stdout for data; Telegraf diagnostics go to stderr.
 
 **Simple example (JSON metrics)** — as in [project-hello-world](./project-hello-world/) and `test_files/config_output_stdout.conf` in other projects:
 
@@ -607,7 +603,7 @@ Even a simple field becomes a full JSON line with metric name, tags, and timesta
   template          = "pv={{ .Field \"process_variable\" }}  sp={{ .Field \"setpoint\" }}  upl={{ .Field \"upper_process_limit\" }}  lpl={{ .Field \"lower_process_limit\" }}\n"
 ```
 
-Use **`metric_batch_size = 1`** here if each line should appear in the Logs tab as soon as the metric is processed (same idea as [Immediate output](#immediate-output-no-batching-delay)).
+Use `metric_batch_size = 1` here if each line should appear in the Logs tab as soon as the metric is processed (same idea as [Immediate output](#immediate-output-no-batching-delay)).
 
 ## Example projects in this repo
 

@@ -10,26 +10,33 @@ The decoder and the Data Agent run on the same device. A short cooldown suppress
 flowchart TD
     QR["FixedIT QR Code Decoder"] --> SOCK["Unix socket"]
     SOCK --> IN["inputs.socket_listener<br/>config_input_barcode.conf"]
-    IN -->|barcode_reader_app| STAR["Starlark dedup"]
-    STAR -->|barcode_reader_app| EXEC["outputs.exec<br/>axis_image_consumer.sh"]
-    EXEC <-->|JPEG snapshot| VAPIX["VAPIX JPEG API"]
-    EXEC --> SNAP_SOCK["Unix socket"]
-    SNAP_SOCK --> IN2["inputs.socket_listener + json_v2"]
-    IN2 -->|image_capture| RF["outputs.remotefile"]
+    IN -->|barcode_reader_app| STAR["Starlark dedup and reject<br/>config_process_dedup.conf"]
+    STAR -->|barcode_reader_app| CAP["outputs.exec<br/>config_output_capture.conf"]
+
+    CAP -->|template 1: decoded_data| OVERLAY["set_overlay_text.sh"]
+    CAP -->|template 2: UTC time| OVERLAY
+    OVERLAY --> VAPIX_OVL["VAPIX dynamicoverlay.cgi"]
+
+    CAP --> IMG["axis_image_consumer.sh"]
+    IMG <-->|JPEG snapshot| VAPIX_JPG["VAPIX JPEG API"]
+
+    CAP -->|socat JSON line| SNAP_SOCK["Unix socket<br/>SNAPSHOT_SOCKET_PATH"]
+    SNAP_SOCK --> IN2["inputs.socket_listener<br/>config_input_image_capture.conf"]
+    IN2 -->|image_capture| RF["outputs.remotefile<br/>config_output_remotefile.conf"]
     RF --> SFTP["SFTP server"]
 
     XSocket["READER_SOCKET_PATH"]
     XSnapSock["SNAPSHOT_SOCKET_PATH"]
     XCooldown["SNAPSHOT_COOLDOWN_SECONDS"]
-    XScripts["HELPER_FILES_DIR<br/>VAPIX_USERNAME<br/>VAPIX_PASSWORD<br/>CAMERA_IP<br/>RESOLUTION"]
+    XScripts["HELPER_FILES_DIR<br/>set_overlay_text.sh<br/>axis_image_consumer.sh<br/>VAPIX_USERNAME / VAPIX_PASSWORD<br/>CAMERA_IP / RESOLUTION"]
     XSftpSecrets["Telegraf secrets:<br/>ftp_host, ftp_user<br/>ftp_pass, ftp_port"]
     XSftpPath["SFTP_PATH"]
 
     XSocket --> IN
+    XSnapSock --> CAP
     XSnapSock --> IN2
-    XSnapSock --> EXEC
     XCooldown --> STAR
-    XScripts --> EXEC
+    XScripts --> CAP
     XSftpSecrets --> RF
     XSftpPath --> RF
 
@@ -37,8 +44,11 @@ flowchart TD
     style SOCK fill:#ffffff,stroke:#9e9e9e
     style IN fill:#e8f5e9,stroke:#43a047
     style STAR fill:#f3e5f5,stroke:#8e24aa
-    style EXEC fill:#fff3e0,stroke:#fb8c00
-    style VAPIX fill:#f1f8e9,stroke:#43a047
+    style CAP fill:#ffebee,stroke:#e53935
+    style OVERLAY fill:#fff3e0,stroke:#fb8c00
+    style IMG fill:#fff3e0,stroke:#fb8c00
+    style VAPIX_OVL fill:#ffffff,stroke:#9e9e9e
+    style VAPIX_JPG fill:#ffffff,stroke:#9e9e9e
     style SNAP_SOCK fill:#ffffff,stroke:#9e9e9e
     style IN2 fill:#e8f5e9,stroke:#43a047
     style RF fill:#ffebee,stroke:#e53935
@@ -54,11 +64,11 @@ flowchart TD
 Color scheme:
 
 - Light green: Input nodes / data ingestion
-- Purple: Processor nodes (Starlark)
-- Orange: Script / execd steps
-- Red: Output nodes / external destinations
-- Light gray: Configuration variables and secrets
-- White: Other
+- Purple: Processor nodes
+- Orange: Helper scripts
+- Red: Output nodes
+- Light gray: Environment variables and secrets
+- White: External systems
 
 ## Why Choose This Approach?
 

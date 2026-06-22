@@ -1322,7 +1322,33 @@ def _get_relative_path_or_original(config_file, file_path_root):
         return config_file
 
 
-def _get_git_status(repo, file_path_in_repo):  # pylint: disable=too-many-return-statements
+def _is_path_in_index(repo, file_path_normalized):
+    """
+    Check whether a file has been added to the git index (`git add`).
+
+    The index (staging area) holds paths that will be included in the next commit.
+    This helper is used when index-vs-HEAD comparison is not possible, such as in
+    a brand-new repo with no commits yet.
+
+    Args:
+        repo: GitPython Repo object
+        file_path_normalized: POSIX-normalized path string relative to repo root
+
+    Returns:
+        True if the path has an index entry, False otherwise
+    """
+    # Index entries are keyed by (path, stage); path may be bytes in GitPython.
+    for entry_path, _ in repo.index.entries:
+        if isinstance(entry_path, bytes):
+            entry_path = entry_path.decode()
+        if entry_path == file_path_normalized:
+            return True
+    return False
+
+
+def _get_git_status(
+    repo, file_path_in_repo
+):  # pylint: disable=too-many-return-statements
     """
     Determine the git status of a file in a repository.
 
@@ -1473,6 +1499,25 @@ def _get_git_status(repo, file_path_in_repo):  # pylint: disable=too-many-return
         ...     # File is staged (in index, ready for first commit)
         ...     status == 'staged'
         True
+
+        >>> # Test ignored file in empty repo (not in index, not untracked)
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     repo_dir = Path(tmpdir) / "test_repo"
+        ...     repo_dir.mkdir()
+        ...     _ = subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.email", "test@example.com"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = subprocess.run(["git", "config", "user.name", "Test"],
+        ...                        cwd=repo_dir, capture_output=True)
+        ...     _ = (repo_dir / ".gitignore").write_text("ignored.conf\\n")
+        ...     test_file = repo_dir / "ignored.conf"
+        ...     _ = test_file.write_text("ignored")
+        ...     repo = git.Repo(repo_dir)
+        ...     file_path = test_file.relative_to(repo_dir)
+        ...     path_norm, status = _get_git_status(repo, file_path)
+        ...     repo.close()
+        ...     status == 'unknown'
+        True
     """
     file_path_normalized = file_path_in_repo.as_posix()
 
@@ -1496,13 +1541,16 @@ def _get_git_status(repo, file_path_in_repo):  # pylint: disable=too-many-return
         if repo.index.diff(repo.head.commit, paths=file_path_normalized):
             return file_path_normalized, "staged"
     except (ValueError, AttributeError):
-        # No commits yet (ValueError: Reference does not exist) or detached HEAD
-        # If we got here, the file is not untracked and has no unstaged changes,
-        # so it must be in the index. With no commits, this means it's staged
-        # (ready for the first commit).
-        return file_path_normalized, "staged"
+        # index.diff(HEAD) fails when there is no HEAD yet (repo has zero commits).
+        # We already ruled out untracked and modified above, but that alone does not
+        # mean the file is staged: gitignored files are omitted from untracked_files
+        # and are not in the index either. Only report "staged" when the file was
+        # actually `git add`ed; otherwise the status is indeterminate.
+        if _is_path_in_index(repo, file_path_normalized):
+            return file_path_normalized, "staged"
+        return file_path_normalized, "unknown"
     except git.exc.GitCommandError:
-        # Other git errors - we can't determine the status
+        # Other git errors: we can't determine the status
         return file_path_normalized, "unknown"
 
     return file_path_normalized, "clean"

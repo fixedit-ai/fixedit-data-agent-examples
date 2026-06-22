@@ -78,7 +78,9 @@ def _run_combine_command(script_path, config_file, test_files_dir, output_file, 
         *args,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        cmd, capture_output=True, text=True, check=False, timeout=60
+    )
 
     if result.returncode != 0:
         error_msg = f"Command failed with exit code {result.returncode}"
@@ -165,8 +167,8 @@ def run_test(
                 return False
 
             # Read expected and actual output
-            expected_content = expected_file.read_text()
-            actual_content = output_file.read_text()
+            expected_content = expected_file.read_text(encoding="utf-8")
+            actual_content = output_file.read_text(encoding="utf-8")
 
             # Compare with regex support
             expected_lines = expected_content.splitlines(keepends=True)

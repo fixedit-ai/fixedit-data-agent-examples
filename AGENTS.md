@@ -37,6 +37,7 @@ Human-oriented overview and example links: [README.md](./README.md).
 - [Common challenges](#common-challenges)
   - [Detecting the absence of a message (“nothing happened”)](#detecting-the-absence-of-a-message-nothing-happened)
   - [Immediate output (no batching delay)](#immediate-output-no-batching-delay)
+  - [Feeding multiple processors from the same metric](#feeding-multiple-processors-from-the-same-metric)
   - [Preserving event timestamps on metrics](#preserving-event-timestamps-on-metrics)
   - [Adding metadata to metrics with [global_tags]](#adding-metadata-to-metrics-with-global_tags)
   - [Working with raw binary data in metrics by base64 encoding](#working-with-raw-binary-data-in-metrics-by-base64-encoding)
@@ -504,6 +505,39 @@ On `[[outputs.exec]]` and `[[outputs.execd]]`, configure immediate, one-metric-a
 Also check `flush_interval`. The `flush_interval` affects how often outputs are flushed if they have not received a full batch of N metrics.
 
 **In-repo reference:** [project-strobe-color-from-github-workflow/config_output_strobe.conf](./project-strobe-color-from-github-workflow/config_output_strobe.conf) and [trigger_strobe.sh](./project-strobe-color-from-github-workflow/trigger_strobe.sh) (parses one metric per invocation). Similar settings appear in [project-time-in-area-analytics/config_output_overlay.conf](./project-time-in-area-analytics/config_output_overlay.conf) for low-latency overlay updates.
+
+### Feeding multiple processors from the same metric
+
+In the FixedIT Data Agent, metrics are handled by processors in UI load order. The first defined processor consumes each matching metric and only forwards what it emits (in the case of Starlark, what the `apply` function returns). Output plugins always run after the processor chain regardless if the output was loaded before or after the processor; they never see a metric unless a processor let it through.
+
+**Two processors try to use the same metric name:** Two `processors.starlark` or other processor plugins both use `namepass = ["my_metric"]`. The first processor in load order receives every message; the second appears configured correctly but never runs.
+
+**One processor, one output:** One processor, one output plugin, both using `namepass = ["my_metric"]`. E.g. a Starlark processor using the metric and an `outputs.file` writing the metric to the log. The processor consumes the metric and emits a new metric with another name; the output plugin never receives the metric because it is consumed by the processor.
+
+**Recommended pattern: `processors.clone` to split measurement names**
+
+The simple solution would be to let the Starlark processor emit two metrics, both the unchanged input metric and a new metric for downstream processing. This is not always modular enough and might contradict the single-responsibility principle.
+
+Instead, it might be better to use `processors.clone` after the last shared processor stage. The clone plugin keeps the original metric and emits a renamed copy for downstream processing:
+
+```toml
+[[processors.clone]]
+  namepass = ["barcode_reader_app"]
+  name_override = "barcode_logging_metric"
+```
+
+One detection then becomes two metrics:
+
+| Measurement name         | Typical consumer           |
+| ------------------------ | -------------------------- |
+| `barcode_logging_metric` | `outputs.file`             |
+| `barcode_reader_app`     | Detection processing logic |
+
+This way, if the logging output is disabled, the clone plugin might also be disabled since the primary metric name is unchanged. This means that the clone plugin can be placed in the same file as the debugging output.
+
+**In-repo references:**
+
+- [project-time-in-area-analytics/config_output_time_in_area.conf](./project-time-in-area-analytics/config_output_time_in_area.conf): Starlark `deepcopy` emits `time_in_area_frame` alongside `detection_frame_with_duration` so a processor and an output can both use the same detection.
 
 ### Preserving event timestamps on metrics
 

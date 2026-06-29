@@ -1,10 +1,10 @@
 # Time-in-Area Analytics
 
-This project demonstrates how to implement time-in-area analytics for Axis fisheye cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). While AXIS Object Analytics natively supports time-in-area detection for traditional cameras, fisheye cameras lack this capability. This solution bridges that gap by consuming real-time object detection metadata from fisheye cameras and implementing custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs from [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) to track objects within a defined rectangular area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds.
+This project demonstrates how to implement time-in-area analytics on Axis cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). It consumes real-time object detection metadata from the camera's [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) stream and implements custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs to track objects within a defined polygon area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds. While AXIS Object Analytics natively supports time-in-area on many camera models, fisheye cameras lack this capability. This project bridges that gap for fisheye cameras, but it goes further than that. You can get detailed per-track time-in-area sent to InfluxDB for visualization in e.g. Grafana (useful for retail situations). It is also easy to extend this project further, e.g. with multiple trigger durations for warning, alarm and guard notification.
 
 ## How It Works
 
-The system consumes real-time object detection data from Axis fisheye cameras and implements custom time-in-area analytics logic to track object time in area and trigger appropriate responses.
+The system consumes real-time object detection data from the camera and implements custom time-in-area analytics logic to track object time in area and trigger appropriate responses.
 
 At a high level, the system looks like this:
 
@@ -116,7 +116,7 @@ Color scheme:
 
 ## Why Choose This Approach?
 
-**No C/C++ development required!** This project demonstrates how to implement advanced analytics that would typically require custom ACAP development using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) instead. Rather than writing complex embedded C++ code for fisheye camera analytics, system integrators and IT professionals can implement sophisticated time-in-area logic using familiar configuration files and simple scripting. The solution leverages existing object detection capabilities from AXIS Object Analytics and adds the missing time-in-area functionality through data processing pipelines, making it accessible to teams without embedded development expertise.
+**No C/C++ development required!** This project demonstrates how to implement advanced analytics that would typically require custom ACAP development using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) instead. Rather than writing complex embedded C++ code, system integrators and IT professionals can implement sophisticated time-in-area logic using familiar configuration files and simple scripting. The solution leverages object detection from AXIS Scene Metadata and adds time-in-area processing, detailed track export, and event triggers through the Data Agent pipeline, making it accessible to teams without embedded development expertise. The project also shows how to use custom UI files for advanced configuration.
 
 ## Table of Contents
 

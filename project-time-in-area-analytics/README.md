@@ -204,7 +204,7 @@ You can test the logic gradually on the camera by enabling one config at a time.
    _Log messages showing detection data from the camera_
 
 3. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
-4. **Metric copy**: Upload `config_process_time_in_area_copy.conf` to create two separate copies of the `detection_frame_with_duration` metric
+4. **Metric copy**: Upload `config_process_time_in_area_copy.conf` so `processors.clone` keeps `detection_frame_with_duration` on the alert path and emits one renamed copy as `time_in_area_frame`
 5. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
 6. **Rate Limiting**: Upload `config_process_rate_limit.conf` to rate limit the alert metrics
 7. **Overlay Display**: Finally, upload `config_process_overlay_transform.conf` and `config_output_overlay.conf` to draw the overlays on the live video

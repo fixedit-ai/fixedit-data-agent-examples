@@ -163,7 +163,11 @@ This section includes quick setup instructions for the project. You can find mor
 
 Upload [`generated/time_in_area.conf`](./generated/time_in_area.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate time_in_area.conf](#generate-time_in_areaconf).
 
+![Time-in-area configuration file uploaded](.images/config-uploaded.png)
+
 Go to the Custom UI tab and upload [`generated/time_in_area.html`](./generated/time_in_area.html). This adds a new configuration page where you can configure the settings and the include zone for the time-in-area analytics.
+
+![Custom UI tab with the time-in-area configuration page](.images/custom-ui.png)
 
 **Optional: InfluxDB output**
 
@@ -176,6 +180,23 @@ To send `time_in_area_frame` metrics to InfluxDB for visualization in e.g. Grafa
 - Influx DB bucket
 
 To show them, flip the `Clear all values` slider to the left position.
+
+After enabling and configuring the InfluxDB output, you should expect to see data being sent to it whenever a detected object matches the configured class and is in the include zone (other detections are dropped before the time-in-area calculation is performed). Check the FixedIT Data Agent QUICKSTART_GUIDE for more details, but this is how it might look in the InfluxDB data explorer:
+
+![InfluxDB data explorer](.images/influxdb.png)
+
+**Upload individual files**
+
+Instead of using a single combined config file, you can upload the individual files from this project separately. This gives you more modularity and is easier if you want to do any modifications to the files. The only drawback is that it might take longer time to upload all the files, and it can be more error-prone if the files are enabled in the wrong order.
+
+- See the [Generate time_in_area.conf](#generate-time_in_areaconf) section and follow the same order as the files are used there when enabling them
+- It's the order you enable the files in that sets the load order (indictaed by the blue circle icon before the filename)
+- Upload all `*.sh` files as helper files marked with the `Make executable` checkbox
+- Upload all `*.star` files as helper files
+
+The configuration page might now look like this:
+
+![The files configuration page with individual files uploaded](.images/individual-files.png)
 
 ### Troubleshooting
 

@@ -103,8 +103,8 @@ Color scheme:
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
 - [Quick Setup](#quick-setup)
   - [Troubleshooting](#troubleshooting)
-    - [Make sure AXIS Object Analytics is enabled](#make-sure-axis-object-analytics-is-enabled)
-    - [Verbose Logging](#verbose-logging)
+    - [Zone import: Make sure AXIS Object Analytics is enabled](#zone-import-make-sure-axis-object-analytics-is-enabled)
+    - [Debug mode](#debug-mode)
     - [Gradual Testing](#gradual-testing)
     - [Unresolved variable errors](#unresolved-variable-errors)
     - ["Text area is too big!" in overlay](#text-area-is-too-big-in-overlay)
@@ -200,13 +200,23 @@ The configuration page might now look like this:
 
 ### Troubleshooting
 
-#### Make sure AXIS Object Analytics is enabled
+#### Zone import: Make sure AXIS Object Analytics is enabled
 
-If you want to import zones from AXIS Object Analytics in the user interface, it needs to be running. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
+If you want to import zones from AXIS Object Analytics in the user interface, it needs to be running. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections. The time-in-area analytics with manually defined zones will work without AXIS Object Analytics.
 
-#### Verbose Logging
+#### Debug mode
 
-Enable the `Debug` option in the FixedIT Data Agent for detailed logs. Debug files will appear in the `Uploaded helper files` section (refresh page to see updates).
+Enable the `Debug Mode` option in the custom UI for detailed logs and live overlay.
+
+![Enable the Debug Mode](.images/custom-ui-debug.png)
+
+Debug logging will be seen in the `Logs` tab and the `.debug` files will appear in the `Helper files` section of the `Configuration->Files` page (refresh page to see updates).
+
+The live overlay will update when an object has been in the zone for more than the configured threshold. The arrow will point to the position the object was last seen at and the text will show the class of the object and for how long time it was in the zone.
+
+The live overlay will stay after the object leaves the zone as an indication of the last alarm. If you disable the debug mode again, you will need to manually remove the overlay in the cameras `Video->Overlays` tab.
+
+![Live overlay](.images/live-overlay.png)
 
 **Note**: Don't leave debug enabled long-term as it creates large log files.
 

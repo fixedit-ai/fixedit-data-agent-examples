@@ -163,7 +163,7 @@ This section includes quick setup instructions for the project. You can find mor
 
 Upload [`generated/time_in_area.conf`](./generated/time_in_area.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate time_in_area.conf](#generate-time_in_areaconf).
 
-Go to the Custom UI tab and upload [`generated/time-in-area-config.html`](./generated/time-in-area-config.html). This adds a new configuration page where you can configure the settings and the include zone for the time-in-area analytics.
+Go to the Custom UI tab and upload [`generated/time_in_area.html`](./generated/time_in_area.html). This adds a new configuration page where you can configure the settings and the include zone for the time-in-area analytics.
 
 **Optional: InfluxDB output**
 

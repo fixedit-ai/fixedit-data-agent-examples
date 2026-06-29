@@ -6,6 +6,30 @@ This project demonstrates how to implement time-in-area analytics for Axis fishe
 
 The system consumes real-time object detection data from Axis fisheye cameras and implements custom time-in-area analytics logic to track object time in area and trigger appropriate responses.
 
+At a high level, the system looks like this:
+
+```mermaid
+flowchart TD
+    XZone["Include zone<br/>Custom UI or AXIS Object Analytics import"] --> B
+    XThreshold["Alert threshold, object class<br/>Custom UI"] --> B
+
+    A["📹 Camera<br/>AXIS Scene Metadata<br/>Object detections"] --> B["FixedIT Data Agent<br/>Calculate time in monitored zone"]
+
+    B --> C1["🚨 Axis Events<br/>Trigger when object stays too long"]
+    B --> C2["📊 InfluxDB (Optional)<br/>Detailed track data"]
+    C2 --> C3["Dashboards<br/>Track duration & analytics"]
+
+    style XZone fill:#f5f5f5,stroke:#9e9e9e
+    style XThreshold fill:#f5f5f5,stroke:#9e9e9e
+    style A fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style C1 fill:#ffebee,stroke:#e53935
+    style C2 fill:#ffebee,stroke:#e53935
+    style C3 fill:#e3f2fd,stroke:#1565c0
+```
+
+In more detail, the system is built around the following Telegraf plugins and components:
+
 ```mermaid
 flowchart TD
     A["📹 config_input_scene_detections.conf:<br/>Consume analytics scene description from the camera using the inputs.execd plugin and axis_scene_detection_consumer.sh"] -->|detection_frame| B1["config_process_class_filter.conf:<br/>Filter by class name"]

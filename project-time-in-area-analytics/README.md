@@ -35,7 +35,7 @@ flowchart TD
     D1 -->|detection_frame_with_duration| D
     D1 -->|time_in_area_frame| D2
 
-    subgraph InfluxOutput ["config_output_time_in_area.conf (optional)"]
+    subgraph InfluxOutput ["config_output_influxdb.conf (optional)"]
         D2["Send metrics to InfluxDB"]
     end
 
@@ -118,7 +118,7 @@ Color scheme:
   - [config_process_rate_limit.conf](#config_process_rate_limitconf)
   - [config_process_overlay_transform.conf](#config_process_overlay_transformconf)
   - [config_output_overlay.conf and overlay_manager.sh](#config_output_overlayconf-and-overlay_managersh)
-  - [config_output_time_in_area.conf](#config_output_time_in_areaconf)
+  - [config_output_influxdb.conf](#config_output_influxdbconf)
   - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
   - [test_files/sample_data_feeder.sh](#test_filessample_data_feedersh)
 - [Future Enhancements](#future-enhancements)
@@ -167,7 +167,7 @@ Go to the Custom UI tab and upload [`generated/time_in_area.html`](./generated/t
 
 **Optional: InfluxDB output**
 
-To send `time_in_area_frame` metrics to InfluxDB for visualization in e.g. Grafana, upload and enable [`config_output_time_in_area.conf`](./config_output_time_in_area.conf) in addition to `generated/time_in_area.conf`. You must also set the following application parameters on the `InfluxDB environment variables` card in the `Configuration->Variables` page.
+To send `time_in_area_frame` metrics to InfluxDB for visualization in e.g. Grafana, upload and enable [`config_output_influxdb.conf`](./config_output_influxdb.conf) in addition to `generated/time_in_area.conf`. You must also set the following application parameters on the `InfluxDB environment variables` card in the `Configuration->Variables` page.
 
 - Influx DB host
 - Influx DB port
@@ -311,7 +311,7 @@ Displays text overlays on the video. This configuration:
 - Displays time in area, object class, and size information
 - Positions overlays using pre-calculated coordinates from the Starlark processor
 
-### config_output_time_in_area.conf
+### config_output_influxdb.conf
 
 Optional InfluxDB output for time-in-area telemetry. Upload and enable this file separately when you want to send metrics to InfluxDB.
 
@@ -799,8 +799,8 @@ python3 ../tools/combine-files/combine_files.py \
 
 When regenerating, choose one of these approaches:
 
-| Use case                       | Included files                                                                                                       | Effect                                                                                                                        |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Sure you want InfluxDB         | Include both `config_process_time_in_area_copy.conf` and `config_output_time_in_area.conf` in `time_in_area.conf`    | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
-| Unsure                         | Include only `config_process_time_in_area_copy.conf` in `time_in_area.conf`                                          | If needed, you can upload and enable `config_output_time_in_area.conf` separately later.                                      |
-| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_time_in_area.conf` in `time_in_area.conf` | InfluxDB cannot be enabled later without regenerating `time_in_area.conf`                                                     |
+| Use case                       | Included files                                                                                                   | Effect                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Sure you want InfluxDB         | Include both `config_process_time_in_area_copy.conf` and `config_output_influxdb.conf` in `time_in_area.conf`    | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
+| Unsure                         | Include only `config_process_time_in_area_copy.conf` in `time_in_area.conf`                                      | If needed, you can upload and enable `config_output_influxdb.conf` separately later.                                          |
+| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_influxdb.conf` in `time_in_area.conf` | InfluxDB cannot be enabled later without regenerating `time_in_area.conf`                                                     |

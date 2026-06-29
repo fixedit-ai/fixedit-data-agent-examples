@@ -141,7 +141,7 @@ Color scheme:
   - [GitHub Workflow](#github-workflow)
   - [Test Data](#test-data)
   - [PR Comments](#pr-comments)
-- [Generate a combined.conf file](#generate-a-combinedconf-file)
+- [Generate time_in_area.conf](#generate-time_in_areaconf)
 
 <!-- tocstop -->
 
@@ -155,27 +155,27 @@ Color scheme:
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: v1.4.0.
-- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application 1.4.0 and above.
+- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application 1.4.0 and above. The instructions are based on the new user interface in v1.6.0 and above.
 
 ## Quick Setup
 
 This section includes quick setup instructions for the project. You can find more detailed instructions, including images showing the process step-by-step, in [this blog post](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-trigger-alarms-and-get-detailed-statistics-about-time-in-area-using-the-fixedit-data-agent).
 
-Upload [`generated/combined.conf`](./generated/combined.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate a combined.conf file](#generate-a-combinedconf-file).
+Upload [`generated/time_in_area.conf`](./generated/time_in_area.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate time_in_area.conf](#generate-time_in_areaconf).
 
-Go to the custom UI tab and upload the `frontend/time_in_area.html` file.
-
-Modify the `App settings` to adapt to your use case and press `Save`.
+Go to the Custom UI tab and upload [`generated/time-in-area-config.html`](./generated/time-in-area-config.html). This adds a new configuration page where you can configure the settings and the include zone for the time-in-area analytics.
 
 **Optional: InfluxDB output**
 
-To send `time_in_area_frame` metrics to InfluxDB, upload and enable [`config_output_time_in_area.conf`](./config_output_time_in_area.conf) in addition to `generated/combined.conf`. You must also set the following application parameters or Telegraf will fail to start the workflow:
+To send `time_in_area_frame` metrics to InfluxDB for visualization in e.g. Grafana, upload and enable [`config_output_time_in_area.conf`](./config_output_time_in_area.conf) in addition to `generated/time_in_area.conf`. You must also set the following application parameters on the `InfluxDB environment variables` card in the `Configuration->Variables` page.
 
 - Influx DB host
 - Influx DB port
 - Influx DB token
 - Influx DB organization
 - Influx DB bucket
+
+To show them, flip the `Clear all values` slider to the left position.
 
 ### Troubleshooting
 
@@ -768,9 +768,9 @@ The workflow automatically posts detailed comments to pull requests with:
 
 This helps catch regressions early in the development process.
 
-## Generate a combined.conf file
+## Generate time_in_area.conf
 
-The checked-in [`generated/combined.conf`](./generated/combined.conf) is a self-contained Telegraf configuration which can be generated from this project directory by running the following command.
+The checked-in [`generated/time_in_area.conf`](./generated/time_in_area.conf) is a self-contained Telegraf configuration which can be generated from this project directory by running the following command.
 
 Note that the files have to be specified in the correct load order. Starlark and shell scripts can be inlined so you do not need to upload separate helper files.
 
@@ -794,13 +794,13 @@ python3 ../tools/combine-files/combine_files.py \
   --temporary-expand-var HELPER_FILES_DIR=. \
   --temporary-expand-var TELEGRAF_DEBUG=true \
   --file-path-root . \
-  --output generated/combined.conf
+  --output generated/time_in_area.conf
 ```
 
 When regenerating, choose one of these approaches:
 
-| Use case                       | Included files                                                                                                   | Effect                                                                                                                        |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Sure you want InfluxDB         | Include both `config_process_time_in_area_copy.conf` and `config_output_time_in_area.conf` in `combined.conf`    | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
-| Unsure                         | Include only `config_process_time_in_area_copy.conf` in `combined.conf`                                          | If needed, you can upload and enable `config_output_time_in_area.conf` separately later.                                      |
-| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_time_in_area.conf` in `combined.conf` | InfluxDB cannot be enabled later without regenerating `combined.conf`                                                         |
+| Use case                       | Included files                                                                                                       | Effect                                                                                                                        |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Sure you want InfluxDB         | Include both `config_process_time_in_area_copy.conf` and `config_output_time_in_area.conf` in `time_in_area.conf`    | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
+| Unsure                         | Include only `config_process_time_in_area_copy.conf` in `time_in_area.conf`                                          | If needed, you can upload and enable `config_output_time_in_area.conf` separately later.                                      |
+| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_time_in_area.conf` in `time_in_area.conf` | InfluxDB cannot be enabled later without regenerating `time_in_area.conf`                                                     |

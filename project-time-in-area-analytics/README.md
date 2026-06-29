@@ -799,8 +799,8 @@ python3 ../tools/combine-files/combine_files.py \
 
 When regenerating, choose one of these approaches:
 
-| Use case | Included files | Effect |
-| --- | --- | --- |
-| Sure you want InfluxDB | Include both `config_process_time_in_area_copy.conf` and `config_output_time_in_area.conf` in `combined.conf` | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
-| Unsure | Include only `config_process_time_in_area_copy.conf` in `combined.conf` | If needed, you can upload and enable `config_output_time_in_area.conf` separately later. |
-| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_time_in_area.conf` in `combined.conf` | InfluxDB cannot be enabled later without regenerating `combined.conf` |
+| Use case                       | Included files                                                                                                   | Effect                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Sure you want InfluxDB         | Include both `config_process_time_in_area_copy.conf` and `config_output_time_in_area.conf` in `combined.conf`    | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
+| Unsure                         | Include only `config_process_time_in_area_copy.conf` in `combined.conf`                                          | If needed, you can upload and enable `config_output_time_in_area.conf` separately later.                                      |
+| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_time_in_area.conf` in `combined.conf` | InfluxDB cannot be enabled later without regenerating `combined.conf`                                                         |

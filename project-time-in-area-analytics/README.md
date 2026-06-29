@@ -26,17 +26,21 @@ flowchart TD
         CX --> C3
     end
 
-    C5 -.->|OPTION 2<br/>detection_frame_with_duration| D1
+    C5 -->|detection_frame_with_duration| D1
 
-        subgraph MetricCopy ["config_output_time_in_area.conf"]
+    subgraph MetricCopy ["config_process_time_in_area_copy.conf"]
         D1["Duplicate metric"]
-        D1 -->|time_in_area_frame| D2["Send metrics to InfluxDB"]
-
     end
 
-    D1 -.->|detection_frame_with_duration| D
+    D1 -->|detection_frame_with_duration| D
+    D1 -->|time_in_area_frame| D2
+
+    subgraph InfluxOutput ["config_output_time_in_area.conf (optional)"]
+        D2["Send metrics to InfluxDB"]
+    end
+
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
-    C5 -.->|OPTION 1<br/>detection_frame_with_duration| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
+    D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
 
     D -->|alerting_frame_two| E0["config_process_alarming_state.conf:<br/>Check if any alerting detections have happened during the last second"]
     E0 -->|alerting_state_metric| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
@@ -58,7 +62,8 @@ flowchart TD
     style C4 fill:#ffffff,stroke:#673ab7
     style C5 fill:#ffffff,stroke:#673ab7
     style CX fill:#fff3e0,stroke:#fb8c00
-    style MetricCopy fill:#f3e5f5,stroke:#8e24aa,stroke-dasharray: 5 5
+    style MetricCopy fill:#f3e5f5,stroke:#8e24aa
+    style InfluxOutput fill:#f3e5f5,stroke:#8e24aa,stroke-dasharray: 5 5
     style D fill:#f3e5f5,stroke:#8e24aa
     style D1 fill:#ffffff,stroke:#673ab7
     style D2 fill:#ffebee,stroke:#e53935
@@ -108,6 +113,7 @@ Color scheme:
   - [config_process_class_filter.conf](#config_process_class_filterconf)
   - [config_process_zone_filter.conf and zone_filter.star](#config_process_zone_filterconf-and-zone_filterstar)
   - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
+  - [config_process_time_in_area_copy.conf](#config_process_time_in_area_copyconf)
   - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
   - [config_process_rate_limit.conf](#config_process_rate_limitconf)
   - [config_process_overlay_transform.conf](#config_process_overlay_transformconf)
@@ -135,6 +141,7 @@ Color scheme:
   - [GitHub Workflow](#github-workflow)
   - [Test Data](#test-data)
   - [PR Comments](#pr-comments)
+- [Generate a combined.conf file](#generate-a-combinedconf-file)
 
 <!-- tocstop -->
 
@@ -154,66 +161,15 @@ Color scheme:
 
 This section includes quick setup instructions for the project. You can find more detailed instructions, including images showing the process step-by-step, in [this blog post](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-trigger-alarms-and-get-detailed-statistics-about-time-in-area-using-the-fixedit-data-agent).
 
-You can use the `combine_files.py` script to create a combined configuration file, which includes the content of the `.star` and `.sh` files:
-
-```bash
-export PROJECT_DIR=/path/to/time-in-area-analytics-project
-cd ../tools/combine-files/
-python3 combine_files.py \
-  --config $PROJECT_DIR/config_agent.conf \
-  --config $PROJECT_DIR/config_input_scene_detections.conf \
-  --config $PROJECT_DIR/config_process_class_filter.conf \
-  --config $PROJECT_DIR/config_process_zone_filter.conf \
-  --config $PROJECT_DIR/config_process_track_duration.conf \
-  --config $PROJECT_DIR/config_process_threshold_filter.conf \
-  --config $PROJECT_DIR/config_process_rate_limit.conf \
-  --config $PROJECT_DIR/config_process_overlay_transform.conf \
-  --config $PROJECT_DIR/config_output_overlay.conf \
-  --config $PROJECT_DIR/config_process_alarming_state.conf \
-  --config $PROJECT_DIR/config_output_events.conf \
-  --inline-starlark \
-  --inline-shell-script \
-  --temporary-expand-var HELPER_FILES_DIR=. \
-  --temporary-expand-var TELEGRAF_DEBUG=true \
-  --file-path-root $PROJECT_DIR \
-  --output combined.conf
-```
-
-If you want to send metrics to InfluxDB containing information about detections and how long they have been detected for, you can include the `config_output_time_in_area.conf` file to the combined file. Note that it should be listed between the `config_process_track_duration.conf` and `config_process_threshold_filter.conf` files, as shown below.
-
-```bash
-export PROJECT_DIR=/path/to/time-in-area-analytics-project
-cd ../tools/combine-files/
-python3 combine_files.py \
-  --config $PROJECT_DIR/config_agent.conf \
-  --config $PROJECT_DIR/config_input_scene_detections.conf \
-  --config $PROJECT_DIR/config_process_class_filter.conf \
-  --config $PROJECT_DIR/config_process_zone_filter.conf \
-  --config $PROJECT_DIR/config_process_track_duration.conf \
-  --config $PROJECT_DIR/config_output_time_in_area.conf \
-  --config $PROJECT_DIR/config_process_threshold_filter.conf \
-  --config $PROJECT_DIR/config_process_rate_limit.conf \
-  --config $PROJECT_DIR/config_process_overlay_transform.conf \
-  --config $PROJECT_DIR/config_output_overlay.conf \
-  --config $PROJECT_DIR/config_process_alarming_state.conf \
-  --config $PROJECT_DIR/config_output_events.conf \
-  --inline-starlark \
-  --inline-shell-script \
-  --temporary-expand-var HELPER_FILES_DIR=. \
-  --temporary-expand-var TELEGRAF_DEBUG=true \
-  --file-path-root $PROJECT_DIR \
-  --output combined.conf
-```
-
-Then, upload the `combined.conf` file as a config file and enable it.
+Upload [`generated/combined.conf`](./generated/combined.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate a combined.conf file](#generate-a-combinedconf-file).
 
 Go to the custom UI tab and upload the `frontend/time_in_area.html` file.
 
 Modify the `App settings` to adapt to your use case and press `Save`.
 
-**Optional: If using InfluxDB output (`config_output_time_in_area.conf`)**
+**Optional: InfluxDB output**
 
-Set the following application parameters:
+To send `time_in_area_frame` metrics to InfluxDB, upload and enable [`config_output_time_in_area.conf`](./config_output_time_in_area.conf) in addition to `generated/combined.conf`. You must also set the following application parameters or Telegraf will fail to start the workflow:
 
 - Influx DB host
 - Influx DB port
@@ -235,9 +191,11 @@ Enable the `Debug` option in the FixedIT Data Agent for detailed logs. Debug fil
 
 #### Gradual Testing
 
-You can test the logic gradually in the camera by adding more and more complexity:
+You can test the logic gradually on the camera by enabling one config at a time. Upload [`test_files/config_output_stdout.conf`](./test_files/config_output_stdout.conf) first and keep it enabled throughout so metrics appear in the Logs tab as you add each stage:
 
-1. **Basic Detection**: Upload `config_input_scene_detections.conf`, `axis_scene_detection_consumer.sh` and `config_output_stdout.conf` to see if the camera is sending out detection messages
+1. **Stdout logging**: Upload and enable `test_files/config_output_stdout.conf` to make output metrics visible in the Logs tab
+
+2. **Basic Detection**: Upload `config_input_scene_detections.conf` and `axis_scene_detection_consumer.sh` to see if the camera is sending out detection messages
 
    ![Camera Detections Configuration](.images/camera-detections-config.png)
    _Configuration files uploaded to the camera_
@@ -245,10 +203,11 @@ You can test the logic gradually in the camera by adding more and more complexit
    ![Camera Detections Log](.images/camera-detections.png)
    _Log messages showing detection data from the camera_
 
-2. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
-3. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
-4. **Rate Limiting**: Upload `config_process_rate_limit.conf` to protect the overlay API from being overloaded
-5. **Overlay Display**: Finally, upload `config_process_overlay_transform.conf` and `config_output_overlay.conf` to draw the overlays on the live video
+3. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
+4. **Metric copy**: Upload `config_process_time_in_area_copy.conf` to create two separate copies of the `detection_frame_with_duration` metric
+5. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
+6. **Rate Limiting**: Upload `config_process_rate_limit.conf` to rate limit the alert metrics
+7. **Overlay Display**: Finally, upload `config_process_overlay_transform.conf` and `config_output_overlay.conf` to draw the overlays on the live video
 
 #### Unresolved variable errors
 
@@ -318,6 +277,15 @@ Calculates time in area for each detected object using the external Starlark scr
 - Automatically cleans up stale tracks (not seen for 60+ seconds)
 - Outputs debug messages when tracks are removed
 
+### config_process_time_in_area_copy.conf
+
+Duplicates each `detection_frame_with_duration` metric so the same detection can feed both the alert pipeline and an optional InfluxDB output. This processor:
+
+- Passes through `detection_frame_with_duration` unchanged (for threshold filtering and overlays)
+- Emits a copy named `time_in_area_frame` (for InfluxDB)
+
+The reason we need to do this is because only one processor can use a metric unless it emits it again. Duplicating it with a new names creates a more modular design where the components are not as dependent on each other.
+
 ### config_process_threshold_filter.conf
 
 Filters detection frames based on the configured alert threshold. Only detections where time in area (`time_in_area_seconds`) exceeds `ALERT_THRESHOLD_SECONDS` are passed through to the output stage.
@@ -345,7 +313,9 @@ Displays text overlays on the video. This configuration:
 
 ### config_output_time_in_area.conf
 
-Sends track metrics to InfluxDB for telemetry and analytics. This configuration:
+Optional InfluxDB output for time-in-area telemetry. Upload and enable this file separately when you want to send metrics to InfluxDB.
+
+Requires `config_process_time_in_area_copy.conf` to be enabled to create the `time_in_area_frame` metric.
 
 - Sends `time_in_area_frame` metrics to InfluxDB
 - Includes comprehensive track information: time in area, track ID, object type, bounding box coordinates, and timestamps
@@ -362,7 +332,7 @@ Sends track metrics to InfluxDB for telemetry and analytics. This configuration:
 
 **Measurement Name:**
 
-Metrics are written to the `time_in_area_frame` measurement in InfluxDB, which corresponds to the duplicated metric name from the duplicate processor.
+Metrics are written to the `time_in_area_frame` measurement in InfluxDB.
 
 ### test_files/config_output_stdout.conf
 
@@ -797,3 +767,40 @@ The workflow automatically posts detailed comments to pull requests with:
 - ❌ Specific failure diagnostics and troubleshooting steps when tests fail
 
 This helps catch regressions early in the development process.
+
+## Generate a combined.conf file
+
+The checked-in [`generated/combined.conf`](./generated/combined.conf) is a self-contained Telegraf configuration which can be generated from this project directory by running the following command.
+
+Note that the files have to be specified in the correct load order. Starlark and shell scripts can be inlined so you do not need to upload separate helper files.
+
+```bash
+mkdir -p generated
+python3 ../tools/combine-files/combine_files.py \
+  --config config_agent.conf \
+  --config config_input_scene_detections.conf \
+  --config config_process_class_filter.conf \
+  --config config_process_zone_filter.conf \
+  --config config_process_track_duration.conf \
+  --config config_process_time_in_area_copy.conf \
+  --config config_process_threshold_filter.conf \
+  --config config_process_rate_limit.conf \
+  --config config_process_overlay_transform.conf \
+  --config config_output_overlay.conf \
+  --config config_process_alarming_state.conf \
+  --config config_output_events.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var TELEGRAF_DEBUG=true \
+  --file-path-root . \
+  --output generated/combined.conf
+```
+
+When regenerating, choose one of these approaches:
+
+| Use case | Included files | Effect |
+| --- | --- | --- |
+| Sure you want InfluxDB | Include both `config_process_time_in_area_copy.conf` and `config_output_time_in_area.conf` in `combined.conf` | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
+| Unsure | Include only `config_process_time_in_area_copy.conf` in `combined.conf` | If needed, you can upload and enable `config_output_time_in_area.conf` separately later. |
+| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_time_in_area.conf` in `combined.conf` | InfluxDB cannot be enabled later without regenerating `combined.conf` |

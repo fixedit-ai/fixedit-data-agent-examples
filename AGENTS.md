@@ -537,7 +537,7 @@ This way, if the logging output is disabled, the clone plugin might also be disa
 
 **In-repo references:**
 
-- [project-time-in-area-analytics/config_output_time_in_area.conf](./project-time-in-area-analytics/config_output_time_in_area.conf): Starlark `deepcopy` emits `time_in_area_frame` alongside `detection_frame_with_duration` so a processor and an output can both use the same detection.
+- [project-time-in-area-analytics/config_process_time_in_area_copy.conf](./project-time-in-area-analytics/config_process_time_in_area_copy.conf): `processors.clone` emits `time_in_area_frame` alongside `detection_frame_with_duration` so a processor and an output can both use the same detection.
 
 ### Preserving event timestamps on metrics
 

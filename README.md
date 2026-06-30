@@ -15,6 +15,7 @@ This README explains the high-level overview of the different projects. Each pro
   - [Hello, World!](#hello-world)
   - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
+  - [Time-in-Area Analytics](#time-in-area-analytics)
 - [Developer Tools](#developer-tools)
   - [Combine Configuration Files and Scripts](#combine-configuration-files-and-scripts)
 - [Using LLM agents for development](#using-llm-agents-for-development)
@@ -172,6 +173,38 @@ flowchart TD
 ```
 
 The system leverages the FixedIT Data Agent's built-in capabilities to create sophisticated data workflow graphs without traditional embedded programming. Frames are transported through Telegraf as base64 inside a metric; two remotefile sinks write the same basename JPEG plus a lightweight JSON metadata file with timestamps and tags. This also demonstrates the AWS S3 output integration via the Telegraf remotefile plugin.
+
+### Time-in-Area Analytics
+
+The [Time-in-Area Analytics](./project-time-in-area-analytics) project consumes object detections from the camera's AXIS Scene Metadata stream, calculates how long each tracked object has spent inside a monitored zone, and triggers Axis events when an object stays longer than a configured threshold. It can also push detailed track data to a time-series database (InfluxDB), where you can visualize detailed track durations. Analyzing the track duration per track is especially interesting for retail situations, while for security applications the alarms are more interesting.
+
+In difference from the AXIS Object Analytics Time-in-Area use case, this also works on Axis Fisheye cameras.
+
+You can define the include zone directly in the project's custom UI, or import an existing zone from AXIS Object Analytics.
+
+![Time-in-area configuration in the custom UI](./project-time-in-area-analytics/.images/custom-ui.png)
+
+The following diagram shows the high-level data flow of the Time-in-Area Analytics project. For more details see the [README](./project-time-in-area-analytics/README.md) in the `project-time-in-area-analytics` directory.
+
+```mermaid
+flowchart TD
+    XZone["Include zone<br/>Custom UI or AXIS Object Analytics import"] --> B
+    XThreshold["Alert threshold, object class<br/>Custom UI"] --> B
+
+    A["📹 Camera<br/>AXIS Scene Metadata<br/>Object detections"] --> B["FixedIT Data Agent<br/>Calculate time in monitored zone"]
+
+    B --> C1["🚨 Axis Events<br/>Trigger when object stays too long"]
+    B --> C2["📊 InfluxDB (Optional)<br/>Detailed track data"]
+    C2 --> C3["Dashboards<br/>Track duration & analytics"]
+
+    style XZone fill:#f5f5f5,stroke:#9e9e9e
+    style XThreshold fill:#f5f5f5,stroke:#9e9e9e
+    style A fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style C1 fill:#ffebee,stroke:#e53935
+    style C2 fill:#ffebee,stroke:#e53935
+    style C3 fill:#e3f2fd,stroke:#1565c0
+```
 
 ## Developer Tools
 

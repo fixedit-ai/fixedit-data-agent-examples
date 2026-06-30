@@ -1,10 +1,36 @@
 # Time-in-Area Analytics
 
-This project demonstrates how to implement time-in-area analytics for Axis fisheye cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). While AXIS Object Analytics natively supports time-in-area detection for traditional cameras, fisheye cameras lack this capability. This solution bridges that gap by consuming real-time object detection metadata from fisheye cameras and implementing custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs from [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) to track objects within a defined rectangular area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds.
+This project demonstrates how to implement time-in-area analytics on Axis cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). It consumes real-time object detection metadata from the camera's [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) stream and implements custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs to track objects within a defined polygon area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds.
+
+Unlike the AXIS Object Analytics Time-in-Area use case, this also works on Axis Fisheye cameras. It goes further than that. You can get detailed per-track time-in-area metrics sent to InfluxDB for visualization in e.g. Grafana (useful for retail situations, for example). It is also easy to extend this project further, e.g. with multiple trigger durations for warning, alarm and guard notification.
 
 ## How It Works
 
-The system consumes real-time object detection data from Axis fisheye cameras and implements custom time-in-area analytics logic to track object time in area and trigger appropriate responses.
+The system consumes real-time object detection data from the camera and implements custom time-in-area analytics logic to track object time in area and trigger appropriate responses.
+
+At a high level, the system looks like this:
+
+```mermaid
+flowchart TD
+    XZone["Include zone<br/>Custom UI or AXIS Object Analytics import"] --> B
+    XThreshold["Alert threshold, object class<br/>Custom UI"] --> B
+
+    A["📹 Camera<br/>AXIS Scene Metadata<br/>Object detections"] --> B["FixedIT Data Agent<br/>Calculate time in monitored zone"]
+
+    B --> C1["🚨 Axis Events<br/>Trigger when object stays too long"]
+    B --> C2["📊 InfluxDB (Optional)<br/>Detailed track data"]
+    C2 --> C3["Dashboards<br/>Track duration & analytics"]
+
+    style XZone fill:#f5f5f5,stroke:#9e9e9e
+    style XThreshold fill:#f5f5f5,stroke:#9e9e9e
+    style A fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style C1 fill:#ffebee,stroke:#e53935
+    style C2 fill:#ffebee,stroke:#e53935
+    style C3 fill:#e3f2fd,stroke:#1565c0
+```
+
+In more detail, the system is built around the following Telegraf plugins and components:
 
 ```mermaid
 flowchart TD
@@ -26,17 +52,21 @@ flowchart TD
         CX --> C3
     end
 
-    C5 -.->|OPTION 2<br/>detection_frame_with_duration| D1
+    C5 -->|detection_frame_with_duration| D1
 
-        subgraph MetricCopy ["config_output_time_in_area.conf"]
+    subgraph MetricCopy ["config_process_time_in_area_copy.conf"]
         D1["Duplicate metric"]
-        D1 -->|time_in_area_frame| D2["Send metrics to InfluxDB"]
-
     end
 
-    D1 -.->|detection_frame_with_duration| D
+    D1 -->|detection_frame_with_duration| D
+    D1 -->|time_in_area_frame| D2
+
+    subgraph InfluxOutput ["config_output_influxdb.conf (optional)"]
+        D2["Send metrics to InfluxDB"]
+    end
+
     X2["Configuration variables: ALERT_THRESHOLD_SECONDS"] --> D
-    C5 -.->|OPTION 1<br/>detection_frame_with_duration| D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
+    D["config_process_threshold_filter.conf:<br/>Filter for<br/>time in area > ALERT_THRESHOLD_SECONDS"]
 
     D -->|alerting_frame_two| E0["config_process_alarming_state.conf:<br/>Check if any alerting detections have happened during the last second"]
     E0 -->|alerting_state_metric| E01["config_output_events.conf:<br/>Run the event handler binary with information about the detection status"]
@@ -58,7 +88,8 @@ flowchart TD
     style C4 fill:#ffffff,stroke:#673ab7
     style C5 fill:#ffffff,stroke:#673ab7
     style CX fill:#fff3e0,stroke:#fb8c00
-    style MetricCopy fill:#f3e5f5,stroke:#8e24aa,stroke-dasharray: 5 5
+    style MetricCopy fill:#f3e5f5,stroke:#8e24aa
+    style InfluxOutput fill:#f3e5f5,stroke:#8e24aa,stroke-dasharray: 5 5
     style D fill:#f3e5f5,stroke:#8e24aa
     style D1 fill:#ffffff,stroke:#673ab7
     style D2 fill:#ffebee,stroke:#e53935
@@ -87,7 +118,7 @@ Color scheme:
 
 ## Why Choose This Approach?
 
-**No C/C++ development required!** This project demonstrates how to implement advanced analytics that would typically require custom ACAP development using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) instead. Rather than writing complex embedded C++ code for fisheye camera analytics, system integrators and IT professionals can implement sophisticated time-in-area logic using familiar configuration files and simple scripting. The solution leverages existing object detection capabilities from AXIS Object Analytics and adds the missing time-in-area functionality through data processing pipelines, making it accessible to teams without embedded development expertise.
+**No C/C++ development required!** This project demonstrates how to implement advanced analytics that would typically require custom ACAP development using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) instead. Rather than writing complex embedded C++ code, system integrators and IT professionals can implement sophisticated time-in-area logic using familiar configuration files and simple scripting. The solution leverages object detection from AXIS Scene Metadata and adds time-in-area processing, detailed track export, and event triggers through the Data Agent pipeline, making it accessible to teams without embedded development expertise. The project also shows how to use custom UI files for advanced configuration.
 
 ## Table of Contents
 
@@ -98,8 +129,9 @@ Color scheme:
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
 - [Quick Setup](#quick-setup)
   - [Troubleshooting](#troubleshooting)
-    - [Make sure AXIS Object Analytics is enabled](#make-sure-axis-object-analytics-is-enabled)
-    - [Verbose Logging](#verbose-logging)
+    - [Zone import: Make sure AXIS Object Analytics is enabled](#zone-import-make-sure-axis-object-analytics-is-enabled)
+    - [No object detections](#no-object-detections)
+    - [Debug mode](#debug-mode)
     - [Gradual Testing](#gradual-testing)
     - [Unresolved variable errors](#unresolved-variable-errors)
     - ["Text area is too big!" in overlay](#text-area-is-too-big-in-overlay)
@@ -108,11 +140,12 @@ Color scheme:
   - [config_process_class_filter.conf](#config_process_class_filterconf)
   - [config_process_zone_filter.conf and zone_filter.star](#config_process_zone_filterconf-and-zone_filterstar)
   - [config_process_track_duration.conf and track_duration_calculator.star](#config_process_track_durationconf-and-track_duration_calculatorstar)
+  - [config_process_time_in_area_copy.conf](#config_process_time_in_area_copyconf)
   - [config_process_threshold_filter.conf](#config_process_threshold_filterconf)
   - [config_process_rate_limit.conf](#config_process_rate_limitconf)
   - [config_process_overlay_transform.conf](#config_process_overlay_transformconf)
   - [config_output_overlay.conf and overlay_manager.sh](#config_output_overlayconf-and-overlay_managersh)
-  - [config_output_time_in_area.conf](#config_output_time_in_areaconf)
+  - [config_output_influxdb.conf](#config_output_influxdbconf)
   - [test_files/config_output_stdout.conf](#test_filesconfig_output_stdoutconf)
   - [test_files/sample_data_feeder.sh](#test_filessample_data_feedersh)
 - [Future Enhancements](#future-enhancements)
@@ -135,6 +168,7 @@ Color scheme:
   - [GitHub Workflow](#github-workflow)
   - [Test Data](#test-data)
   - [PR Comments](#pr-comments)
+- [Generate time_in_area.conf](#generate-time_in_areaconf)
 
 <!-- tocstop -->
 
@@ -148,72 +182,27 @@ Color scheme:
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: v1.4.0.
-- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application 1.4.0 and above.
+- **Required features**: Uses the `inputs.execd`, `processors.starlark` plugins and the `HELPER_FILES_DIR` environment variable set by the FixedIT Data Agent. Uses the `output_event` binary packaged with versions of the application 1.4.0 and above. The instructions are based on the new user interface in v1.6.0 and above.
 
 ## Quick Setup
 
 This section includes quick setup instructions for the project. You can find more detailed instructions, including images showing the process step-by-step, in [this blog post](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-trigger-alarms-and-get-detailed-statistics-about-time-in-area-using-the-fixedit-data-agent).
 
-You can use the `combine_files.py` script to create a combined configuration file, which includes the content of the `.star` and `.sh` files:
+First, press disable on the bundled config files to ensure they are not interfering with the project's files.
 
-```bash
-export PROJECT_DIR=/path/to/time-in-area-analytics-project
-cd ../tools/combine-files/
-python3 combine_files.py \
-  --config $PROJECT_DIR/config_agent.conf \
-  --config $PROJECT_DIR/config_input_scene_detections.conf \
-  --config $PROJECT_DIR/config_process_class_filter.conf \
-  --config $PROJECT_DIR/config_process_zone_filter.conf \
-  --config $PROJECT_DIR/config_process_track_duration.conf \
-  --config $PROJECT_DIR/config_process_threshold_filter.conf \
-  --config $PROJECT_DIR/config_process_rate_limit.conf \
-  --config $PROJECT_DIR/config_process_overlay_transform.conf \
-  --config $PROJECT_DIR/config_output_overlay.conf \
-  --config $PROJECT_DIR/config_process_alarming_state.conf \
-  --config $PROJECT_DIR/config_output_events.conf \
-  --inline-starlark \
-  --inline-shell-script \
-  --temporary-expand-var HELPER_FILES_DIR=. \
-  --temporary-expand-var TELEGRAF_DEBUG=true \
-  --file-path-root $PROJECT_DIR \
-  --output combined.conf
-```
+![Disable bundled config files](../.images/configuration-page-disable-bundled.png)
 
-If you want to send metrics to InfluxDB containing information about detections and how long they have been detected for, you can include the `config_output_time_in_area.conf` file to the combined file. Note that it should be listed between the `config_process_track_duration.conf` and `config_process_threshold_filter.conf` files, as shown below.
+Upload [`generated/time_in_area.conf`](./generated/time_in_area.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate time_in_area.conf](#generate-time_in_areaconf).
 
-```bash
-export PROJECT_DIR=/path/to/time-in-area-analytics-project
-cd ../tools/combine-files/
-python3 combine_files.py \
-  --config $PROJECT_DIR/config_agent.conf \
-  --config $PROJECT_DIR/config_input_scene_detections.conf \
-  --config $PROJECT_DIR/config_process_class_filter.conf \
-  --config $PROJECT_DIR/config_process_zone_filter.conf \
-  --config $PROJECT_DIR/config_process_track_duration.conf \
-  --config $PROJECT_DIR/config_output_time_in_area.conf \
-  --config $PROJECT_DIR/config_process_threshold_filter.conf \
-  --config $PROJECT_DIR/config_process_rate_limit.conf \
-  --config $PROJECT_DIR/config_process_overlay_transform.conf \
-  --config $PROJECT_DIR/config_output_overlay.conf \
-  --config $PROJECT_DIR/config_process_alarming_state.conf \
-  --config $PROJECT_DIR/config_output_events.conf \
-  --inline-starlark \
-  --inline-shell-script \
-  --temporary-expand-var HELPER_FILES_DIR=. \
-  --temporary-expand-var TELEGRAF_DEBUG=true \
-  --file-path-root $PROJECT_DIR \
-  --output combined.conf
-```
+![Time-in-area configuration file uploaded](.images/config-uploaded.png)
 
-Then, upload the `combined.conf` file as a config file and enable it.
+Go to the Custom UI tab and upload [`generated/time_in_area.html`](./generated/time_in_area.html). This adds a new configuration page where you can configure the settings and the include zone for the time-in-area analytics.
 
-Go to the custom UI tab and upload the `frontend/time_in_area.html` file.
+![Custom UI tab with the time-in-area configuration page](.images/custom-ui.png)
 
-Modify the `App settings` to adapt to your use case and press `Save`.
+**Optional: InfluxDB output**
 
-**Optional: If using InfluxDB output (`config_output_time_in_area.conf`)**
-
-Set the following application parameters:
+To send `time_in_area_frame` metrics to InfluxDB for visualization in e.g. Grafana, upload and enable [`config_output_influxdb.conf`](./config_output_influxdb.conf) in addition to `generated/time_in_area.conf`. You must also set the following application parameters on the `InfluxDB environment variables` card in the `Configuration->Variables` page.
 
 - Influx DB host
 - Influx DB port
@@ -221,23 +210,62 @@ Set the following application parameters:
 - Influx DB organization
 - Influx DB bucket
 
+To show them, flip the `Clear all values` slider to the left position.
+
+After enabling and configuring the InfluxDB output, you should expect to see data being sent to it whenever a detected object matches the configured class and is in the include zone (other detections are dropped before the time-in-area calculation is performed). Check the FixedIT Data Agent QUICKSTART_GUIDE for more details, but this is how it might look in the InfluxDB data explorer:
+
+![InfluxDB data explorer](.images/influxdb.png)
+
+**Upload individual files**
+
+Instead of using a single combined config file, you can upload the individual files from this project separately. This gives you more modularity and is easier if you want to do any modifications to the files. The only drawback is that it might take longer to upload all the files, and it can be more error-prone if the files are enabled in the wrong order.
+
+- See the [Generate time_in_area.conf](#generate-time_in_areaconf) section and follow the same order as the files are used there when enabling them
+- It's the order you enable the files in that sets the load order (indicated by the blue circle icon before the filename)
+- Upload all `*.sh` files as helper files marked with the `Make executable` checkbox
+- Upload all `*.star` files as helper files
+
+The configuration page might now look like this:
+
+![The files configuration page with individual files uploaded](.images/individual-files.png)
+
 ### Troubleshooting
 
-#### Make sure AXIS Object Analytics is enabled
+#### Zone import: Make sure AXIS Object Analytics is enabled
 
-If you want to import zones from AXIS Object Analytics in the user interface, it needs to be running. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
+If you want to import zones from AXIS Object Analytics in the custom UI, it needs to be running. Go to the camera's `Apps` tab and make sure the AXIS Object Analytics app is running.
 
-#### Verbose Logging
+The time-in-area analytics with manually defined zones will work without AXIS Object Analytics running.
 
-Enable the `Debug` option in the FixedIT Data Agent for detailed logs. Debug files will appear in the `Uploaded helper files` section (refresh page to see updates).
+#### No object detections
+
+This project is consuming object detection data from the camera's AXIS Scene Metadata stream (the built-in deep learning model). You can go to the camera's `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
+
+If the detections are visible there, but not in this project's output, then enable debug mode as described in the next section.
+
+#### Debug mode
+
+Enable the `Debug Mode` option in the custom UI for detailed logs and live overlay.
+
+![Enable Debug Mode](.images/custom-ui-debug.png)
+
+Debug logging will be seen in the `Logs` tab and the `.debug` files will appear in the `Helper files` section of the `Configuration->Files` page (refresh page to see updates).
+
+The live overlay will update when an object has been in the zone for more than the configured threshold. The arrow will point to the position the object was last seen at and the text will show the class of the object and how long it was in the zone.
+
+The live overlay will stay after the object leaves the zone as an indication of the last alarm. If you disable debug mode again, you will need to manually remove the overlay in the camera's `Video->Overlays` tab.
+
+![Live overlay](.images/live-overlay.png)
 
 **Note**: Don't leave debug enabled long-term as it creates large log files.
 
 #### Gradual Testing
 
-You can test the logic gradually in the camera by adding more and more complexity:
+You can test the logic gradually on the camera by enabling one config at a time:
 
-1. **Basic Detection**: Upload `config_input_scene_detections.conf`, `axis_scene_detection_consumer.sh` and `config_output_stdout.conf` to see if the camera is sending out detection messages
+1. **Stdout logging**: Upload and enable `test_files/config_output_stdout.conf` to make output metrics visible in the Logs tab. Keep it enabled throughout as you add each stage.
+
+2. **Basic Detection**: Upload `config_input_scene_detections.conf` and `axis_scene_detection_consumer.sh` to see if the camera is sending out detection messages
 
    ![Camera Detections Configuration](.images/camera-detections-config.png)
    _Configuration files uploaded to the camera_
@@ -245,10 +273,11 @@ You can test the logic gradually in the camera by adding more and more complexit
    ![Camera Detections Log](.images/camera-detections.png)
    _Log messages showing detection data from the camera_
 
-2. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
-3. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
-4. **Rate Limiting**: Upload `config_process_rate_limit.conf` to protect the overlay API from being overloaded
-5. **Overlay Display**: Finally, upload `config_process_overlay_transform.conf` and `config_output_overlay.conf` to draw the overlays on the live video
+3. **Time Calculation**: Upload `config_process_track_duration.conf` and `track_duration_calculator.star` to see if the time in area is calculated correctly
+4. **Metric copy**: Upload `config_process_time_in_area_copy.conf` so `processors.clone` keeps `detection_frame_with_duration` on the alert path and emits one renamed copy as `time_in_area_frame`
+5. **Threshold Filtering**: Upload `config_process_threshold_filter.conf` to see if the threshold filter is working correctly
+6. **Rate Limiting**: Upload `config_process_rate_limit.conf` to rate limit the alert metrics
+7. **Overlay Display**: Finally, upload `config_process_overlay_transform.conf` and `config_output_overlay.conf` to draw the overlays on the live video
 
 #### Unresolved variable errors
 
@@ -318,6 +347,15 @@ Calculates time in area for each detected object using the external Starlark scr
 - Automatically cleans up stale tracks (not seen for 60+ seconds)
 - Outputs debug messages when tracks are removed
 
+### config_process_time_in_area_copy.conf
+
+Duplicates each `detection_frame_with_duration` metric so the same detection can feed both the alert pipeline and an optional InfluxDB output. This processor:
+
+- Passes through `detection_frame_with_duration` unchanged (for threshold filtering and overlays)
+- Emits a copy named `time_in_area_frame` (for InfluxDB)
+
+The reason we need to do this is because only one processor can use a metric unless it emits it again. Duplicating it with a new name creates a more modular design where the components are not as dependent on each other.
+
 ### config_process_threshold_filter.conf
 
 Filters detection frames based on the configured alert threshold. Only detections where time in area (`time_in_area_seconds`) exceeds `ALERT_THRESHOLD_SECONDS` are passed through to the output stage.
@@ -343,9 +381,11 @@ Displays text overlays on the video. This configuration:
 - Displays time in area, object class, and size information
 - Positions overlays using pre-calculated coordinates from the Starlark processor
 
-### config_output_time_in_area.conf
+### config_output_influxdb.conf
 
-Sends track metrics to InfluxDB for telemetry and analytics. This configuration:
+Optional InfluxDB output for time-in-area telemetry. Upload and enable this file separately when you want to send metrics to InfluxDB.
+
+Requires `config_process_time_in_area_copy.conf` to be enabled to create the `time_in_area_frame` metric.
 
 - Sends `time_in_area_frame` metrics to InfluxDB
 - Includes comprehensive track information: time in area, track ID, object type, bounding box coordinates, and timestamps
@@ -362,7 +402,7 @@ Sends track metrics to InfluxDB for telemetry and analytics. This configuration:
 
 **Measurement Name:**
 
-Metrics are written to the `time_in_area_frame` measurement in InfluxDB, which corresponds to the duplicated metric name from the duplicate processor.
+Metrics are written to the `time_in_area_frame` measurement in InfluxDB.
 
 ### test_files/config_output_stdout.conf
 
@@ -797,3 +837,40 @@ The workflow automatically posts detailed comments to pull requests with:
 - ❌ Specific failure diagnostics and troubleshooting steps when tests fail
 
 This helps catch regressions early in the development process.
+
+## Generate time_in_area.conf
+
+The checked-in [`generated/time_in_area.conf`](./generated/time_in_area.conf) is a self-contained Telegraf configuration which can be generated from this project directory by running the following command.
+
+Note that the files have to be specified in the correct load order. Starlark and shell scripts can be inlined so you do not need to upload separate helper files.
+
+```bash
+mkdir -p generated
+python3 ../tools/combine-files/combine_files.py \
+  --config config_agent.conf \
+  --config config_input_scene_detections.conf \
+  --config config_process_class_filter.conf \
+  --config config_process_zone_filter.conf \
+  --config config_process_track_duration.conf \
+  --config config_process_time_in_area_copy.conf \
+  --config config_process_threshold_filter.conf \
+  --config config_process_rate_limit.conf \
+  --config config_process_overlay_transform.conf \
+  --config config_output_overlay.conf \
+  --config config_process_alarming_state.conf \
+  --config config_output_events.conf \
+  --inline-starlark \
+  --inline-shell-script \
+  --temporary-expand-var HELPER_FILES_DIR=. \
+  --temporary-expand-var TELEGRAF_DEBUG=true \
+  --file-path-root . \
+  --output generated/time_in_area.conf
+```
+
+When regenerating, choose one of these approaches:
+
+| Use case                       | Included files                                                                                                   | Effect                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Sure you want InfluxDB         | Include both `config_process_time_in_area_copy.conf` and `config_output_influxdb.conf` in `time_in_area.conf`    | Single file sends `time_in_area_frame` to InfluxDB. You have to set all InfluxDB application parameters in the Data Agent UI. |
+| Unsure                         | Include only `config_process_time_in_area_copy.conf` in `time_in_area.conf`                                      | If needed, you can upload and enable `config_output_influxdb.conf` separately later.                                          |
+| Sure you will not use InfluxDB | Include neither `config_process_time_in_area_copy.conf` nor `config_output_influxdb.conf` in `time_in_area.conf` | InfluxDB cannot be enabled later without regenerating `time_in_area.conf`                                                     |

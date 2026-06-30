@@ -1,6 +1,8 @@
 # Time-in-Area Analytics
 
-This project demonstrates how to implement time-in-area analytics on Axis cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). It consumes real-time object detection metadata from the camera's [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) stream and implements custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs to track objects within a defined polygon area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds. While AXIS Object Analytics natively supports time-in-area on many camera models, fisheye cameras lack this capability. This project bridges that gap for fisheye cameras, but it goes further than that. You can get detailed per-track time-in-area sent to InfluxDB for visualization in e.g. Grafana (useful for retail situations). It is also easy to extend this project further, e.g. with multiple trigger durations for warning, alarm and guard notification.
+This project demonstrates how to implement time-in-area analytics on Axis cameras using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/). It consumes real-time object detection metadata from the camera's [AXIS Scene Metadata](https://developer.axis.com/analytics/axis-scene-metadata/reference/concepts/) stream and implements custom time-in-area logic using Telegraf's Starlark processor. The system uses object tracking IDs to track objects within a defined polygon area, measures time in area, and triggers alert notifications via events when objects remain in the monitored zone beyond configured thresholds.
+
+Unlike the AXIS Object Analytics Time-in-Area use case, this also works on Axis Fisheye cameras. It goes further than that. You can get detailed per-track time-in-area metrics sent to InfluxDB for visualization in e.g. Grafana (useful for retail situations, for example). It is also easy to extend this project further, e.g. with multiple trigger durations for warning, alarm and guard notification.
 
 ## How It Works
 
@@ -128,6 +130,7 @@ Color scheme:
 - [Quick Setup](#quick-setup)
   - [Troubleshooting](#troubleshooting)
     - [Zone import: Make sure AXIS Object Analytics is enabled](#zone-import-make-sure-axis-object-analytics-is-enabled)
+    - [No object detections](#no-object-detections)
     - [Debug mode](#debug-mode)
     - [Gradual Testing](#gradual-testing)
     - [Unresolved variable errors](#unresolved-variable-errors)
@@ -185,6 +188,10 @@ Color scheme:
 
 This section includes quick setup instructions for the project. You can find more detailed instructions, including images showing the process step-by-step, in [this blog post](https://learning.fixedit.ai/posts/blog-fixedit-edge-unlocked-trigger-alarms-and-get-detailed-statistics-about-time-in-area-using-the-fixedit-data-agent).
 
+First, press disable on the bundled config files to ensure they are not interfering with the project's files.
+
+![Disable bundled config files](../.images/configuration-page-disable-bundled.png)
+
 Upload [`generated/time_in_area.conf`](./generated/time_in_area.conf) as a config file and enable it. This single file contains the full alert and overlay pipeline (including inlined `.star` and `.sh` helpers) and duplicates detection metrics as `time_in_area_frame` so you can add InfluxDB output later without changing the main config. To regenerate it after changing individual config files, see [Generate time_in_area.conf](#generate-time_in_areaconf).
 
 ![Time-in-area configuration file uploaded](.images/config-uploaded.png)
@@ -211,10 +218,10 @@ After enabling and configuring the InfluxDB output, you should expect to see dat
 
 **Upload individual files**
 
-Instead of using a single combined config file, you can upload the individual files from this project separately. This gives you more modularity and is easier if you want to do any modifications to the files. The only drawback is that it might take longer time to upload all the files, and it can be more error-prone if the files are enabled in the wrong order.
+Instead of using a single combined config file, you can upload the individual files from this project separately. This gives you more modularity and is easier if you want to do any modifications to the files. The only drawback is that it might take longer to upload all the files, and it can be more error-prone if the files are enabled in the wrong order.
 
 - See the [Generate time_in_area.conf](#generate-time_in_areaconf) section and follow the same order as the files are used there when enabling them
-- It's the order you enable the files in that sets the load order (indictaed by the blue circle icon before the filename)
+- It's the order you enable the files in that sets the load order (indicated by the blue circle icon before the filename)
 - Upload all `*.sh` files as helper files marked with the `Make executable` checkbox
 - Upload all `*.star` files as helper files
 
@@ -226,19 +233,27 @@ The configuration page might now look like this:
 
 #### Zone import: Make sure AXIS Object Analytics is enabled
 
-If you want to import zones from AXIS Object Analytics in the user interface, it needs to be running. You can go to the `Analytics` -> `Metadata visualization` page and verify that there are actual detections. The time-in-area analytics with manually defined zones will work without AXIS Object Analytics.
+If you want to import zones from AXIS Object Analytics in the custom UI, it needs to be running. Go to the camera's `Apps` tab and make sure the AXIS Object Analytics app is running.
+
+The time-in-area analytics with manually defined zones will work without AXIS Object Analytics running.
+
+#### No object detections
+
+This project is consuming object detection data from the camera's AXIS Scene Metadata stream (the built-in deep learning model). You can go to the camera's `Analytics` -> `Metadata visualization` page and verify that there are actual detections.
+
+If the detections are visible there, but not in this project's output, then enable debug mode as described in the next section.
 
 #### Debug mode
 
 Enable the `Debug Mode` option in the custom UI for detailed logs and live overlay.
 
-![Enable the Debug Mode](.images/custom-ui-debug.png)
+![Enable Debug Mode](.images/custom-ui-debug.png)
 
 Debug logging will be seen in the `Logs` tab and the `.debug` files will appear in the `Helper files` section of the `Configuration->Files` page (refresh page to see updates).
 
-The live overlay will update when an object has been in the zone for more than the configured threshold. The arrow will point to the position the object was last seen at and the text will show the class of the object and for how long time it was in the zone.
+The live overlay will update when an object has been in the zone for more than the configured threshold. The arrow will point to the position the object was last seen at and the text will show the class of the object and how long it was in the zone.
 
-The live overlay will stay after the object leaves the zone as an indication of the last alarm. If you disable the debug mode again, you will need to manually remove the overlay in the cameras `Video->Overlays` tab.
+The live overlay will stay after the object leaves the zone as an indication of the last alarm. If you disable debug mode again, you will need to manually remove the overlay in the camera's `Video->Overlays` tab.
 
 ![Live overlay](.images/live-overlay.png)
 
@@ -246,9 +261,9 @@ The live overlay will stay after the object leaves the zone as an indication of 
 
 #### Gradual Testing
 
-You can test the logic gradually on the camera by enabling one config at a time. Upload [`test_files/config_output_stdout.conf`](./test_files/config_output_stdout.conf) first and keep it enabled throughout so metrics appear in the Logs tab as you add each stage:
+You can test the logic gradually on the camera by enabling one config at a time:
 
-1. **Stdout logging**: Upload and enable `test_files/config_output_stdout.conf` to make output metrics visible in the Logs tab
+1. **Stdout logging**: Upload and enable `test_files/config_output_stdout.conf` to make output metrics visible in the Logs tab. Keep it enabled throughout as you add each stage.
 
 2. **Basic Detection**: Upload `config_input_scene_detections.conf` and `axis_scene_detection_consumer.sh` to see if the camera is sending out detection messages
 
@@ -339,7 +354,7 @@ Duplicates each `detection_frame_with_duration` metric so the same detection can
 - Passes through `detection_frame_with_duration` unchanged (for threshold filtering and overlays)
 - Emits a copy named `time_in_area_frame` (for InfluxDB)
 
-The reason we need to do this is because only one processor can use a metric unless it emits it again. Duplicating it with a new names creates a more modular design where the components are not as dependent on each other.
+The reason we need to do this is because only one processor can use a metric unless it emits it again. Duplicating it with a new name creates a more modular design where the components are not as dependent on each other.
 
 ### config_process_threshold_filter.conf
 

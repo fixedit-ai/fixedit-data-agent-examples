@@ -22,6 +22,15 @@
 #   The resolution key is always present; when RESOLUTION is unset it is an empty string.
 #   Failure: {"error":"<message>","image_base64":null}
 #
+# Error Codes:
+#   2  - Connectivity test failed (HEAD request to JPEG URL)
+#   5  - Base64 encoding failed
+#   6  - Response too small to be a valid JPEG
+#   7  - Curl returned an HTML error page
+#   10 - jq is not available
+#   11 - Image fetch failed or returned empty data
+#   12 - JSON validation failed
+#
 # =============================================================================
 
 # Configuration
@@ -72,27 +81,33 @@ fetch_image() {
     test_exit=$?
 
     if [ $test_exit -ne 0 ]; then
+        echo "axis_image_consumer.sh: Connectivity test failed (curl exit $test_exit): $test_response" >&2
         debug_log_file "Connectivity test failed: $test_response"
-        return 1
+        return 2
     fi
 
-    # Fetch image with authentication and pipe directly to base64 encoding
-    # This avoids storing binary data in shell variables which can corrupt it
+    # Fetch image and pipe directly to base64 encoding. This avoids storing binary
+    # data in shell variables which can corrupt it. We intentionally do not check
+    # curl's exit status: in POSIX sh, $? after a pipeline reflects openssl, not
+    # curl, and curl -s can exit 0 with an HTML error body anyway. Failed or bad
+    # downloads are caught by the response checks below (size and HTML detection).
     encoded_data=$(curl -s --digest -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" 2>/dev/null | openssl base64 -A)
-    curl_exit=$?
+    base64_exit=$?
 
-    if [ $curl_exit -ne 0 ]; then
-        debug_log_file "Curl or base64 encoding failed with exit code $curl_exit"
-        return 1
+    if [ $base64_exit -ne 0 ]; then
+        echo "axis_image_consumer.sh: Base64 encoding failed (openssl exit $base64_exit)" >&2
+        debug_log_file "Base64 encoding failed with exit code $base64_exit"
+        return 5
     fi
 
     # Check if we got actual encoded data (should be more than 100 characters for a valid image)
     data_size=${#encoded_data}
     debug_log_file "Received $data_size characters of base64 encoded data"
 
-    if [ $data_size -lt 100 ]; then
+    if [ "$data_size" -lt 1000 ]; then
+        echo "axis_image_consumer.sh: Response too small ($data_size bytes), likely not a valid JPEG" >&2
         debug_log_file "Encoded data too small, likely an error"
-        return 1
+        return 6
     fi
 
     # Check if response looks like HTML error page (case-insensitive matching)
@@ -100,10 +115,11 @@ fetch_image() {
     # it in this slightly roundabout way is because shell variables are not compatible
     # with binary data.
     if echo "$encoded_data" | openssl base64 -d 2>/dev/null | grep -qi "<html\|<title\|error\|Error"; then
+        echo "axis_image_consumer.sh: Camera returned an HTML error page instead of a JPEG" >&2
         debug_log_file "Response appears to be HTML error page"
         decoded_response=$(echo "$encoded_data" | openssl base64 -d 2>/dev/null)
         debug_log_file "Error response content: $decoded_response"
-        return 1
+        return 7
     fi
 
     echo "$encoded_data"
@@ -112,8 +128,8 @@ fetch_image() {
 
 # Check if jq is available
 if ! command -v jq >/dev/null 2>&1; then
-    echo "ERROR: jq is required but not available" >&2
-    exit 1
+    echo "axis_image_consumer.sh: jq is required but not available" >&2
+    exit 10
 fi
 
 # Fetch the image
@@ -122,10 +138,17 @@ IMAGE_BASE64=$(fetch_image)
 FETCH_EXIT=$?
 
 # Check if image fetch was successful
-if [ $FETCH_EXIT -ne 0 ] || [ -z "$IMAGE_BASE64" ]; then
-    debug_log_file "Image fetch failed or returned empty data"
+if [ $FETCH_EXIT -ne 0 ]; then
+    debug_log_file "Image fetch failed with exit code $FETCH_EXIT"
     jq -n '{"error": "Failed to fetch or encode image", "image_base64": null}'
-    exit 1
+    exit "$FETCH_EXIT"
+fi
+
+if [ -z "$IMAGE_BASE64" ]; then
+    echo "axis_image_consumer.sh: Image fetch returned empty data" >&2
+    debug_log_file "Image fetch returned empty data"
+    jq -n '{"error": "Failed to fetch or encode image", "image_base64": null}'
+    exit 11
 fi
 
 # Build the JSON line Telegraf will parse....
@@ -143,7 +166,7 @@ if echo "$JSON_OUTPUT" | jq . >/dev/null 2>&1; then
     debug_log_file "JSON validation successful"
 else
     echo "axis_image_consumer.sh: JSON validation failed: invalid JSON payload (jq parse error)" >&2
-    exit 1
+    exit 12
 fi
 
 # Log the actual JSON size

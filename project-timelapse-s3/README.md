@@ -2,6 +2,12 @@
 
 This project demonstrates how to create automated timelapse videos using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) by capturing images from an AXIS device and uploading them to AWS S3. The solution creates a time-series collection of images that can be used to generate timelapse videos or for long-term storage and analysis. This approach is perfect for construction sites, environmental monitoring, safety applications, or any scenario requiring periodic visual documentation.
 
+This project can be run on a modular F-series camera that can be powered from a 12v/24v/48v power supply instead of PoE. This makes it a good fit for installation in vehicles or battery-powered stations.
+
+![Timelapse on garbage truck using Axis modular camera](../.images/data-agent-timelapse.png)
+
+Since the images are buffered in a local queue if the device is offline, this works well in mobile situations where the device might not have a stable internet connection. Instead of loosing images, the Data Agent will retry uploading the images later when the connection is restored.
+
 [![Timelapse Preview](.images/timelapse-preview.jpg)](https://youtu.be/mcw3iAlBOj8)
 
 _Click the image above to watch the timelapse video on YouTube_

@@ -124,6 +124,12 @@ This example showcases how simple configuration files and shell scripts can crea
 
 The [Timelapse with AWS S3 Upload](./project-timelapse-s3) project demonstrates automated timelapse video creation using the FixedIT Data Agent. This solution captures images at regular intervals from an AXIS device and uploads them to AWS S3 with timestamped filenames, creating a chronological sequence perfect for timelapse generation. Perfect for construction sites, environmental monitoring, safety applications, or any scenario requiring periodic visual documentation.
 
+![Timelapse on garbage truck using Axis modular camera](.images/data-agent-timelapse.png)
+
+This solution is a good base for custom projects. It can easily be changed to upload images to a self-hosted SFTP server instead of AWS S3. Image metadata is already uploaded to separate JSON files, so you can easily capture custom metadata like GPS position, vehicle speed, etc. and add that to each image's metadata file.
+
+Since the images are buffered in a local queue if the device is offline, this works well in mobile situations where the device might not have a stable internet connection. Instead of loosing images, the Data Agent will retry uploading the images later when the connection is restored.
+
 [![Timelapse Preview](./project-timelapse-s3/.images/timelapse-preview.jpg)](https://youtu.be/mcw3iAlBOj8)
 
 _Click the image above to watch the timelapse video on YouTube_

@@ -194,7 +194,7 @@ After creating the user and setting up the permissions, create access keys follo
    - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: AWS credentials for S3 access
    - `AWS_REGION`: AWS region (depends on your S3 bucket setup)
    - `S3_BUCKET`: Target S3 bucket name
-   - `CAPTURE_INTERVAL_SEC`: Image capture interval in seconds (default: 300 = 5 minutes)
+   - `CAPTURE_INTERVAL_SEC`: Image capture interval in seconds
 
    **Optional variables:**
    - `RESOLUTION`: Image resolution (optional; if not set, camera default will be used)

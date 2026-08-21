@@ -1,14 +1,14 @@
 # Hello, World!
 
-This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
 
 ## How It Works
 
-This project defines two inputs that will run on an interval and produce some numeric metrics and a "Hello, World!" message. We make use of the `inputs.mock` plugin to generate the input data randomly. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs` tab.
+This project defines two inputs that will run on an interval and produce some numeric metrics and a "Hello, World!" message. We make use of the `inputs.mock` plugin to generate the input data randomly. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
 
 ```mermaid
 flowchart TD
-    X0["⚙️ Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, TELEGRAF_DEBUG"] --> X1
+    X0["⚙️ Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, FLUSH_INTERVAL_SECONDS, TELEGRAF_DEBUG<br/>METRIC_BATCH_SIZE, METRIC_BUFFER_LIMIT"] --> X1
     X1["Telegraf Agent"]
 
     X2["Configuration override:<br/>'interval'"] --> A2
@@ -35,7 +35,7 @@ Color scheme:
 
 With the FixedIT Data Agent, you can create your own edge-based workflows and automations that run directly in the Axis devices. You can do this without knowing anything about the Axis ACAP SDK, C and C++ programming. This makes the edge available to a much wider audience of developers, system integrators and IT professionals.
 
-This simple project demonstrates how to configure different inputs with different intervals in the FixedIT Data Agent and how to propagate that data to the logs tab of the FixedIT Data Agent. It's a great starting point for understanding the basics of the agent's configuration system.
+This simple project demonstrates how to configure different inputs with different intervals in the FixedIT Data Agent and how to propagate that data to the `Logs->Pipeline Data` tab. It's a great starting point for understanding the basics of the agent's configuration system.
 
 ## Table of Contents
 
@@ -47,7 +47,7 @@ This simple project demonstrates how to configure different inputs with differen
 - [Quick Setup](#quick-setup)
 - [Files](#files)
 - [Configuration Details](#configuration-details)
-- [Local Testing on Host](#local-testing-on-host)
+- [Advanced: Local Testing on Host](#advanced-local-testing-on-host)
   - [Prerequisites](#prerequisites)
   - [Test Commands](#test-commands)
 - [Integrating with InfluxDB](#integrating-with-influxdb)
@@ -64,91 +64,115 @@ This simple project demonstrates how to configure different inputs with differen
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: 1.3
-- **Required features**: `inputs.mock` which was added in v1.3.0 and the `SYNC_INTERVAL_SECONDS` environment variable added in FixedIT Data Agent v1.1.
+- **Required features**: `inputs.mock` (added in v1.3.0), and the `SYNC_INTERVAL_SECONDS` and `FLUSH_INTERVAL_SECONDS` environment variables (added in FixedIT Data Agent v1.1).
 
 ## Quick Setup
 
 1. **Disable the default config files**
 
-The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files"
-in the "Configuration" tab of the FixedIT Data Agent.
+   The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files" in the "Configuration" tab of the FixedIT Data Agent.
 
-![Disable bundled config files](.images/bundled-configs.png)
+   ![Disable bundled config files](.images/bundled-configs.png)
 
 2. **Upload and enable the `config.conf` file to the FixedIT Data Agent**
 
-Click the `Upload Config` button in the "Configuration" tab of the FixedIT Data Agent and upload the `config.conf` file. Then press the `Enable` button next to the `config.conf` file.
+   Click the `Upload Config` button in the "Configuration->Files" tab of the FixedIT Data Agent and upload the `config.conf` file. Then press the `Enable` button next to the `config.conf` file.
 
-![Upload config](.images/config-page.png)
+   ![Upload config](.images/config-page.png)
 
-3. **Go to the "Logs" tab and verify the data**
+3. **Go to the "Logs->Pipeline Data" tab and verify the metrics**
 
-It might take a few seconds before Telegraf has been restarted with the new config file. After this, you should see the "Hello, World!" messages appearing as JSON in the Logs tab at two different intervals:
+   It might take a few seconds before Telegraf has been restarted with the new config file. After this, you should see the metrics appearing as JSON in the "Logs->Pipeline Data" tab at two different intervals:
+   - The `hello_world_override_interval` metric with a new value in the `sine_wave` field every 5th second
+   - The `hello_world_global_interval` metric with the `Hello, World!` string, a `random_value` and a `static_value` every 60 seconds
 
-- One message following the global interval (defaults to 60 seconds in the FixedIT Data Agent but can be changed from the application settings) with `message`, `random_value` and `static_value` fields
-- Another message every 5 seconds with the `sine_wave` field
-
-![Logs tab](.images/logs-page.png)
+   ![Pipeline Data tab](.images/logs-page.png)
 
 4. **Reconfigure the FixedIT Data Agent variables:**
 
-   The `config.conf` file is making use of the `SYNC_INTERVAL_SECONDS` and `TELEGRAF_DEBUG` environment variables. You can configure these in the "Settings" tab of the FixedIT Data Agent by going back to the camera web interface, going to the "Apps" section, pressing the three dots next to the FixedIT Data Agent and selecting "Settings". Try changing the "Sync interval seconds" to 10 seconds and the "Debug mode" to true.
+   The `config.conf` file is making use of the `SYNC_INTERVAL_SECONDS`, `FLUSH_INTERVAL_SECONDS` and `TELEGRAF_DEBUG` environment variables which are by default set by the FixedIT Data Agent and controlled from the form in the "Basic environment variables" section in the "Configuration->Variables" tab.
+
+   Try changing the "Sync interval" to 1 second.
 
    ![Plain settings](.images/settings.png)
 
-   You should now see the global interval message appearing every 10 seconds instead. By scrolling down to the bottom of the logs where you find the internal Telegraf logs (by default printed to the "Standard Error" section), you will now see more verbose log messages such as `Wrote batch of 3 metrics in 4.322833ms` and `Buffer fullness: 0 / 10000 metrics`. This means that the metrics was successfully written to the output (`output.file` plugin) and that the buffer is now empty waiting for the next batch of metrics.
+   When inspecting the "Logs->Pipeline Data" tab again, you should now see the global interval message appearing every second instead.
+
+   Next, navigate to the "Logs->Diagnostics" tab. You should see a few informational messages (and perhaps some warnings about upcoming deprecations), but no errors.
+
+   ![Diagnostics tab](.images/diagnostics.png)
+
+   If you enable the "Verbose debug mode" slider in the "Basic environment variables" section, you should start seeing much more verbose log messages in the bottom of the "Logs->Diagnostics" tab.
+
+   ![Verbose debug mode](.images/verbose-debug-mode.png)
+
+   Here you will see messages such as `Wrote batch of 1 metrics in 123.2µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics was successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
+
+5. **Adding custom environment variables:**
+
+   The `config.conf` file is also making use of the `METRIC_BATCH_SIZE` and `METRIC_BUFFER_LIMIT` environment variables. These are not standard variables known by the FixedIT Data Agent, but are custom variables that we referenced using a name we chose ourselves.
+
+   The `METRIC_BATCH_SIZE` variable is used to set how many metrics Telegraf should wait for before flushing the buffer to the output (but flushing will also happen at least every `FLUSH_INTERVAL_SECONDS` seconds). Metric batching is mostly useful for remote outputs, e.g. when sending data to a database. Sending a batch with thousands of metrics at once is much more efficient than making thousands of individual API calls.
+
+   For the purpose of learning, let's try to enable batching by setting a high flush interval like 1000 seconds in the "Basic environment variables" section. Then, try adding a `METRIC_BATCH_SIZE` variable with the value 10. You can do this by clicking the plus icon in the "Extra Telegraf Variables" section, specifying the name as `METRIC_BATCH_SIZE` and the value as `10`.
+
+   ![Extra Telegraf Variables](.images/batch-size.png)
+
+   This time, when inspecting the "Logs->Pipeline Data" tab, you will see that you need to wait for a much longer time before any metrics appear. With an interval of 60 seconds, you will need to wait for 50 seconds before seeing the first batch of 10 metrics (all `hello_world_override_interval` metrics since they had a 5 second override interval). With a configured interval of 1 second, you will only need to wait for ~10 seconds before seeing the first batch of 10 metrics (eight `hello_world_global_interval` metrics and two `hello_world_override_interval` metrics).
 
 ## Files
 
-- `config.conf` - Combined configuration file containing both inputs and the output configuration
+- `config.conf`: Combined configuration file containing both inputs and the output configuration.
 
 ## Configuration Details
 
 The project uses the following components:
 
 1. **Input Configurations**
-   - Global interval input: Uses the exec input plugin to run an echo command every `SYNC_INTERVAL_SECONDS` seconds.
-   - Override interval input: Same as above, but every 5 seconds regardless of the value of the `SYNC_INTERVAL_SECONDS` variable.
+   - Global interval input: Uses the `mock` input plugin to generate a `hello_world_global_interval` metric every `SYNC_INTERVAL_SECONDS` seconds.
+   - Override interval input: Also uses the `mock` input plugin, but generating a `hello_world_override_interval` metric every 5 seconds regardless of the value of the `SYNC_INTERVAL_SECONDS` variable.
 
 2. **Output Configuration**
-   - Uses the file output plugin configured to write to stdout
-   - Data format is set to "json"
+   - Uses the `file` output plugin configured to write to `stdout`.
+   - The output data format is set to `json`.
 
 3. **Data Flow**
-   - By default, all inputs are connected to all outputs.
+   - Since the output plugin does not specify any filters, it will consume all metrics produced by both input plugins.
 
-## Local Testing on Host
+## Advanced: Local Testing on Host
 
-You can test this project locally using Telegraf before deploying to your Axis device.
+As your projects grow, it can be valuable to try changes on your computer first rather than uploading every tweak to the Axis device. Doing so require a bit more setup, so you might want to skip this section until later.
 
 ### Prerequisites
 
-- Install Telegraf on your development machine
+- [Install Telegraf on your development machine](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-running-telegraf-locally-on-windows)
 
 ### Test Commands
 
-Run Telegraf with the configuration file:
+On the Axis device, the FixedIT Data Agent sets `SYNC_INTERVAL_SECONDS`, `FLUSH_INTERVAL_SECONDS`, and `TELEGRAF_DEBUG` for you. When running Telegraf on your host, export those variables first. On Linux:
 
 ```bash
-telegraf --config config.conf
-```
-
-You should now see some internal Telegraf logs on `stderr` and the JSON messages with the "Hello, World!" string appearing every now and then on `stdout`.
-
-You can override the default values of the environment variables used in the `config.conf` file (which are automatically set by the FixedIT Data Agent when running the project in the Axis device). On Linux, export the two environment variables:
-
-```bash
-export SYNC_INTERVAL_SECONDS="10"
+export SYNC_INTERVAL_SECONDS="1"
+export FLUSH_INTERVAL_SECONDS="1"
 export TELEGRAF_DEBUG="true"
 ```
 
-On Windows, in PowerShell, set the environment variables by running:
+On Windows, in PowerShell:
 
 ```PowerShell
-$env:SYNC_INTERVAL_SECONDS = "10"
+$env:SYNC_INTERVAL_SECONDS = "1"
+$env:FLUSH_INTERVAL_SECONDS = "1"
 $env:TELEGRAF_DEBUG = "true"
 ```
 
+Then run Telegraf with the configuration file.
+
+```bash
+telegraf --config config.conf --non-strict-env-handling
+```
+
+You should now see some internal Telegraf logs on `stderr` and JSON metrics on `stdout`, including the `hello_world_global_interval` message every `SYNC_INTERVAL_SECONDS` seconds and `hello_world_override_interval` every 5 seconds.
+
 ## Integrating with InfluxDB
 
-In this guide, we only exposed the data in the `Logs` tab of the FixedIT Data Agent. To produce real value, you can use other outputs such as InfluxDB, MQTT, cURL, etc. As a next step, see the [project-hello-world-exec](../project-hello-world-exec/) project.
+In this guide, we only exposed the data in the "Logs->Pipeline Data" tab of the FixedIT Data Agent. To produce real value, you can use other outputs such as InfluxDB, MQTT, cURL, etc. As a next step, see the [project-hello-world-exec](../project-hello-world-exec/) project.

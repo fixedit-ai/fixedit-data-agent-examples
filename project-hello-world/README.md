@@ -106,7 +106,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    ![Verbose debug mode](.images/verbose-debug-mode.png)
 
-   Here you will see messages such as `Wrote batch of 1 metrics in 123.2µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics was successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
+   Here you will see messages such as `Wrote batch of 1 metrics in 123.2µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics were successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
 
 5. **Adding custom environment variables:**
 
@@ -118,7 +118,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    ![Extra Telegraf Variables](.images/batch-size.png)
 
-   This time, when inspecting the "Logs->Pipeline Data" tab, you will see that you need to wait for a much longer time before any metrics appear. With an interval of 60 seconds, you will need to wait for 50 seconds before seeing the first batch of 10 metrics (all `hello_world_override_interval` metrics since they had a 5 second override interval). With a configured interval of 1 second, you will only need to wait for ~10 seconds before seeing the first batch of 10 metrics (eight `hello_world_global_interval` metrics and two `hello_world_override_interval` metrics).
+   This time, the first metrics appear only after Telegraf has collected 10 metrics. Telegraf schedules collections to fixed time boundaries rather than counting delay from startup. This behavior comes from [`round_interval`](https://docs.influxdata.com/telegraf/latest/configuration/#agent-configuration), which is enabled by default. With a 60-second global interval, the first batch will often contain metrics from the 5-second override interval. With a configured interval of 1 second, the first batch will usually appear sooner and can contain metrics from both inputs. If exact timing matters, Telegraf also supports more advanced interval tuning to control scheduling in more detail.
 
 ## Files
 
@@ -141,7 +141,7 @@ The project uses the following components:
 
 ## Advanced: Local Testing on Host
 
-As your projects grow, it can be valuable to try changes on your computer first rather than uploading every tweak to the Axis device. Doing so require a bit more setup, so you might want to skip this section until later.
+As your projects grow, it can be valuable to try changes on your computer first rather than uploading every tweak to the Axis device. Doing so requires a bit more setup, so you might want to skip this section until later.
 
 ### Prerequisites
 

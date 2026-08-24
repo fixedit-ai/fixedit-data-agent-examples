@@ -163,7 +163,7 @@ flowchart TD
 
 ## Advanced: Local Testing on Host
 
-As your projects grow, it can be valuable to try changes on your computer first rather than uploading every tweak to the Axis device. Doing so require a bit more setup, so you might want to skip this section until later.
+As your projects grow, it can be valuable to try changes on your computer first rather than uploading every tweak to the Axis device. Doing so requires a bit more setup, so you might want to skip this section until later.
 
 ### Prerequisites
 

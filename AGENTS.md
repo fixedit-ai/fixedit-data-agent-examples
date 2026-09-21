@@ -641,12 +641,13 @@ Use `metric_batch_size = 1` here if each line should appear in the Logs tab as s
 
 ## Example projects in this repo
 
-| Project                                                                                   | Illustrates                                                  |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [project-hello-world](./project-hello-world/)                                             | Minimal inputs/outputs, config overrides                     |
-| [project-strobe-color-from-github-workflow](./project-strobe-color-from-github-workflow/) | HTTP input, Starlark processors, exec output to shell        |
-| [project-timelapse-s3](./project-timelapse-s3/)                                           | Binary/image handling, AWS S3 output                         |
-| [project-time-in-area-analytics](./project-time-in-area-analytics/)                       | Scene Metadata, zones, Starlark, overlays, rich test_scripts |
+| Project                                                                                   | Illustrates                                                           |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [project-hello-world](./project-hello-world/)                                             | Minimal inputs/outputs, config overrides                              |
+| [project-strobe-color-from-github-workflow](./project-strobe-color-from-github-workflow/) | HTTP input, Starlark processors, exec output to shell                 |
+| [project-timelapse-s3](./project-timelapse-s3/)                                           | Binary/image handling, AWS S3 output                                  |
+| [project-time-in-area-analytics](./project-time-in-area-analytics/)                       | Scene Metadata, zones, Starlark, overlays, rich test_scripts          |
+| [project-image-health-event-notifications](./project-image-health-event-notifications/)       | AXIS Image Health Analytics events, ntfy notifications, mute a flickering cause, hourly counts |
 
 Browse [README.md](./README.md) for summaries and diagrams.
 

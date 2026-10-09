@@ -73,6 +73,12 @@ reviews:
         - When using credentials, specify minimum required privileges (e.g., viewer/operator/admin) and
           encourage not using higher than needed
         - Always correctly capitalize "FixedIT Data Agent" in all documentation and always include "FixedIT"
+        - Use "you" for procedural steps and setup instructions; use "we" when explaining design
+          rationale or why the example is built a certain way
+
+        **Config and script comments**: Comments in `.conf`, `.star`, and `.sh` files should be
+        factual only. State what a setting or block does, not authorial choices (avoid "We change
+        it to..." or similar). Prefer neutral descriptions of defaults and behavior.
 
         **Project Structure Requirements**:
         - Test scripts for testing functionality or visualizing data should be placed in a
@@ -96,7 +102,8 @@ reviews:
         for the variable names to avoid conflicts with other variables.
 
         Clearly document in the head of the file which environment variables they expect
-        and if they are optional or required.
+        and if they are optional or required. Inline comments in the script body should be
+        factual only.
 
         It's normally good to use `set -eu` for stricter error handling, but `-o pipefail`
         is not supported in the Axis devices' shell.
@@ -119,7 +126,12 @@ reviews:
         Documentation files should clearly communicate the dual audience: (1) server-side
         dashboard users who want to keep agent with bundled configs, and (2) edge device
         developers who want to customize agent behavior. Ensure examples and instructions
-        are appropriate for the intended skill level and use case. Since this is a public
+        are appropriate for the intended skill level and use case.
+
+        **Documentation voice**: Use "you" for procedural steps and setup instructions. Use "we"
+        when explaining design rationale or why an example is built a certain way.
+
+        Since this is a public
         repository, we should not include any sensitive information, the instructions
         should be easily understandable for a wide audience, and we should avoid using
         any jargon or technical terms that are not commonly used.

@@ -70,7 +70,7 @@ This simple project demonstrates how to configure different inputs with differen
 
 1. **Disable the default config files**
 
-   The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files" in the "Configuration" tab of the FixedIT Data Agent.
+   The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files" in the "Configuration->Files" tab of the FixedIT Data Agent.
 
    ![Disable bundled config files](.images/bundled-configs.png)
 
@@ -118,7 +118,11 @@ This simple project demonstrates how to configure different inputs with differen
 
    ![Extra Telegraf Variables](.images/batch-size.png)
 
-   This time, the first metrics appear only after Telegraf has collected 10 metrics. Telegraf schedules collections to fixed time boundaries rather than counting delay from startup. This behavior comes from [`round_interval`](https://docs.influxdata.com/telegraf/latest/configuration/#agent-configuration), which is enabled by default. With a 60-second global interval, the first batch will often contain metrics from the 5-second override interval. With a configured interval of 1 second, the first batch will usually appear sooner and can contain metrics from both inputs. If exact timing matters, Telegraf also supports more advanced interval tuning to control scheduling in more detail.
+   This time, the first logs appear only after Telegraf has collected 10 metrics. Telegraf schedules each collection on a fixed clock boundary rather than a delay counted from startup. That scheduling is controlled by [`round_interval`](https://docs.influxdata.com/telegraf/v1/configuration/agent/#collection-scheduling), which is enabled by default. For example, if the workflow starts at 10:00:03, the next collection for the 5-second override input is at 10:00:05, not 10:00:08. The default global interval is 60 seconds, so that input snaps to the start of the next minute: 10:01:00, not 10:01:03.
+
+   With the values from this step (`METRIC_BATCH_SIZE` of 10, global interval of 60 seconds, and the 5-second override still in `config.conf`), the first batch usually fills in about 50 seconds and might include one metric from the 60-second input. It contains only 5-second metrics when the workflow starts near the beginning of a minute.
+
+   If the global interval is 1 second instead, both inputs contribute. By about 8 or 9 seconds the batch of 10 usually includes the metrics collected every second and one or two metrics from the 5-second override. If exact timing matters, Telegraf also supports more advanced interval tuning to control scheduling in more detail.
 
 ## Files
 

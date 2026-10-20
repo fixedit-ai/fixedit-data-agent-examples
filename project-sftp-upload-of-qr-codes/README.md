@@ -95,7 +95,7 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 
 ### AXIS OS Compatibility
 
-- **Minimum AXIS OS version**: TODO
+- **Minimum AXIS OS version**: AXIS OS 12.0. Uses `jq` which was not available in some older AXIS OS versions.
 - **Required tools**: `curl`, `jq`, and `openssl`
 
 ### FixedIT Data Agent Compatibility
@@ -133,6 +133,7 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 
 3. **Upload helper files** (mark `.sh` scripts executable in the UI):
 
+   - `set_overlay_text.sh`
    - `axis_image_consumer.sh`
 
 4. **Upload and enable configs** in this order:
@@ -140,10 +141,6 @@ This shows how to build a system for "digital threads" that is simple to deploy 
    2. `config_process_dedup.conf`
    3. `config_process_capture.conf`
    4. `config_output_remotefile.conf`
-
-## Troubleshooting
-
-TODO
 
 ## How does it work?
 
@@ -167,11 +164,12 @@ The `rsync` library used in the `remotefile` output only accepts obfuscated pass
 
 ## Files
 
-TODO
-
-## Configuration Details
-
-TODO
+- `config_input_barcode.conf`: Subscribes to `CodeDecodedEvent` and renames the payload field `value` to `decoded_data`
+- `config_process_dedup.conf`: Drops repeat reads of the same code during the cooldown
+- `config_process_capture.conf`: Updates the overlay, fetches a JPEG, and re-ingests it through a localhost HTTP listener
+- `set_overlay_text.sh`: Script used to set dynamic overlay templates #D1 and #D2 through the VAPIX dynamic overlay API
+- `axis_image_consumer.sh`: Script used to fetch a JPEG from the camera VAPIX API and print it as base64 JSON
+- `config_output_remotefile.conf`: Uploads each JPEG to SFTP, in a folder named after the decoded value
 
 ## Known Limitations
 

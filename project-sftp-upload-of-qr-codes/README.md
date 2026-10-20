@@ -2,14 +2,14 @@
 
 This project shows how to react to [FixedIT QR Code Decoder](https://fixedit.ai/products-acaps/) detections on an Axis camera with the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/): when a QR code is read in the live view, the workflow immediately grabs a JPEG snapshot from the same camera and uploads it to an SFTP server. Images are grouped by decoded QR value, for example `/cameras/SHIPMENT-ABC123/20250614T153045Z.jpg`.
 
-The decoder and the Data Agent run on the same device. A short cooldown suppresses multiple uploads while the same code remains visible in frame.
+The decoder and the Data Agent run on the same device. Detections arrive as Axis events (`CodeDecodedEvent`) consumed with `event_handler --subscribe`. A short cooldown suppresses multiple uploads while the same code remains visible in frame.
 
 ## How It Works
 
 ```mermaid
 flowchart TD
-    QR["FixedIT QR Code Decoder"] --> SOCK["Unix socket"]
-    SOCK --> IN["inputs.socket_listener<br/>config_input_barcode.conf"]
+    QR["FixedIT QR Code Decoder"] --> EVT["AxEvent<br/>CodeDecodedEvent"]
+    EVT --> IN["inputs.execd event_handler<br/>config_input_barcode.conf"]
     IN -->|barcode_reader_app| STAR["Starlark dedup and reject<br/>config_process_dedup.conf"]
     STAR -->|barcode_reader_app| CAP["outputs.exec<br/>config_output_capture.conf"]
 
@@ -25,14 +25,12 @@ flowchart TD
     IN2 -->|image_capture| RF["outputs.remotefile<br/>config_output_remotefile.conf"]
     RF --> SFTP["SFTP server"]
 
-    XSocket["READER_SOCKET_PATH"]
     XSnapSock["SNAPSHOT_SOCKET_PATH"]
     XCooldown["SNAPSHOT_COOLDOWN_SECONDS"]
     XScripts["HELPER_FILES_DIR<br/>set_overlay_text.sh<br/>axis_image_consumer.sh<br/>VAPIX_USERNAME / VAPIX_PASSWORD<br/>CAMERA_IP / RESOLUTION"]
     XSftpSecrets["Telegraf secrets:<br/>ftp_host, ftp_user<br/>ftp_pass, ftp_port"]
     XSftpPath["SFTP_PATH"]
 
-    XSocket --> IN
     XSnapSock --> CAP
     XSnapSock --> IN2
     XCooldown --> STAR
@@ -41,7 +39,7 @@ flowchart TD
     XSftpPath --> RF
 
     style QR fill:#ffffff,stroke:#9e9e9e
-    style SOCK fill:#ffffff,stroke:#9e9e9e
+    style EVT fill:#ffffff,stroke:#9e9e9e
     style IN fill:#e8f5e9,stroke:#43a047
     style STAR fill:#f3e5f5,stroke:#8e24aa
     style CAP fill:#ffebee,stroke:#e53935
@@ -53,7 +51,6 @@ flowchart TD
     style IN2 fill:#e8f5e9,stroke:#43a047
     style RF fill:#ffebee,stroke:#e53935
     style SFTP fill:#ffffff,stroke:#9e9e9e
-    style XSocket fill:#f5f5f5,stroke:#9e9e9e
     style XSnapSock fill:#f5f5f5,stroke:#9e9e9e
     style XCooldown fill:#f5f5f5,stroke:#9e9e9e
     style XScripts fill:#f5f5f5,stroke:#9e9e9e
@@ -72,7 +69,7 @@ Color scheme:
 
 ## Why Choose This Approach?
 
-TODO
+This shows how to build a system for "digital threads" that is simple to deploy and maintain. Objects marked with IDs can be photographed at different stages in a process, then uploaded and organized into folders on an SFTP server. The only component that needs deployment apart from the camera applications is a regular SFTP server (like [SFTPgo](https://sftpgo.com/)) that any IT admin would be happy to manage. There are no subscription fees or SaaS services.
 
 ## Table of Contents
 
@@ -84,6 +81,7 @@ TODO
 - [Quick Setup](#quick-setup)
 - [Troubleshooting](#troubleshooting)
 - [How does it work?](#how-does-it-work)
+  - [Reading detections as events](#reading-detections-as-events)
   - [Capture using base64-encoded image](#capture-using-base64-encoded-image)
   - [Using a socket to send the image snapshot](#using-a-socket-to-send-the-image-snapshot)
   - [Obfuscating the FTP password](#obfuscating-the-ftp-password)
@@ -110,6 +108,7 @@ TODO
 1. **Install ACAPs** on the camera: FixedIT QR Code Decoder and FixedIT Data Agent.
 
 2. **Set Data Agent parameters** in the UI:
+
    - **VAPIX username / password**: credentials for snapshot capture (viewer account is enough).
    - **Telegraf secrets** (Configuration->Variables->Telegraf secrets): add the four secrets used by `config_output_remotefile.conf`. NOTE: for the `ftp_pass`, you have to mark the "Obfuscate for remotefile" checkbox when setting the secret.
 
@@ -132,6 +131,7 @@ TODO
      | `SNAPSHOT_COOLDOWN_SECONDS` | `30`       | Minimum seconds between uploads for the same QR value |
 
 3. **Upload helper files** (mark `.sh` scripts executable in the UI):
+
    - `axis_image_consumer.sh`
 
 4. **Upload and enable configs** in this order:
@@ -146,6 +146,12 @@ TODO
 TODO
 
 ## How does it work?
+
+### Reading detections as events
+
+`config_input_barcode.conf` uses the bundled `event_handler` binary in subscribe mode to consume the `CodeDecodedEvent` events that are sent by the FixedIT QR Code Decoder ACAP app. The decoded payload is the event item `value`. A rename processor in the same config maps that field to `decoded_data` before the rest of the pipeline to keep the naming consistent with examples that use the socket reader plugin.
+
+There are other ways that QR codes can be read from the FixedIT QR Code Decoder ACAP app. In some other projects you will see that the socket reader plugin is used instead. The benefit of using the socket reader instead of the event bus is that the socket can buffer the detections so that no detections are lost if the FixedIT Data Agent would be temporarily stopped. In this project, buffering of detections does, however, not make sense since we need to capture a synchronized image snapshot for the detection to be valuable.
 
 ### Capture using base64-encoded image
 

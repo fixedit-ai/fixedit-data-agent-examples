@@ -512,7 +512,12 @@ def _find_all_keys_in_toml(data, key_name):
     2. Inside table arrays: [[table.subtable]] with key = value
 
     Args:
-        data: The TOML data structure (dict from tomlkit.parse)
+        data: Nested dict/list from ``tomlkit.parse(...).value`` (parsed data).
+            Pass ``.value``, not the ``TOMLDocument``: the
+            document is layout-aware and can raise ``KeyAlreadyPresent`` for
+            Telegraf-valid out-of-order tables (e.g. two
+            ``[[inputs.http_listener_v2]]`` blocks split by another plugin
+            such as ``[[processors.starlark]]``).
         key_name: The key name to search for (e.g., "script", "command")
 
     Returns:
@@ -785,6 +790,19 @@ def find_valid_toml_matches(config_obj, key_name):  # pylint: disable=too-many-l
         'script = "scripts/test.star"'
         >>> results[0][1]  # parsed value from expanded view
         'scripts/test.star'
+
+        >>> # Out-of-order duplicate plugin tables (Telegraf-valid) still work
+        >>> config_obj = ConfigContent(
+        ...     '[[inputs.http_listener_v2]]\\n  paths = ["/a"]\\n'
+        ...     '[[processors.starlark]]\\n  script = "flow.star"\\n'
+        ...     '[[inputs.http_listener_v2]]\\n  paths = ["/b"]\\n'
+        ...     '  [[inputs.http_listener_v2.json_v2]]\\n'
+        ...     '    [[inputs.http_listener_v2.json_v2.field]]\\n'
+        ...     '      path = "x"',
+        ...     {})
+        >>> results = find_valid_toml_matches(config_obj, "script")
+        >>> results[0][1]
+        'flow.star'
     """
     # Parse the expanded content to find all occurrences of the key
     expanded_content = config_obj.get_expanded()
@@ -798,7 +816,7 @@ def find_valid_toml_matches(config_obj, key_name):  # pylint: disable=too-many-l
         raise ValueError(error_msg) from e
 
     # Recursively search for all occurrences of the key in the parsed document
-    parsed_values_raw = _find_all_keys_in_toml(doc, key_name)
+    parsed_values_raw = _find_all_keys_in_toml(doc.value, key_name)
     if not parsed_values_raw:
         return []
 

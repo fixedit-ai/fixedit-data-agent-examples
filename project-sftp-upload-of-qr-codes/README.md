@@ -11,7 +11,7 @@ flowchart TD
     QR["FixedIT QR Code Decoder"] --> EVT["AxEvent<br/>CodeDecodedEvent"]
     EVT --> IN["inputs.execd event_handler<br/>config_input_barcode.conf"]
     IN -->|barcode_reader_app| STAR["Starlark dedup and reject<br/>config_process_dedup.conf"]
-    STAR -->|barcode_reader_app| CAP["outputs.exec<br/>config_output_capture.conf"]
+    STAR -->|barcode_reader_app| CAP["outputs.exec<br/>config_process_capture.conf"]
 
     CAP -->|template 1: decoded_data| OVERLAY["set_overlay_text.sh"]
     CAP -->|template 2: UTC time| OVERLAY
@@ -20,19 +20,19 @@ flowchart TD
     CAP --> IMG["axis_image_consumer.sh"]
     IMG <-->|JPEG snapshot| VAPIX_JPG["VAPIX JPEG API"]
 
-    CAP -->|socat JSON line| SNAP_SOCK["Unix socket<br/>SNAPSHOT_SOCKET_PATH"]
-    SNAP_SOCK --> IN2["inputs.socket_listener<br/>config_input_image_capture.conf"]
+    CAP -->|curl POST JSON| SNAP_HTTP["HTTP listener<br/>127.0.0.1:SNAPSHOT_HTTP_PORT"]
+    SNAP_HTTP --> IN2["inputs.http_listener_v2<br/>config_process_capture.conf"]
     IN2 -->|image_capture| RF["outputs.remotefile<br/>config_output_remotefile.conf"]
     RF --> SFTP["SFTP server"]
 
-    XSnapSock["SNAPSHOT_SOCKET_PATH"]
+    XSnapPort["SNAPSHOT_HTTP_PORT"]
     XCooldown["SNAPSHOT_COOLDOWN_SECONDS"]
     XScripts["HELPER_FILES_DIR<br/>set_overlay_text.sh<br/>axis_image_consumer.sh<br/>VAPIX_USERNAME / VAPIX_PASSWORD<br/>CAMERA_IP / RESOLUTION"]
     XSftpSecrets["Telegraf secrets:<br/>ftp_host, ftp_user<br/>ftp_pass, ftp_port"]
     XSftpPath["SFTP_PATH"]
 
-    XSnapSock --> CAP
-    XSnapSock --> IN2
+    XSnapPort --> CAP
+    XSnapPort --> IN2
     XCooldown --> STAR
     XScripts --> CAP
     XSftpSecrets --> RF
@@ -47,11 +47,11 @@ flowchart TD
     style IMG fill:#fff3e0,stroke:#fb8c00
     style VAPIX_OVL fill:#ffffff,stroke:#9e9e9e
     style VAPIX_JPG fill:#ffffff,stroke:#9e9e9e
-    style SNAP_SOCK fill:#ffffff,stroke:#9e9e9e
+    style SNAP_HTTP fill:#ffffff,stroke:#9e9e9e
     style IN2 fill:#e8f5e9,stroke:#43a047
     style RF fill:#ffebee,stroke:#e53935
     style SFTP fill:#ffffff,stroke:#9e9e9e
-    style XSnapSock fill:#f5f5f5,stroke:#9e9e9e
+    style XSnapPort fill:#f5f5f5,stroke:#9e9e9e
     style XCooldown fill:#f5f5f5,stroke:#9e9e9e
     style XScripts fill:#f5f5f5,stroke:#9e9e9e
     style XSftpSecrets fill:#f5f5f5,stroke:#9e9e9e
@@ -83,7 +83,7 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 - [How does it work?](#how-does-it-work)
   - [Reading detections as events](#reading-detections-as-events)
   - [Capture using base64-encoded image](#capture-using-base64-encoded-image)
-  - [Using a socket to send the image snapshot](#using-a-socket-to-send-the-image-snapshot)
+  - [Sending the image snapshot over HTTP](#sending-the-image-snapshot-over-http)
   - [Obfuscating the FTP password](#obfuscating-the-ftp-password)
 - [Files](#files)
 - [Configuration Details](#configuration-details)
@@ -96,7 +96,7 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 ### AXIS OS Compatibility
 
 - **Minimum AXIS OS version**: TODO
-- **Required tools**: `curl`, `jq`, `openssl`, and `socat`
+- **Required tools**: `curl`, `jq`, and `openssl`
 
 ### FixedIT Data Agent Compatibility
 
@@ -129,6 +129,7 @@ This shows how to build a system for "digital threads" that is simple to deploy 
      | --------------------------- | ---------- | ----------------------------------------------------- |
      | `SFTP_PATH`                 | `/cameras` | Remote base directory on the SFTP server              |
      | `SNAPSHOT_COOLDOWN_SECONDS` | `30`       | Minimum seconds between uploads for the same QR value |
+     | `SNAPSHOT_HTTP_PORT`        | `18081`    | Localhost port for the snapshot HTTP listener         |
 
 3. **Upload helper files** (mark `.sh` scripts executable in the UI):
 
@@ -137,9 +138,8 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 4. **Upload and enable configs** in this order:
    1. `config_input_barcode.conf`
    2. `config_process_dedup.conf`
-   3. `config_output_capture.conf`
-   4. `config_input_image_capture.conf`
-   5. `config_output_remotefile.conf`
+   3. `config_process_capture.conf`
+   4. `config_output_remotefile.conf`
 
 ## Troubleshooting
 
@@ -157,9 +157,9 @@ There are other ways that QR codes can be read from the FixedIT QR Code Decoder 
 
 Since Telegraf does not support binary data in the messages, we need to encode the image as a base64-encoded string. This is done by the capture script (similar to the [timelapse project](../project-timelapse-s3/)). The image is then unpacked to a binary JPEG file again in the `remotefile` output using the `data_format = "template"` and `b64dec` serializer.
 
-### Using a socket to send the image snapshot
+### Sending the image snapshot over HTTP
 
-One important aspect to note is that we are using a socket to send the image snapshot from the capture script. It would be more straightforward to use an `processors.execd` plugin to enrich the QR code message with the snapshot. However, the `processors.execd` plugin has a limit on the size of the stdout buffer, which can be a problem if the image is large. Therefore, we are instead using an `outputs.exec` plugin to run the capture script, but instead of reading the stdout of the script, we are using `socat` to write it to a socket. We then have another `inputs.socket_listener` plugin to read the socket. This works because the same size limit does not exist for the `inputs.socket_listener` plugin.
+One important aspect to note is that we POST the image snapshot from the capture script to a localhost HTTP listener. It would be more straightforward to use a `processors.execd` plugin to enrich the QR code message with the snapshot. However, the `processors.execd` plugin has a limit on the size of the stdout buffer, which can be a problem if the image is large. Therefore, we are instead using an `outputs.exec` plugin to run the capture script, and `curl` to POST the JSON body to `inputs.http_listener_v2` on `127.0.0.1`. Binding it to `127.0.0.1` keeps the endpoint off the network, so it does not need authentication.
 
 ### Obfuscating the FTP password
 

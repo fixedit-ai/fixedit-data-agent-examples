@@ -28,15 +28,15 @@ flowchart TD
     XSnapPort["SNAPSHOT_HTTP_PORT"]
     XCooldown["SNAPSHOT_COOLDOWN_SECONDS"]
     XScripts["HELPER_FILES_DIR<br/>set_overlay_text.sh<br/>axis_image_consumer.sh<br/>VAPIX_USERNAME / VAPIX_PASSWORD<br/>CAMERA_IP / RESOLUTION"]
-    XSftpSecrets["Telegraf secrets:<br/>ftp_host, ftp_user<br/>ftp_pass, ftp_port"]
-    XSftpPath["SFTP_PATH"]
+    XSftpEnv["FTP_HOST, FTP_USER<br/>FTP_PORT, SFTP_PATH"]
+    XSftpSecret["Telegraf secret:<br/>ftp_pass"]
 
     XSnapPort --> CAP
     XSnapPort --> IN2
     XCooldown --> STAR
     XScripts --> CAP
-    XSftpSecrets --> RF
-    XSftpPath --> RF
+    XSftpEnv --> RF
+    XSftpSecret --> RF
 
     style QR fill:#ffffff,stroke:#9e9e9e
     style EVT fill:#ffffff,stroke:#9e9e9e
@@ -54,8 +54,8 @@ flowchart TD
     style XSnapPort fill:#f5f5f5,stroke:#9e9e9e
     style XCooldown fill:#f5f5f5,stroke:#9e9e9e
     style XScripts fill:#f5f5f5,stroke:#9e9e9e
-    style XSftpSecrets fill:#f5f5f5,stroke:#9e9e9e
-    style XSftpPath fill:#f5f5f5,stroke:#9e9e9e
+    style XSftpEnv fill:#f5f5f5,stroke:#9e9e9e
+    style XSftpSecret fill:#f5f5f5,stroke:#9e9e9e
 ```
 
 Color scheme:
@@ -107,23 +107,24 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 
 1. **Install ACAPs** on the camera: FixedIT QR Code Decoder and FixedIT Data Agent.
 
-2. **Set Data Agent parameters** in the UI:
+2. **Set parameters** in the FixedIT Data Agent UI under Configuration->Variables:
 
-   - **VAPIX username / password**: credentials for snapshot capture (viewer account is enough).
-   - **Telegraf secrets** (Configuration->Variables->Telegraf secrets): add the four secrets used by `config_output_remotefile.conf`. NOTE: for the `ftp_pass`, you have to mark the "Obfuscate for remotefile" checkbox when setting the secret.
+   - **VAPIX credentials**: Unselect the "Clear all values" slider and enter the credentials for the script's VAIX access. Operator permission is required since the script changes the overlay templates.
+   - **Extra Telegraf variables** used by `config_output_remotefile.conf`:
+
+     | Variable name | Example value      |
+     | ------------- | ------------------ |
+     | `FTP_HOST`    | `sftp.example.com` |
+     | `FTP_USER`    | `camera_upload`    |
+     | `FTP_PORT`    | `22`               |
+
+   - **Telegraf secrets**: Add the `ftp_pass` secret. NOTE: you have to mark the "Obfuscate for remotefile" checkbox when setting the secret.
 
      | Secret name | Example value       |
      | ----------- | ------------------- |
-     | `ftp_host`  | `sftp.example.com`  |
-     | `ftp_user`  | `camera_upload`     |
      | `ftp_pass`  | Obfuscated password |
-     | `ftp_port`  | `22`                |
 
-   - **Extra env** (optional overrides; defaults apply if omitted):
-
-     ```txt
-     SFTP_PATH=/cameras;SNAPSHOT_COOLDOWN_SECONDS=30
-     ```
+   - Optional **Extra Telegraf variables**. These override the defaults:
 
      | Variable                    | Default    | Purpose                                               |
      | --------------------------- | ---------- | ----------------------------------------------------- |
@@ -137,10 +138,12 @@ This shows how to build a system for "digital threads" that is simple to deploy 
    - `axis_image_consumer.sh`
 
 4. **Upload and enable these configs:**
-   1. `config_input_barcode.conf`
-   2. `config_process_dedup.conf`
-   3. `config_process_capture.conf`
-   4. `config_output_remotefile.conf`
+
+   1. `config_agent.conf`
+   2. `config_input_barcode.conf`
+   3. `config_process_dedup.conf`
+   4. `config_process_capture.conf`
+   5. `config_output_remotefile.conf`
 
    The order in which the configuration files are loaded does not matter since the processors use the `order:` option to define explicit load order.
 
@@ -162,10 +165,11 @@ One important aspect to note is that we POST the image snapshot from the capture
 
 ### Obfuscating the FTP password
 
-The `rsync` library used in the `remotefile` output only accepts obfuscated passwords for the sftp server. Therefore, when saving the password as a secret, you need to mark the "Obfuscate for remotefile" checkbox. This makes sure that an obfuscated version of the password is stored in the secrets store.
+The remotefile output only accepts an obfuscated password for the SFTP server. When saving `ftp_pass` as a secret, mark the "Obfuscate for remotefile" checkbox. That stores the obfuscated password in the secrets store.
 
 ## Files
 
+- `config_agent.conf`: Sets `debug` from `TELEGRAF_DEBUG`
 - `config_input_barcode.conf`: Subscribes to `CodeDecodedEvent` and renames the payload field `value` to `decoded_data`
 - `config_process_dedup.conf`: Drops repeat reads of the same code during the cooldown
 - `config_process_capture.conf`: Updates the overlay, fetches a JPEG, and re-ingests it through a localhost HTTP listener

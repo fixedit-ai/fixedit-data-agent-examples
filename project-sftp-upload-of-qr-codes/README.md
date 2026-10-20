@@ -136,11 +136,13 @@ This shows how to build a system for "digital threads" that is simple to deploy 
    - `set_overlay_text.sh`
    - `axis_image_consumer.sh`
 
-4. **Upload and enable configs** in this order:
+4. **Upload and enable these configs:**
    1. `config_input_barcode.conf`
    2. `config_process_dedup.conf`
    3. `config_process_capture.conf`
    4. `config_output_remotefile.conf`
+
+   The order in which the configuration files are loaded does not matter since the processors use the `order:` option to define explicit load order.
 
 ## How does it work?
 

@@ -63,7 +63,8 @@ With the FixedIT Data Agent, you can create your own edge-based workflows and au
 This simple project demonstrates how to configure different inputs with different intervals in the FixedIT Data Agent and how to propagate that data to the `Logs->Pipeline Data` tab. It's a great starting point for understanding the basics of the agent's configuration system.
 
 ## Table of Contents
-
+<details open>
+<summary><strong> Show / Hide Table </strong></summary>
 <!-- toc -->
 
 - [Compatibility](#compatibility)
@@ -78,7 +79,7 @@ This simple project demonstrates how to configure different inputs with differen
 - [Integrating with InfluxDB](#integrating-with-influxdb)
 
 <!-- tocstop -->
-
+</details>
 ## Compatibility
 
 ### AXIS OS Compatibility

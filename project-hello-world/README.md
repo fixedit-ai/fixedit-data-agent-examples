@@ -1,6 +1,6 @@
 # Hello, World!
 
-This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the [Telegraf](https://docs.influxdata.com/telegraf/v1/) process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the [Telegraf](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-telegraf-the-workflow-manager) process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
 
 ## How It Works
 

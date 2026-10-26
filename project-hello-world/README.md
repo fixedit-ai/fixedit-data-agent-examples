@@ -7,11 +7,15 @@ This is a simple "Hello, world!" project that demonstrates how to use the [Fixed
 ### 1. Inputs generate metrics.
 
 This project defines two inputs that run on an interval and produce numeric metrics and a "Hello, World!" message.
-Both inputs use the `inputs.mock` plugin to generate input data randomly.
+Both inputs use the [`inputs.mock`](https://docs.influxdata.com/telegraf/v1/input-plugins/mock/) plugin to generate input data randomly.
 
 One input runs on the globally configured interval.
 
 The other input runs on a more frequent interval.
+
+Both these inputs are hard-coded to work this way in the `config.conf` file.
+
+This is configured through the FixedIT Data Agent `Configuration->Variables` page.
 
 ---
 
@@ -23,7 +27,7 @@ The `outputs.file` plugin prints all metrics to the standard output of the Teleg
 
 ### 3. "stdout" is displayed in the logs.
 
-The FixedIT Data Agent captures the output from the Telegraf process and displays it in the Logs → Pipeline Data tab.
+The FixedIT Data Agent captures the output from the Telegraf process and displays it in the `Logs->Pipeline Data` tab.
 
 ---
 

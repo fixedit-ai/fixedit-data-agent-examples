@@ -80,6 +80,7 @@ This simple project demonstrates how to configure different inputs with differen
 
 <!-- tocstop -->
 </details>
+
 ## Compatibility
 
 ### AXIS OS Compatibility

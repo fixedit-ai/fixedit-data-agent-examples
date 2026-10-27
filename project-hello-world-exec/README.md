@@ -6,7 +6,32 @@ This is very similar to the [project-hello-world](../project-hello-world/) proje
 
 ## How It Works
 
-This project defines two inputs that will run on an interval and produce a "Hello, World!" message. We make use of the `inputs.exec` plugin to run the `echo` command which will output the message. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+### 1. Inputs generate metrics.
+
+
+This project defines two inputs that will run on an interval and produce a "Hello, World!" message. We make use of the `inputs.exec` plugin to run the `echo` command which will output the message.
+
+One input runs on the globally configured interval.
+
+The other input runs on a more frequent interval.
+
+Both these inputs are hard-coded to work this way in the `config.conf` file.
+
+This is configured through the FixedIT Data Agent `Configuration->Variables` page.
+
+---
+
+### 2. Output writes metrics to stdout.
+
+The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process.
+
+---
+
+### 3. "stdout" is displayed in the logs.
+
+The standard output of the Telegraf process will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+
+---
 
 ```mermaid
 flowchart TD

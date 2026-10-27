@@ -1,10 +1,36 @@
-# InfluxDB and Grafana Monitoring Stack
+﻿# InfluxDB and Grafana Monitoring Stack
 
-This directory contains a complete system monitoring stack designed to work with the **FixedIT Data Agent** running on Axis devices. The stack includes InfluxDB for time-series data storage and Grafana with pre-built dashboards for visualizing system metrics and device health from your Axis device fleet.
+This directory contains a complete system monitoring stack designed to work with the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) running on Axis devices.
+
+**After this guide, you can:** run [InfluxDB](#influxdb) and [Grafana](#grafana) on your own computer and see system metrics from your Axis cameras in ready-made dashboards.
+
+<details>
+<summary><strong> What is InfluxDB? </strong></summary>
+
+A database built for time-series data, which means measurements that change over time, such as CPU usage or network traffic. In this stack, it stores the data your cameras send.
+
+</details>
+
+---
+
+<details>
+<summary><strong> What is Grafana? </strong></summary>
+
+A tool that reads data from a database, here InfluxDB, and shows it as graphs and dashboards.
+
+</details>
+
+
+---
+
+> This guide uses Docker. If you don't have Docker installed or don't know what it is, see [Getting started with Docker](#getting-started-with-docker). Otherwise, just keep reading.
 
 ![Grafana Monitoring Overview](.images/laptop-with-grafana-for-monitoring.png)
 
 ## Table of Contents
+
+<details open> 
+<summary><strong> Hide / Show Table </strong></summary>
 
 <!-- toc -->
 
@@ -27,8 +53,10 @@ This directory contains a complete system monitoring stack designed to work with
 - [Using an older version of the FixedIT Data Agent](#using-an-older-version-of-the-fixedit-data-agent)
 - [Known Issues and Limitations](#known-issues-and-limitations)
 - [Helper Scripts](#helper-scripts)
-
+- [Getting started with docker](#getting-started-with-docker)
 <!-- tocstop -->
+
+</details>
 
 ## What This Stack Provides
 
@@ -102,20 +130,29 @@ This example includes:
 
 ⚠️ **Note**: This is still an example configuration. For actual production use, you'll need additional security hardening, backup strategies, and monitoring.
 
-### Port Configuration
+## Port Configuration
 
-The production-like setup uses configurable ports to allow running multiple instances on the same server. The demo setup uses hardcoded ports (8086 for InfluxDB, 3000 for Grafana) for simplicity. You can change the production ports by editing the `env.sh` file after generation with the `helper_scripts/generate-env.sh` script or by manually setting the environment variables before launching the stack.
+The production-like setup uses configurable ports to allow running multiple instances on the same server.
 
-### Deployment Organization
+The demo setup uses hardcoded ports (8086 for InfluxDB, 3000 for Grafana) for simplicity.
 
-This dashboard stack can be deployed multiple times to the same server. This is useful if you want to monitor multiple sites and have them completely isolated from each other. To enable this, you need to use the production override file (`docker-compose.prod.yml`) with the generated environment variables. This will make sure that the ports are not the same and that a project specific prefix will be used for the container names.
+You can change the production ports by editing the `env.sh` file after generation with the `helper_scripts/generate-env.sh` script or by manually setting the environment variables before launching the stack.
 
-The intended deployment pattern is to use **separate folders for different deployments**:
+## Deployment Organization
 
-- Copy the content of this directory to separate folders (e.g., `site-1-dashboard/`, `site-2-dashboard/`, etc.)
-- Each folder contains the same code and has its own `env.sh` file with unique credentials and ports
-- Data volumes mount to consistent folder names within each deployment directory
-- This makes it easy to see which code version was used for each deployment and keeps credentials isolated.
+This dashboard stack can be deployed multiple times to the same server. This is useful if you want to monitor multiple sites and have them completely isolated from each other.
+
+To enable this, you need to use the production override file (`docker-compose.prod.yml`) with the generated environment variables.
+
+This will make sure that the ports are not the same and that a project specific prefix will be used for the container names.
+
+The intended deployment [organization](#organization) is to use separate folders for different deployments:
+
+* Copy the content of this directory to separate folders (e.g., `site-1-dashboard/`, `site-2-dashboard/`, etc.)
+* Each folder contains the same code and has its own `env.sh` file with unique credentials and ports
+* Data volumes mount to consistent folder names within each deployment directory
+
+This makes it easy to see which code version was used for each deployment and keeps credentials isolated.
 
 ## Configure Your FixedIT Data Agent
 
@@ -126,7 +163,7 @@ After deploying the stack, configure your Axis devices to send data to it:
 - **InfluxDBHost**: `http://YOUR_SERVER_IP:8086`
 - **InfluxDBToken**: `KLoG_Z0NsDIbVzS7zVn_VwhgxUgvwaGWE1wwO9SsGfNEeMaopLMsAA2aAGbCshpetVdu86Ig3-WTKugv6Srg6w==` (demo admin token)
 - **InfluxDBOrganization**: `Whisperer`
-- **InfluxDBBucket**: `Cameras`
+- **InfluxDBBucket**: `Cameras` ([what is a bucket?](#bucket))
 
 _Note: The demo uses the admin token for simplicity. For any real testing beyond local evaluation, create dedicated tokens as described below._
 
@@ -201,13 +238,21 @@ Provides deep-dive analytics for individual devices, including detailed system m
 
 ![Device Details Dashboard](.images/dashboard-device-details.png)
 
-### Integration with FixedIT Data Agent
+## Integration with FixedIT Data Agent
 
-These dashboards are designed to work seamlessly with the default configuration of the FixedIT Data Agent. The agent automatically collects and sends system metrics to InfluxDB, which are then visualized through these Grafana dashboards. No additional configuration is needed beyond setting up the InfluxDB connection details in your FixedIT Data Agent settings.
+These dashboards are designed to work seamlessly with the default configuration of the FixedIT Data Agent.
+
+The agent automatically collects and sends system metrics to InfluxDB, which are then visualized through these Grafana dashboards.
+
+No additional configuration is needed beyond setting up the InfluxDB connection details in your FixedIT Data Agent settings.
 
 ## Using an older version of the FixedIT Data Agent
 
-After a new release of the FixedIT Data Agent is made, the old versions of the dashboards should continue to work thanks to the backwards compatibility of the data model. In a subsequent release of the dashboard, we might add new visualizations or features that are only available if you update the FixedIT Data Agent. If you are using older versions of the FixedIT Data Agent and do not intend to update, then you can always browse the [tags](https://github.com/fixedit-ai/fixedit-data-agent-examples/tags) of the repository to find a snapshot of the dashboard at that time.
+After a new release of the FixedIT Data Agent is made, the old versions of the dashboards should continue to work thanks to the backwards compatibility of the data model.
+
+In a subsequent release of the dashboard, we might add new visualizations or features that are only available if you update the FixedIT Data Agent.
+
+If you are using older versions of the FixedIT Data Agent and do not intend to update, then you can always browse the [tags](https://github.com/fixedit-ai/fixedit-data-agent-examples/tags) of the repository to find a snapshot of the dashboard at that time.
 
 ## Known Issues and Limitations
 
@@ -216,3 +261,89 @@ After a new release of the FixedIT Data Agent is made, the old versions of the d
 ## Helper Scripts
 
 The directory [helper_scripts](./helper_scripts/) contains scripts that can assist with deployment, see the [README](./helper_scripts/README.md) for more details.
+
+
+
+## Glossary
+
+### InfluxDB
+
+A database built for time-series data, which means measurements that change over time, such as CPU usage or network traffic. In this stack, it stores the data your cameras send.
+
+### Grafana
+
+A tool that reads data from a database, here InfluxDB, and shows it as graphs and dashboards.
+
+### Bucket
+
+A container in InfluxDB where data is stored, a bit like a folder. In this demo, the cameras send their data to a bucket called `Cameras`.
+
+### Organization
+
+The word is used in two ways in this guide:
+
+**In InfluxDB**, an organization is a workspace that buckets and users belong to. In this demo, it is called `Whisperer`. This is the value you enter as `InfluxDBOrganization` when you connect a camera.
+
+**In "Deployment Organization"**, it simply means how you arrange your deployments, for example one folder per site.
+
+
+## Getting started with Docker
+
+<details>
+<summary>What is Docker?</summary>
+
+Docker is a program that runs other programs in isolated packages called **containers**. This means you can start InfluxDB and Grafana with a single command, without installing each of them yourself.
+
+**Docker Compose** is the part of Docker that starts several containers together. This stack uses it to start InfluxDB and Grafana at the same time.
+
+</details>
+
+<details>
+<summary>How do I install Docker?</summary>
+
+On **Windows** and **Mac**, install **Docker Desktop**. It includes both Docker and Docker Compose.
+
+On **Linux**, install Docker Engine and the Docker Compose plugin.
+
+You can find the installation guide for all three on the [Docker website](https://docs.docker.com/get-docker/).
+
+</details>
+
+<details>
+<summary>How do I know it works?</summary>
+
+Open a terminal and run:
+
+```bash
+docker --version
+docker compose version
+```
+
+If both commands show a version number, Docker is ready.
+
+On Windows and Mac, Docker Desktop must be **running** before you use any Docker commands. Look for the Docker icon in the taskbar or menu bar.
+
+</details>
+
+<details>
+<summary>Docker words in this guide</summary>
+
+**Container** – a program running in Docker, isolated from the rest of your computer.
+
+**Deploy** – to install and start something so that it runs.
+
+**Instance** – one running copy of the stack. You can have several on the same server.
+
+**Volume** – where Docker saves data, so that it is kept when the containers are stopped or restarted.
+
+**Daemon** – the program that runs Docker in the background. If you see an error about the Docker daemon, Docker Desktop is usually not running.
+
+**Health check** – an automatic check that a service is working.
+
+</details>
+
+[⬆ Back to the guide](#influxdb-and-grafana-monitoring-stack)
+
+
+
+

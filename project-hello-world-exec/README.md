@@ -4,9 +4,31 @@ This is a simple "Hello, world!" project that demonstrates how to use the [Fixed
 
 This is very similar to the [project-hello-world](../project-hello-world/) project, but instead of using the `inputs.mock` plugin to generate the input data, we are using the `inputs.exec` plugin to run a shell command. This guide also adds the [Running the Example Together with the Default Config Files](#running-the-example-together-with-the-default-config-files) section to show how to send the data to an InfluxDB database and use it there.
 
+<details>
+<summary><strong> What is Telegraf? </strong></summary>
+Telegraf is an open-source agent for collecting, processing, and sending metrics and other data using a plugin-based architecture.
+</details>
+
 ## How It Works
 
-This project defines two inputs that will run on an interval and produce a "Hello, World!" message. We make use of the `inputs.exec` plugin to run the `echo` command which will output the message. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+### Step - 1
+#### Inputs generate data.
+
+This project defines two inputs that will run on an interval and produce a "Hello, World!" message. We make use of the `inputs.exec` plugin to run the `echo` command which will output the message.
+
+One input runs on the globally configured interval.
+
+The other input runs on a more frequent interval.
+
+### Step - 2
+
+The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process.
+
+### Step - 3
+
+The standard output of the Telegraf process will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+
+---
 
 ```mermaid
 flowchart TD
@@ -19,19 +41,22 @@ flowchart TD
     A2["📥 Hello World Input 2<br/>5s Override Interval"] --> C
     C["📤 Output to stdout<br/>JSON format"]
 
-    style X0 fill:#f5f5f5,stroke:#9e9e9e
-    style X1 fill:#f5f5f5,stroke:#9e9e9e
-    style X2 fill:#f5f5f5,stroke:#9e9e9e
-    style A1 fill:#90EE90,stroke:#43a047
-    style A2 fill:#90EE90,stroke:#43a047
-    style C fill:#ffebee,stroke:#e53935
+    subgraph Legend["Color scheme"]
+        direction LR
+        L1["Input nodes / data ingestion"]
+        L2["Output nodes / notifications"]
+        L3["Configuration data"]
+    end
+
+    classDef config fill:#546e7a,stroke:#37474f,color:#ffffff
+    classDef input fill:#2e7d32,stroke:#1b5e20,color:#ffffff
+    classDef output fill:#c62828,stroke:#8e0000,color:#ffffff
+
+    class X0,X1,X2,L3 config
+    class A1,A2,L1 input
+    class C,L2 output
+
 ```
-
-Color scheme:
-
-- Light green: Input nodes / data ingestion
-- Red: Output nodes / notifications
-- Light gray: Configuration data
 
 ## Why Choose This Approach?
 
@@ -39,7 +64,24 @@ With the FixedIT Data Agent, you can create your own edge-based workflows and au
 
 This simple project demonstrates how to configure different inputs with different intervals in the FixedIT Data Agent and how to propagate that data to the `Logs->Pipeline Data` tab of the FixedIT Data Agent. It's a great starting point for understanding the basics of the agent's configuration system.
 
+---
+
+<details>
+<summary><strong> What is ACAP? </strong></summary>
+ACAP (Axis Camera Application Platform) lets you build custom applications that run directly on Axis devices, such as cameras, intercoms and speakers.
+</details>
+
+---
+
+<details>
+<summary><strong> What is an SDK? </strong></summary>
+An SDK (Software Development Kit) is a package of tools, code libraries, documentation and examples that help programmers build software for a specific platform.
+</details>
+
 ## Table of Contents
+
+<details open>
+<summary><strong> Show / Hide Table </strong></summary>
 
 <!-- toc -->
 
@@ -55,6 +97,8 @@ This simple project demonstrates how to configure different inputs with differen
   - [Test Commands](#test-commands)
 
 <!-- tocstop -->
+
+</details>
 
 ## Compatibility
 
@@ -74,13 +118,13 @@ This simple project demonstrates how to configure different inputs with differen
 
    The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files" in the "Configuration" tab of the FixedIT Data Agent.
 
-   ![Disable bundled config files](../project-hello-world/.images/bundled-configs.png)
+   ![Upload config](.images/bundled-configs.png)
 
 2. **Upload and enable the `config.conf` file to the FixedIT Data Agent**
 
    Click the `Upload Config` button in the "Configuration->Files" tab of the FixedIT Data Agent and upload the `config.conf` file. Then press the `Enable` button next to the `config.conf` file.
 
-   ![Upload config](../project-hello-world/.images/config-page.png)
+   ![Upload config](.images/config-page.png)
 
 3. **Go to the "Logs->Pipeline Data" tab and verify the metrics**
 
@@ -98,7 +142,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    Try changing the "Sync interval" to 1 second in the "Configuration->Variables" tab.
 
-   ![Plain settings](../project-hello-world/.images/settings.png)
+   ![Plain settings](.images/settings.png)
 
    When inspecting the "Logs->Pipeline Data" tab again, you should now see the global interval message appearing every second instead.
 
@@ -133,7 +177,10 @@ The same is true for the new inputs that you created, the "Hello, World!" messag
 
 ![The data explorer in InfluxDB](.images/influxdb.png)
 
-All inputs are sent to all outputs (bundled plugins with blue border, new plugins with red border):
+All inputs are sent to all outputs. 
+
+- Bundled plugins - blue border.
+- New plugins - red border.
 
 ```mermaid
 flowchart TD
@@ -152,13 +199,16 @@ flowchart TD
     D2 --> C2
     D3 --> C2
 
-    style A1 fill:#F1FCF1,stroke:#ff0000
-    style A2 fill:#F1FCF1,stroke:#ff0000
-    style D1 fill:#F1FCF1,stroke:#24a9e1
-    style D2 fill:#F1FCF1,stroke:#24a9e1
-    style D3 fill:#F1FCF1,stroke:#24a9e1
-    style C fill:#FFF9FA,stroke:#ff0000
-    style C2 fill:#FFF9FA,stroke:#24a9e1
+    style A1 fill:#F1FCF1,stroke:#ff0000,color:#000000
+    style A2 fill:#F1FCF1,stroke:#ff0000,color:#000000
+    style D1 fill:#F1FCF1,stroke:#24a9e1,color:#000000
+    style D2 fill:#F1FCF1,stroke:#24a9e1,color:#000000
+    style D3 fill:#F1FCF1,stroke:#24a9e1,color:#000000
+    style C fill:#FFF9FA,stroke:#ff0000,color:#000000
+    style C2 fill:#FFF9FA,stroke:#24a9e1,color:#000000
+
+   linkStyle 0,1,5,6 stroke:#ff0000
+   linkStyle 2,3,4,7,8,9 stroke:#24a9e1
 ```
 
 ## Advanced: Local Testing on Host

@@ -108,7 +108,9 @@ TODO
 
 ## Files
 
-TODO
+- `image-health-to-ntfy.conf` – The complete pipeline: event subscription,
+  counting and muting logic, logging to the Logs tab, and notifications and
+  digest to ntfy.
 
 ## Configuration Details
 

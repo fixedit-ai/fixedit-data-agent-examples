@@ -106,7 +106,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    ![Verbose debug mode](.images/verbose-debug-mode.png)
 
-   Here you will see messages such as `Wrote batch of 1 metrics in 123.2µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics were successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
+   Here you will see messages such as `Wrote batch of 1 metrics in 356.6µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics were successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
 
 5. **Adding custom environment variables:**
 

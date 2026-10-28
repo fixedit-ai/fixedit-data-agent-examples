@@ -35,9 +35,10 @@ Turning that alarm off by hand is easy to forget to turn back on. The FixedIT Da
 
 ### AXIS OS Compatibility
 
-- **Minimum AXIS OS version**: TODO
+- **Minimum AXIS OS version**: AXIS OS 12.0
 - **Required tools**: [AXIS Image Health Analytics](https://www.axis.com/products/axis-image-health-analytics) must be installed and started (preinstalled on compatible cameras with AXIS OS 12.0 or later).
-- **Other notes**: TODO
+- **Other notes**: The camera needs outbound HTTPS access to the [ntfy](https://ntfy.sh) server or a self-hosted instance. Only the detections that are
+  enabled in AXIS Image Health Analytics generate events.
 
 ### FixedIT Data Agent Compatibility
 

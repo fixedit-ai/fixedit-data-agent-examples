@@ -48,17 +48,34 @@ Turning that alarm off by hand is easy to forget to turn back on. The FixedIT Da
 
 This project implements two main features:
 
-1. Send real-time notifications to a phone or computer using the [ntfy](https://ntfy.sh/) service when the AXIS Image Health Analytics detects an image health event. If too many activations occur within a short period of time, send one higher priority notification and then mute the notifications while the alarm is still flickering. This is configured with the `ALARM_QUIET_PERIOD` and `NOTIFY_MAX_BEFORE_PAUSE` environment variables. The latter is the maximum number notifications before muting the alarm and the former is the silence period after which the notifications are unmuted again.
+### 1. Real-time notifications are sent when an image health event is detected.
 
-2. Send a regular summary of the number of alarms within a period of time. The notification is sent only when there has been at least one alarm during that period. This could for example be an hourly digest of how many alarms have occurred during the last hour. The reporting period is configured with the `STATS_PERIOD` environment variable.
+The project uses the [ntfy](https://ntfy.sh/) service to send real-time notifications to a phone or computer when the AXIS Image Health Analytics detects an image health event.
+
+If too many activations occur within a short period of time, one higher priority notification is sent and further notifications are muted while the alarm keeps flickering. See the variable table in [Quick Setup](#quick-setup) for `NOTIFY_MAX_BEFORE_PAUSE` and `ALARM_QUIET_PERIOD`.
+
+---
+
+### 2. A regular summary reports the number of alarms within a period of time.
+
+The notification is sent only when there has been at least one alarm during that period. This could for example be an hourly digest of how many alarms have occurred during the last hour. The reporting period is configured with the `STATS_PERIOD` environment variable.
+
+---
+
+### The configuration can be modified to disable or change either feature.
 
 If only one of these two features is needed, the configuration file can easily be modified to disable or change the behavior that does not fit the needs.
 
+### The ntfy service sends notifications without requiring registration or installation.
+
 The [ntfy](https://ntfy.sh/) service can easily be used without any registration or installation using their test server. For real deployments, a paid plan or the free self-hosted server are available. The project is fully open source.
 
-![Phone notification that Block alarm notifications are paused due to flickering](./.images/rate-limited-image-health-analytics-events.jpg)
+
+![Phone notification that Block alarm notifications are paused due to flickering](.images/rate-limited-image-health-analytics-events.jpg)
 
 The following diagram shows a simplified view of the data flow.
+
+---
 
 ```mermaid
 flowchart TD

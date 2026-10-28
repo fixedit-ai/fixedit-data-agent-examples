@@ -133,7 +133,7 @@ flowchart TD
 
 <strong> The notifications look like this: </strong>
 
-
+![ntfy-Notifications](.images/ntfy-notifications.png)
 
 ## Files
 

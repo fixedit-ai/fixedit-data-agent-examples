@@ -2,43 +2,82 @@
 
 This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
 
+<details>
+<summary><strong> What is Telegraf? </strong></summary>
+Telegraf is an open-source agent for collecting, processing, and sending metrics and other data using a plugin-based architecture.
+
+---
+
+The FixedIT Data Agent is an advanced wrapper around the [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) software, which is a platform that allows the creation of custom processes using input plugins, output plugins and different kinds of processors, filters and aggregators.
+
+By default, the FixedIT Data Agent comes preloaded with a configuration for advanced monitoring of the Axis devices, but this configuration can be extended or replaced with your own custom one.
+</details>
+
 ## How It Works
 
-This project defines two inputs that will run on an interval and produce some numeric metrics and a "Hello, World!" message. We make use of the `inputs.mock` plugin to generate the input data randomly. One input runs on the globally configured interval, and the other input runs on a more frequent interval. The `outputs.file` plugin is used to print all metrics to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+### 1. Inputs generate metrics.
+
+This project defines two inputs that run on an interval and produce numeric metrics and a "Hello, World!" message.
+Both inputs use the `inputs.mock` plugin to generate input data randomly.
+
+One input runs on the globally configured interval.
+
+The other input runs on a more frequent interval.
+
+---
+
+### 2. Output writes metrics to stdout.
+
+The `outputs.file` plugin prints all metrics to the standard output of the Telegraf process.
+
+---
+
+### 3. "stdout" is displayed in the logs.
+
+The FixedIT Data Agent captures the output from the Telegraf process and displays it in the Logs → Pipeline Data tab.
+
+---
+
+
+**Color scheme:** the colors in the diagram below show what each box does. Green boxes create data, red boxes send data somewhere, and blue-gray boxes are configuration.
 
 ```mermaid
 flowchart TD
-    X0["⚙️ Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, FLUSH_INTERVAL_SECONDS, TELEGRAF_DEBUG<br/>METRIC_BATCH_SIZE, METRIC_BUFFER_LIMIT"] --> X1
+    X0["Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, TELEGRAF_DEBUG"] --> X1
     X1["Telegraf Agent"]
 
     X2["Configuration override:<br/>'interval'"] --> A2
 
-    A1["📥 Mock Input 1<br/>Global Interval"] --> C
-    A2["📥 Mock Input 2<br/>5s Override Interval"] --> C
-    C["📤 Output to stdout<br/>JSON format"]
+    A1["Mock Input 1<br/>Global Interval"] --> C
+    A2["Mock Input 2<br/>5s Override Interval"] --> C
+    C["Output to stdout<br/>JSON format"]
 
-    style X0 fill:#f5f5f5,stroke:#9e9e9e
-    style X1 fill:#f5f5f5,stroke:#9e9e9e
-    style X2 fill:#f5f5f5,stroke:#9e9e9e
-    style A1 fill:#90EE90,stroke:#43a047
-    style A2 fill:#90EE90,stroke:#43a047
-    style C fill:#ffebee,stroke:#e53935
+    subgraph Legend["Color scheme"]
+        direction LR
+        L1["Input nodes / data ingestion"]
+        L2["Output nodes / notifications"]
+        L3["Configuration data"]
+    end
+
+    classDef config fill:#546e7a,stroke:#37474f,color:#ffffff
+    classDef input fill:#2e7d32,stroke:#1b5e20,color:#ffffff
+    classDef output fill:#c62828,stroke:#8e0000,color:#ffffff
+
+    class X0,X1,X2,L3 config
+    class A1,A2,L1 input
+    class C,L2 output
 ```
-
-Color scheme:
-
-- Light green: Input nodes / data ingestion
-- Red: Output nodes / notifications
-- Light gray: Configuration data
 
 ## Why Choose This Approach?
 
-With the FixedIT Data Agent, you can create your own edge-based workflows and automations that run directly in the Axis devices. You can do this without knowing anything about the Axis ACAP SDK, C and C++ programming. This makes the edge available to a much wider audience of developers, system integrators and IT professionals.
+With the FixedIT Data Agent, you can create your own edge-based workflows and automations that run directly in the Axis devices. You can do this without knowing anything about the [Axis ACAP SDK](https://www.axis.com/for-developers/acap), C and C++ programming. This makes the edge available to a much wider audience of developers, system integrators and IT professionals.
 
 This simple project demonstrates how to configure different inputs with different intervals in the FixedIT Data Agent and how to propagate that data to the `Logs->Pipeline Data` tab. It's a great starting point for understanding the basics of the agent's configuration system.
 
-## Table of Contents
 
+## Table of Contents
+<details open>
+<summary><strong> Show / Hide Table </strong></summary>
 <!-- toc -->
 
 - [Compatibility](#compatibility)
@@ -53,6 +92,7 @@ This simple project demonstrates how to configure different inputs with differen
 - [Integrating with InfluxDB](#integrating-with-influxdb)
 
 <!-- tocstop -->
+</details>
 
 ## Compatibility
 
@@ -72,13 +112,13 @@ This simple project demonstrates how to configure different inputs with differen
 
    The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files" in the "Configuration->Files" tab of the FixedIT Data Agent.
 
-   ![Disable bundled config files](.images/bundled-configs.png)
+   ![Bundled Configs](.images/bundled-configs.png)
 
 2. **Upload and enable the `config.conf` file to the FixedIT Data Agent**
 
    Click the `Upload Config` button in the "Configuration->Files" tab of the FixedIT Data Agent and upload the `config.conf` file. Then press the `Enable` button next to the `config.conf` file.
 
-   ![Upload config](.images/config-page.png)
+   ![Config Page](.images/config-page.png)
 
 3. **Go to the "Logs->Pipeline Data" tab and verify the metrics**
 
@@ -106,7 +146,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    ![Verbose debug mode](.images/verbose-debug-mode.png)
 
-   Here you will see messages such as `Wrote batch of 1 metrics in 123.2µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics were successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
+   Here you will see messages such as `Wrote batch of 1 metrics in 356.6µs` and `Buffer fullness: 0 / 1000 metrics`. This means that the metrics were successfully written to the output (the `stdout` path in the `outputs.file` plugin) and that the output buffer is now empty waiting for the next batch of metrics.
 
 5. **Adding custom environment variables:**
 

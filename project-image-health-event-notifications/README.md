@@ -61,7 +61,16 @@ The [ntfy](https://ntfy.sh/) service can easily be used without any registration
 The following diagram shows a simplified view of the data flow.
 
 ```mermaid
+
 flowchart TD
+    subgraph Legend["Color scheme"]
+        direction LR
+        L1["Input nodes / data ingestion"]
+        L2["Output nodes / notifications"]
+        L3["Configuration data"]
+        L4["Processing / decisions"]
+    end
+
     A["Image health event"] --> B["Add 1 to this cause"]
     B --> C{"Still under the notification limit?"}
     C -->|Yes| D["Notify alarm or clear"]
@@ -72,14 +81,20 @@ flowchart TD
     E --> H
     G --> H
 
-    style A fill:#e8f5e9,stroke:#43a047
-    style B fill:#f3e5f5,stroke:#8e24aa
-    style C fill:#ffffff,stroke:#8e24aa
-    style D fill:#f3e5f5,stroke:#8e24aa
-    style E fill:#f3e5f5,stroke:#8e24aa
-    style F fill:#f5f5f5,stroke:#9e9e9e
-    style G fill:#f3e5f5,stroke:#8e24aa
-    style H fill:#ffebee,stroke:#e53935
+    classDef config fill:#546e7a,stroke:#37474f,color:#ffffff
+    classDef input fill:#2e7d32,stroke:#1b5e20,color:#ffffff
+    classDef output fill:#c62828,stroke:#8e0000,color:#ffffff
+    classDef processing fill:#7b1fa2,stroke:#4a148c,color:#ffffff
+    classDef noNotification fill:#ffffff,stroke:#cccccc,color:#000000
+
+    class A,L1 input
+    class D,E,H,L2 output
+    class L3 config
+    class B,C,G,L4 processing
+    class F noNotification
+
+    style Legend fill:#ffffff,stroke:#78909c,color:#263238
+
 ```
 
 ## Quick Setup

@@ -102,9 +102,38 @@ flowchart TD
 
    Go to the `Logs -> Pipeline Data` tab and you should see the first state being reported. Since the event is stateful, the first report will be the current state. The next report will come whenever the state changes.
 
-### Example with Push Notifications
+### Example With Push Notifications
 
-TODO
+  This example builds on the simple example above. The same configuration also sends notifications, so here you subscribe to the topic on your phone and adjust the optional variables.
+
+1. **Pick a topic name.**
+
+   ntfy topics work like public channels without passwords, so choose something hard to guess, for example `axis-image-health-7f3k9q2x`. If you already chose a topic in the simple example, you can keep using it.
+
+2. **Subscribe on your phone or computer.**
+
+   Install the ntfy app (or open https://ntfy.sh/app in a browser) and subscribe to your topic.
+
+3. **Set the variables.**
+
+   On the Configuration tab, open Variables → "Extra Telegraf variables" and add:
+
+   | Variable Name | Required | Default | Description |
+   |---|---|---|---|
+   | `NTFY_TOPIC_URL` | Yes | – | Full topic URL, e.g. `https://ntfy.sh/axis-image-health-7f3k9q2x`. Already set in the simple example above. |
+   | `NOTIFY_MAX_BEFORE_PAUSE` | No | 5 | Number of activation notifications per cause before further ones are muted. A single "paused" notification is sent when this number is exceeded. |
+   | `ALARM_QUIET_PERIOD` | No | 1h | How long a cause must stay quiet before its counter resets and notifications resume |
+   | `STATS_PERIOD` | No | 1h | Interval for the summary notification |
+
+4. **Upload and enable `image-health-to-ntfy.conf`.**
+
+   If it is not already enabled, upload and enable it as in the simple example.
+
+5. **Trigger a test alarm**, for example by covering the lens, and check that a notification arrives on your phone and that the event shows up in the Logs tab.
+
+<strong> The notifications look like this: </strong>
+
+
 
 ## Files
 

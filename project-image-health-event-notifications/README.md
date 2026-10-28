@@ -61,6 +61,7 @@ The [ntfy](https://ntfy.sh/) service can easily be used without any registration
 The following diagram shows a simplified view of the data flow.
 
 ```mermaid
+
 flowchart TD
     subgraph Legend["Color scheme"]
         direction LR
@@ -84,13 +85,16 @@ flowchart TD
     classDef input fill:#2e7d32,stroke:#1b5e20,color:#ffffff
     classDef output fill:#c62828,stroke:#8e0000,color:#ffffff
     classDef processing fill:#7b1fa2,stroke:#4a148c,color:#ffffff
+    classDef noNotification fill:#ffffff,stroke:#cccccc,color:#000000
 
     class A,L1 input
     class D,E,H,L2 output
     class L3 config
-    class B,C,F,G,L4 processing
+    class B,C,G,L4 processing
+    class F noNotification
 
     style Legend fill:#ffffff,stroke:#78909c,color:#263238
+
 ```
 
 ## Quick Setup

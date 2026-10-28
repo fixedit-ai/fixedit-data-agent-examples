@@ -112,7 +112,38 @@ TODO
 
 ## Configuration Details
 
-TODO
+`image-health-to-ntfy.conf` is built from these stages, in the order they appear in the file.
+
+1. **Input** (`inputs.execd`) – Subscribes to the stateful
+   `AXISImageHealthAnalytics` event through `event_handler`.
+
+2. **State-change counter** (`processors.defaults` + `cumulative_sum`) –
+   Gives every event `state_change = 1` and a running total
+   `state_change_sum`, used to skip the first "clear".
+
+3. **Split** (`processors.override`) – Renames events to
+   `health_event_activated` and `health_event_deactivated`.
+
+4. **Cause as tag** (`processors.converter`) – Turns the `Cause` field into a
+   tag so each cause gets its own counters.
+
+5. **Summary** (`aggregators.valuecounter`) – Counts activations per cause and
+   emits `image_health_stats` every `STATS_PERIOD`.
+
+6. **Incident counter** (`processors.defaults` + `inputs.mock` +
+   `cumulative_sum`) – Adds `incident = 1` and a running total
+   `incident_sum` per cause. The mock input sends a dummy metric every second
+   so counters expire as soon as `ALARM_QUIET_PERIOD` has passed.
+
+7. **Muting** (`processors.clone`) – Creates `*_notify` copies of events at or
+   below `NOTIFY_MAX_BEFORE_PAUSE`, and one
+   `health_event_notifications_paused` metric when the limit is exceeded.
+
+8. **Outputs** – `outputs.file` prints to the Logs tab and `outputs.http`
+   posts to ntfy. Each message type has its own output with its own title and
+   priority.
+
+---
 
 ### The Value Counter Aggregator
 

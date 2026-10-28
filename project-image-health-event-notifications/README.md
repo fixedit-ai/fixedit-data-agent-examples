@@ -90,17 +90,31 @@ flowchart TD
 
    In the camera web interface, go to Analytics → AXIS Image Health Analytics, start the application, and leave the detections you care about enabled (blocked, redirected, blurred, underexposed).
 
+   ![Axis-Image-Health-Analytics](.images/axis-image-health-analytics.png)
+
 2. **Disable the bundled config files**
 
    The FixedIT Data Agent ships default configs that collect system metrics. Click Disable next to Bundled config files on the Configuration tab so this example is the only pipeline.
 
-3. **Upload and enable `config.conf`**
+   ![Disable-Config](.images/bundled-configs.png)
 
-   Click Upload Config and upload `config.conf`. Then enable it.
+3. **Set the ntfy topic URL**
 
-4. **Open the Logs tab**
+   The configuration also sends notifications to ntfy. On the Configuration tab, open Variables → "Extra Telegraf variables" and add `NTFY_TOPIC_URL` with the value `https://ntfy.sh/<your-topic>`, using a topic name that is hard to guess, for example `axis-image-health-7f3k9q2x`. You can ignore the notifications for now and just watch the Logs tab.
 
-   Go to the `Logs -> Pipeline Data` tab and you should see the first state being reported. Since the event is stateful, the first report will be the current state. The next report will come whenever the state changes.
+   ![Extra-Telegraf-Variables](.images/extra-telegraf-variables.png)
+
+4. **Upload and enable `image-health-to-ntfy.conf`**
+
+   Click Upload Config and upload `image-health-to-ntfy.conf`. Then enable it.
+
+   ![Upload-Config](.images/enable-config.png)
+
+5. **Open the Logs tab**
+
+   Go to the `Logs->Pipeline Data` tab and you should see the first state being reported. Since the event is stateful, the first report will be the current state. The next report will come whenever the state changes.
+
+   ![Pipeline-Data](.images/pipeline-data.png)
 
 ### Example with Push Notifications
 

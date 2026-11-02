@@ -11,7 +11,6 @@ A database built for time-series data, which means measurements that change over
 
 </details>
 
----
 
 <details>
 <summary><strong> What is Grafana? </strong></summary>
@@ -19,9 +18,6 @@ A database built for time-series data, which means measurements that change over
 A tool that reads data from a database, here InfluxDB, and shows it as graphs and dashboards.
 
 </details>
-
-
----
 
 > This guide uses Docker. If you don't have Docker installed or don't know what it is, see [Getting started with Docker](#getting-started-with-docker). Otherwise, just keep reading.
 
@@ -32,7 +28,7 @@ A tool that reads data from a database, here InfluxDB, and shows it as graphs an
 <details open> 
 <summary><strong> Hide / Show Table </strong></summary>
 
-<!-- toc -->
+<!-- toc --> 
 
 - [What This Stack Provides](#what-this-stack-provides)
 - [The Database and Query Language](#the-database-and-query-language)

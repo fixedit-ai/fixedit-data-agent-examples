@@ -96,7 +96,7 @@ flowchart TD
 
    The FixedIT Data Agent ships default configs that collect system metrics. Click Disable next to Bundled config files on the Configuration tab so this example is the only pipeline.
 
-   ![Disable-Config](.images/bundled-configs.png)
+   ![Disable bundled config files](../.images/configuration-page-disable-bundled.png)
 
 3. **Set the ntfy topic URL**
 

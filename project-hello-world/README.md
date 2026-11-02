@@ -8,8 +8,8 @@ By default, the FixedIT Data Agent comes with configuration files that monitor t
 
 ### 1. Inputs generate metrics.
 
-This project defines two inputs that run on an interval and produce numeric metrics and a "Hello, World!" message.
-Both inputs use the `inputs.mock` plugin to generate input data randomly.
+This project defines two inputs that run on an interval.
+Both inputs use the `inputs.mock` plugin to generate example data: a fixed "Hello, World!" message, a constant value, a random value and a sine wave.
 
 One input runs on the globally configured interval.
 

@@ -15,7 +15,7 @@ One input runs on the globally configured interval, which is 60 seconds by defau
 
 The other input always runs every 5 seconds. This interval is hard coded in `config.conf`, so it does not change when you change the global setting.
 
-### 2. Output writes metrics to stdout.
+### 2. Output writes metrics to "stdout".
 
 The `outputs.file` plugin prints all metrics to the standard output of the Telegraf process.
 

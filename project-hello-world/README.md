@@ -15,20 +15,13 @@ One input runs on the globally configured interval, which is 60 seconds by defau
 
 The other input always runs every 5 seconds. This interval is hard coded in `config.conf`, so it does not change when you change the global setting.
 
----
-
 ### 2. Output writes metrics to stdout.
 
 The `outputs.file` plugin prints all metrics to the standard output of the Telegraf process.
 
----
-
 ### 3. "stdout" is displayed in the logs.
 
 The FixedIT Data Agent captures the output from the Telegraf process and displays it in the Logs → Pipeline Data tab.
-
----
-
 
 **Color scheme:** the colors in the diagram below show what each box does. Green boxes create data, red boxes send data somewhere, and blue-gray boxes are configuration.
 

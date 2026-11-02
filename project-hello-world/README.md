@@ -11,9 +11,9 @@ By default, the FixedIT Data Agent comes with configuration files that monitor t
 This project defines two inputs that run on an interval.
 Both inputs use the `inputs.mock` plugin to generate example data: a fixed "Hello, World!" message, a constant value, a random value and a sine wave.
 
-One input runs on the globally configured interval.
+One input runs on the globally configured interval, which is 60 seconds by default and can be changed in the **Configuration → Variables** tab of the FixedIT Data Agent.
 
-The other input runs on a more frequent interval.
+The other input always runs every 5 seconds. This interval is hard coded in `config.conf`, so it does not change when you change the global setting.
 
 ---
 

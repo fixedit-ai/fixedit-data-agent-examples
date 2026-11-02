@@ -4,7 +4,7 @@
 
 1. Disable the bundled configuration files under `Configuration->Files`.
 
-![Disable-Configs](.images/bundled-configs.png)
+![Disable bundled config files](../.images/configuration-page-disable-bundled.png)
 
 2. Upload and enable all `.conf` files under `Configuration->Files` by pressing the "Upload Config" button and then "Enable" next to the uploaded file.
 

@@ -2,16 +2,7 @@
 
 This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
 
-<details>
-<summary><strong> What is Telegraf? </strong></summary>
-Telegraf is an open-source agent for collecting, processing, and sending metrics and other data using a plugin-based architecture.
-
----
-
-The FixedIT Data Agent is an advanced wrapper around the [Telegraf](https://www.influxdata.com/time-series-platform/telegraf/) software, which is a platform that allows the creation of custom processes using input plugins, output plugins and different kinds of processors, filters and aggregators.
-
-By default, the FixedIT Data Agent comes preloaded with a configuration for advanced monitoring of the Axis devices, but this configuration can be extended or replaced with your own custom one.
-</details>
+By default, the FixedIT Data Agent comes with configuration files that monitor the Axis device. New configuration files can be uploaded, and that is what we're going to explore in this guide.
 
 ## How It Works
 

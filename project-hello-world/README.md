@@ -8,21 +8,29 @@ This project defines two inputs that will run on an interval and produce some nu
 
 ```mermaid
 flowchart TD
-    X0["⚙️ Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, FLUSH_INTERVAL_SECONDS, TELEGRAF_DEBUG<br/>METRIC_BATCH_SIZE, METRIC_BUFFER_LIMIT"] --> X1
+    X0["Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, TELEGRAF_DEBUG"] --> X1
     X1["Telegraf Agent"]
 
     X2["Configuration override:<br/>'interval'"] --> A2
 
-    A1["📥 Mock Input 1<br/>Global Interval"] --> C
-    A2["📥 Mock Input 2<br/>5s Override Interval"] --> C
-    C["📤 Output to stdout<br/>JSON format"]
+    A1["Mock Input 1<br/>Global Interval"] --> C
+    A2["Mock Input 2<br/>5s Override Interval"] --> C
+    C["Output to stdout<br/>JSON format"]
 
-    style X0 fill:#f5f5f5,stroke:#9e9e9e
-    style X1 fill:#f5f5f5,stroke:#9e9e9e
-    style X2 fill:#f5f5f5,stroke:#9e9e9e
-    style A1 fill:#90EE90,stroke:#43a047
-    style A2 fill:#90EE90,stroke:#43a047
-    style C fill:#ffebee,stroke:#e53935
+    subgraph Legend["Color scheme"]
+        direction LR
+        L1["Input nodes / data ingestion"]
+        L2["Output nodes / notifications"]
+        L3["Configuration data"]
+    end
+
+    classDef config fill:#546e7a,stroke:#37474f,color:#ffffff
+    classDef input fill:#2e7d32,stroke:#1b5e20,color:#ffffff
+    classDef output fill:#c62828,stroke:#8e0000,color:#ffffff
+
+    class X0,X1,X2,L3 config
+    class A1,A2,L1 input
+    class C,L2 output
 ```
 
 Color scheme:

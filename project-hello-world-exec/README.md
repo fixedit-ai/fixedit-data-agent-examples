@@ -94,7 +94,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    The `config.conf` file is making use of the `SYNC_INTERVAL_SECONDS`, `FLUSH_INTERVAL_SECONDS` and
    `TELEGRAF_DEBUG` environment variables which are by default set by the FixedIT Data Agent and controlled
-   from the form in the "Basic environment variables" section in the "Configuration->Variables" tab. See the [project-hello-world](../project-hello-world/) example for more details.
+   from the form in the "Basic environment variables" section in the "Configuration->Variables" tab. See the [project-hello-world](./project-hello-world/) example for more details.
 
    Try changing the "Sync interval" to 1 second in the "Configuration->Variables" tab.
 

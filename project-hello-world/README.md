@@ -72,7 +72,7 @@ This simple project demonstrates how to configure different inputs with differen
 
    The FixedIT Data Agent comes with default config files for collecting system metrics and sending them to a database. Since we don't want to use those now, click the `Disable` button next to the "Bundled config files" in the "Configuration->Files" tab of the FixedIT Data Agent.
 
-   ![Disable bundled config files](.images/bundled-configs.png)
+   ![Disable bundled config files](../.images/configuration-page-disable-bundled.png)
 
 2. **Upload and enable the `config.conf` file to the FixedIT Data Agent**
 

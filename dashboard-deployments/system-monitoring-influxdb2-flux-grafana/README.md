@@ -112,7 +112,11 @@ You can change the production ports by editing the `env.sh` file after generatio
 
 ### Deployment Organization
 
-This dashboard stack can be deployed multiple times to the same server. This is useful if you want to monitor multiple sites and have them completely isolated from each other. To enable this, you need to use the production override file (`docker-compose.prod.yml`) with the generated environment variables. This will make sure that the ports are not the same and that a project specific prefix will be used for the container names.
+This dashboard stack can be deployed multiple times to the same server. This is useful if you want to monitor multiple sites and have them completely isolated from each other.
+
+To enable this, you need to use the production override file (`docker-compose.prod.yml`) with the generated environment variables.
+
+This will make sure that the ports are not the same and that a project specific prefix will be used for the container names.
 
 The intended deployment pattern is to use **separate folders for different deployments**:
 

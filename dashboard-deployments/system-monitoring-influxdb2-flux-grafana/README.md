@@ -232,3 +232,57 @@ If you are using older versions of the FixedIT Data Agent and do not intend to u
 ## Helper Scripts
 
 The directory [helper_scripts](./helper_scripts/) contains scripts that can assist with deployment, see the [README](./helper_scripts/README.md) for more details.
+
+
+## Getting started with Docker
+
+<details>
+<summary>What is Docker?</summary>
+
+Docker is a program that runs other programs in isolated packages called **containers**. This means you can start InfluxDB and Grafana with a single command, without installing each of them yourself.
+
+**Docker Compose** is the part of Docker that starts several containers together. This stack uses it to start InfluxDB and Grafana at the same time.
+
+</details>
+
+<details>
+<summary>How do I install Docker?</summary>
+
+On **Windows** and **Mac**, install **Docker Desktop**. It includes both Docker and Docker Compose.
+
+On **Linux**, install Docker Engine and the Docker Compose plugin.
+
+You can find the installation guide for all three on the [Docker website](https://docs.docker.com/get-docker/).
+
+</details>
+
+<details>
+<summary>How do I know it works?</summary>
+
+Open a terminal and run:
+
+```bash
+docker --version
+docker compose version
+```
+
+If both commands show a version number, Docker is ready.
+
+On Windows and Mac, Docker Desktop must be **running** before you use any Docker commands. Look for the Docker icon in the taskbar or menu bar.
+
+</details>
+
+<details>
+<summary>Docker words in this guide</summary>
+
+**Container** – a program running in Docker, isolated from the rest of your computer.
+
+**Deploy** – to install and start something so that it runs.
+
+**Instance** – one running copy of the stack. You can have several on the same server.
+
+**Volume** – where Docker saves data, so that it is kept when the containers are stopped or restarted.
+
+**Health check** – an automatic check that a service is working.
+
+</details>

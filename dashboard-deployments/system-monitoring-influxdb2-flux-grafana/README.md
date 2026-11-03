@@ -1,6 +1,6 @@
 # InfluxDB and Grafana Monitoring Stack
 
-This directory contains a complete system monitoring stack designed to work with the **FixedIT Data Agent** running on Axis devices. The stack includes InfluxDB for time-series data storage and Grafana with pre-built dashboards for visualizing system metrics and device health from your Axis device fleet.
+This directory contains a complete system monitoring stack designed to work with the **FixedIT Data Agent** running on Axis devices. The stack includes [InfluxDB](#influxdb) for time-series data storage and [Grafana](#grafana) with pre-built dashboards for visualizing system metrics and device health from your Axis device fleet.
 
 ![Grafana Monitoring Overview](.images/laptop-with-grafana-for-monitoring.png)
 
@@ -27,6 +27,7 @@ This directory contains a complete system monitoring stack designed to work with
 - [Using an older version of the FixedIT Data Agent](#using-an-older-version-of-the-fixedit-data-agent)
 - [Known Issues and Limitations](#known-issues-and-limitations)
 - [Helper Scripts](#helper-scripts)
+- [Glossary](#glossary)
 
 <!-- tocstop -->
 
@@ -110,7 +111,7 @@ The demo setup uses hardcoded ports (8086 for InfluxDB, 3000 for Grafana) for si
 
 You can change the production ports by editing the `env.sh` file after generation with the `helper_scripts/generate-env.sh` script or by manually setting the environment variables before launching the stack.
 
-### Deployment Organization
+### Deployment [Organization](#organization)
 
 This dashboard stack can be deployed multiple times to the same server. This is useful if you want to monitor multiple sites and have them completely isolated from each other.
 
@@ -134,7 +135,7 @@ After deploying the stack, configure your Axis devices to send data to it:
 - **InfluxDBHost**: `http://YOUR_SERVER_IP:8086`
 - **InfluxDBToken**: `KLoG_Z0NsDIbVzS7zVn_VwhgxUgvwaGWE1wwO9SsGfNEeMaopLMsAA2aAGbCshpetVdu86Ig3-WTKugv6Srg6w==` (demo admin token)
 - **InfluxDBOrganization**: `Whisperer`
-- **InfluxDBBucket**: `Cameras`
+- **InfluxDB[Bucket](#bucket)**: `Cameras`
 
 _Note: The demo uses the admin token for simplicity. For any real testing beyond local evaluation, create dedicated tokens as described below._
 
@@ -232,3 +233,23 @@ If you are using older versions of the FixedIT Data Agent and do not intend to u
 ## Helper Scripts
 
 The directory [helper_scripts](./helper_scripts/) contains scripts that can assist with deployment, see the [README](./helper_scripts/README.md) for more details.
+
+## Glossary
+
+
+### InfluxDB
+A database built for time-series data, which means measurements that change over time, such as CPU usage or network traffic. In this stack, it stores the data your cameras send.
+
+### Grafana 
+A tool that reads data from a database, here InfluxDB, and shows it as graphs and dashboards.
+
+
+### Bucket 
+A container in InfluxDB where data is stored, a bit like a folder. In this demo, the cameras send their data to a bucket called `Cameras`.
+
+### Organization 
+The word is used in two ways in this guide:
+
+**In InfluxDB**, an organization is a workspace that buckets and users belong to. In this demo, it is called `Whisperer`. This is the value you enter as `InfluxDBOrganization` when you connect a camera.
+
+**In "Deployment Organization"**, it simply means how you arrange your deployments, for example one folder per site.

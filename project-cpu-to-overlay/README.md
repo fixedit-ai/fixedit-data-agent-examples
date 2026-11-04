@@ -1,5 +1,11 @@
 # CPU Usage on Overlay
 
+This project demonstrates how to monitor CPU usage on an AXIS device using the [FixedIT Data Agent](https://fixedit.ai/products-data-agent).
+
+Telegraf collects the device's total CPU usage and makes the value available in the FixedIT Data Agent logs. The CPU usage is also displayed as a dynamic overlay on the camera's video stream, using VAPIX to update the overlay text.
+
+The solution provides a simple way to monitor CPU usage directly on the camera without requiring custom ACAP development.
+
 ## How It Works
 
 ## Why Choose This Approach?

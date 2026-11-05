@@ -8,14 +8,14 @@ This project defines two inputs that will run on an interval and produce some nu
 
 ```mermaid
 flowchart TD
-    X0["Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, TELEGRAF_DEBUG"] --> X1
+    X0["⚙️ Configuration Variables:<br/>SYNC_INTERVAL_SECONDS, FLUSH_INTERVAL_SECONDS, TELEGRAF_DEBUG<br/>METRIC_BATCH_SIZE, METRIC_BUFFER_LIMIT"] --> X1
     X1["Telegraf Agent"]
 
     X2["Configuration override:<br/>'interval'"] --> A2
 
-    A1["Mock Input 1<br/>Global Interval"] --> C
-    A2["Mock Input 2<br/>5s Override Interval"] --> C
-    C["Output to stdout<br/>JSON format"]
+    A1["📥 Mock Input 1<br/>Global Interval"] --> C
+    A2["📥 Mock Input 2<br/>5s Override Interval"] --> C
+    C["📤 Output to stdout<br/>JSON format"]
 
     subgraph Legend["Color scheme"]
         direction LR
@@ -32,12 +32,6 @@ flowchart TD
     class A1,A2,L1 input
     class C,L2 output
 ```
-
-Color scheme:
-
-- Light green: Input nodes / data ingestion
-- Red: Output nodes / notifications
-- Light gray: Configuration data
 
 ## Why Choose This Approach?
 

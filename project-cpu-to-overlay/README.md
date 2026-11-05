@@ -1,5 +1,15 @@
 # CPU Usage on Overlay
 
+## How It Works
+
+## Why Choose This Approach?
+
+## Table Of Contents
+
+## Compatibility
+
+## Quick Setup
+
 1. Disable the bundled configuration files under Configuration->Files.
 2. Upload and enable all `.conf` files under Configuration->Files by pressing the "Upload Config" button and then "Enable" next to the uploaded file.
 3. Upload `set_overlay_text.sh` by pressing the "Upload helper file" button and mark it as "Make Executable".
@@ -8,3 +18,22 @@
 6. Go to the camera's Video->Overlays tab and add a new "Linegraph" overlay widget, configure it to use `#D1` as data source.
 
 ![Linegraph overlay widget](.images/cpu-overlay.png)
+
+## Files
+
+## Configuration Details
+
+The project uses the following components:
+
+1. **Input Configuration**
+   - CPU input: Uses the `cpu` input plugin to collect total active CPU usage as a percentage. Per-CPU measurements are disabled, and iowait is included.
+
+2. **Output Configurations**
+   - Logs output: Uses the `file` output plugin configured to write CPU usage data to `stdout`.
+   - Overlay output: Uses the `exec` output plugin to pass CPU usage data to the `set_overlay_text.sh` helper script.
+   - Both outputs filter metrics using `namepass` to only process the `cpu_sample` measurement.
+
+3. **Data Flow**
+   - The CPU input generates the `cpu_sample` measurement.
+   - The logs output writes the CPU usage percentage to `stdout`.
+   - The overlay output sends the rounded CPU usage value to the helper script, which updates dynamic overlay modifier `#D1`.

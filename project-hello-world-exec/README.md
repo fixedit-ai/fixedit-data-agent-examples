@@ -1,6 +1,6 @@
 # Hello, World! (with exec input plugin)
 
-This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the Telegraf process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
+This is a simple "Hello, world!" project that demonstrates how to use the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to print messages to the standard output of the [Telegraf](https://learning.fixedit.ai/posts/fixedit-data-agent-support-learning-telegraf-the-workflow-manager) process, which will be captured by the FixedIT Data Agent and displayed in the `Logs->Pipeline Data` tab.
 
 This is very similar to the [project-hello-world](../project-hello-world/) project, but instead of using the `inputs.mock` plugin to generate the input data, we are using the `inputs.exec` plugin to run a shell command. This guide also adds the [Running the Example Together with the Default Config Files](#running-the-example-together-with-the-default-config-files) section to show how to send the data to an InfluxDB database and use it there.
 

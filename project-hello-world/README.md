@@ -17,8 +17,7 @@ Both these inputs are hard-coded to work this way in the `config.conf` file.
 
 This is configured through the FixedIT Data Agent `Configuration->Variables` page.
 
-
-### 2. Output writes metrics to stdout.
+### 2. Output writes metrics to "stdout".
 
 The `outputs.file` plugin prints all metrics to the standard output of the Telegraf process.
 
@@ -26,7 +25,6 @@ The `outputs.file` plugin prints all metrics to the standard output of the Teleg
 ### 3. "stdout" is displayed in the logs.
 
 The FixedIT Data Agent captures the output from the Telegraf process and displays it in the `Logs->Pipeline Data` tab.
-
 
 ```mermaid
 flowchart TD

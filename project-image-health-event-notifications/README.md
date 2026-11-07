@@ -12,22 +12,21 @@ Turning that alarm off by hand is easy to forget to turn back on. The FixedIT Da
 
 <!-- toc -->
 
-- [How It Works](#how-it-works)
-- [Why Choose This Approach?](#why-choose-this-approach)
 - [Compatibility](#compatibility)
   - [AXIS OS Compatibility](#axis-os-compatibility)
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
+- [How It Works](#how-it-works)
 - [Quick Setup](#quick-setup)
-  - [Troubleshooting](#troubleshooting)
+  - [Simple Example with Logging Only](#simple-example-with-logging-only)
+  - [Example with Push Notifications](#example-with-push-notifications)
 - [Files](#files)
 - [Configuration Details](#configuration-details)
-  - [The Value Counter Processor](#the-value-counter-processor)
+  - [The Value Counter Aggregator](#the-value-counter-aggregator)
   - [The Cumulative Sum Processor](#the-cumulative-sum-processor)
   - [Ignoring the First Stateful Event](#ignoring-the-first-stateful-event)
-- [Local Testing on Host](#local-testing-on-host)
-  - [Prerequisites](#prerequisites)
-  - [Host Testing Limitations](#host-testing-limitations)
-  - [Test Commands](#test-commands)
+  - [Limitations With This Approach](#limitations-with-this-approach)
+- [Notification When a Pause Ends](#notification-when-a-pause-ends)
+  - [Host Test](#host-test)
 
 <!-- tocstop -->
 
@@ -183,3 +182,59 @@ On the other hand, if the state is already alarming when the agent starts:
 This implementation is intentionally created without any scripting to keep it simple and easy to understand for non-programmers. This design choice leads to some limitations. The two main limitations are that activations and deactivations of alarms are silenced independently. This means that the duration of the alarms plays a role and it can happen that either the activation or deactivation is silenced while the other one is not. The other problem is that there is no notification telling the user when a paused notification goes back to normal.
 
 Both of these problems can be solved by replacing some of the built-in processors and aggregators for a scriped processor (Python-like Starlark) instead.
+
+## Notification When a Pause Ends
+
+`image-health-resume-notice.conf` solves the second limitation above with a small Starlark processor. It adds to `image-health-to-ntfy.conf` without changing it: upload both and enable `image-health-resume-notice.conf` after `image-health-to-ntfy.conf`, since it reads the counter that file creates. It uses the same `NTFY_TOPIC_URL`, `ALARM_QUIET_PERIOD` and `NOTIFY_MAX_BEFORE_PAUSE` variables.
+
+When a paused cause has been quiet for `ALARM_QUIET_PERIOD`, it sends one more notification, to ntfy and the Logs tab:
+
+```text
+------------------------------------------------------------
+Image health notifications resumed
+  cause:    Blocked
+  paused:   2026-11-03T07:01:12-07:00 to 2026-11-03T07:01:19-07:00
+  not sent: 2 activations
+------------------------------------------------------------
+```
+
+Every pause now has a start and an end, and the count says how many alarms were held back in between. Someone reading the notification history later can tell a quiet camera from a muted one, which matters when the history is used to show that a camera was watching at a given time.
+
+```mermaid
+flowchart TD
+    A["Activation over the limit"] --> B["Remember the cause, the time and the count"]
+    T["Tick every second"] --> C{"Paused cause quiet for ALARM_QUIET_PERIOD?"}
+    B --> C
+    C -->|Yes| D["Notify that notifications resumed, with the held-back count"]
+    C -->|No| E["Keep waiting"]
+    D --> H["ntfy and Logs tab"]
+
+    style A fill:#e8f5e9,stroke:#43a047
+    style T fill:#e8f5e9,stroke:#43a047
+    style B fill:#f3e5f5,stroke:#8e24aa
+    style C fill:#ffffff,stroke:#8e24aa
+    style D fill:#f3e5f5,stroke:#8e24aa
+    style E fill:#f5f5f5,stroke:#9e9e9e
+    style H fill:#ffebee,stroke:#e53935
+```
+
+How it lines up with the existing pause:
+
+- The pause itself is still decided by `image-health-to-ntfy.conf`. The script reads the `incident_sum` field from the cumulative sum processor and counts every activation above `NOTIFY_MAX_BEFORE_PAUSE` as held back, including the one that sent the "paused" notification.
+- The cumulative sum processor forgets a cause's count on the first one-second tick after `ALARM_QUIET_PERIOD` without an activation. The script waits one more tick before it sends the resume, so by then the count has been reset and the next activation is sent, as long as the pipeline is not running more than a second behind. The resume therefore arrives one to two seconds after the quiet period ends.
+- If an activation arrives inside that second or two, it is already being sent, so the script sends the resume at the same moment. The two notifications can then arrive in either order; the `paused` times show what happened.
+
+Limitations:
+
+- The pause state lives in memory. If the FixedIT Data Agent restarts during a pause, no resume is sent for that pause. The counters in `image-health-to-ntfy.conf` start over too, so notifications do flow again after a restart.
+- It only covers activations. The first limitation above, that activations and clears are silenced separately, is unchanged.
+
+### Host Test
+
+`test_scripts/test_resume_notice.sh` runs stock [Telegraf](https://docs.influxdata.com/telegraf/) with both config files on a development machine. `test_files/event_handler` stands in for the FixedIT Data Agent's event handler and plays a fixed sequence of Blocked alarms: two that are sent, one that triggers the pause, one that is held back, then a quiet period, then one more that must be sent again. The test sets `ALARM_QUIET_PERIOD=5s` and `NOTIFY_MAX_BEFORE_PAUSE=2` so it finishes in about 20 seconds.
+
+```sh
+./test_scripts/test_resume_notice.sh
+```
+
+It prints the Logs tab output and `PASS` when the alarms, the pause and the resume appear in the right order with `not sent: 2 activations`. ntfy points at a closed local port during the test, so connection errors from the http outputs are expected. The stand-in event handler does not talk to a camera, so the event format and the real AXIS Image Health Analytics timing still have to be checked on a device.

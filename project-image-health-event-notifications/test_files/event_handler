@@ -1,0 +1,33 @@
+#!/bin/sh
+# Host-test stand-in for the Data Agent's event_handler binary.
+# Ignores its arguments and prints a scripted run of AXIS Image Health
+# Analytics events in the same influx line format, for use with
+# EXECUTABLES_DIR pointing at this folder.
+#
+# Timeline (with NOTIFY_MAX_BEFORE_PAUSE=2, ALARM_QUIET_PERIOD=5s):
+#   the stateful first event (no alarm), then four Blocked alarms in quick
+#   succession (two sent, one pause, one held back), then silence long
+#   enough for the pause to end, then one more Blocked alarm that must be
+#   sent again.
+
+set -eu
+
+event() {
+    echo "Any-Active-Events Cause=\"$1\",active=$2"
+}
+
+event Blocked false
+sleep 1
+for i in 1 2 3 4; do
+    event Blocked true
+    sleep 0.3
+    event Blocked false
+    sleep 0.3
+done
+sleep 9
+event Blocked true
+sleep 0.3
+event Blocked false
+
+# Stay alive: Telegraf's execd input restarts a command that exits.
+sleep 3600

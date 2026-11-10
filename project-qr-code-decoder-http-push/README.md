@@ -1,12 +1,20 @@
 # HTTP Push for the FixedIT QR Code Decoder
 
-This example uses the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to consume QR or barcode detections from the FixedIT QR Code Decoder ACAP application and push them to an HTTP endpoint.
+This example uses the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to read QR or barcode detections from the FixedIT QR Code Decoder ACAP application and push them to an HTTP endpoint.
+
+This makes it possible to send every detected code to your own server, for example for access control at a gate or for tracking parcels.
+
+For step-by-step instructions, see the [Quickstart guide](./QUICKSTART_GUIDE.md).
 
 ## How It Works
 
-The FixedIT QR Code Decoder ACAP application has the capability to write each detected code as a JSON message to a Unix domain socket. We make use of this in the FixedIT Data Agent and uses the `inputs.socket_listener` plugin to read the messages from the socket.
+The FixedIT QR Code Decoder ACAP application can write each detected code as a JSON message to a Unix domain socket.
+
+The FixedIT Data Agent uses the `inputs.socket_listener` plugin to read the messages from the socket.
 
 The messages are then pushed to an HTTP endpoint using the `outputs.http` plugin.
+
+> QR code in the video -> FixedIT QR Code Decoder -> socket -> FixedIT Data Agent -> your HTTP endpoint
 
 ### AXIS OS Compatibility
 

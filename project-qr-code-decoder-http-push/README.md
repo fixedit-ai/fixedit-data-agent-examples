@@ -8,6 +8,25 @@ The FixedIT QR Code Decoder ACAP application has the capability to write each de
 
 The messages are then pushed to an HTTP endpoint using the `outputs.http` plugin.
 
+## Table of Contents
+
+<details open>
+<summary><strong>Show / Hide Table</strong></summary>
+
+<!-- toc -->
+
+- [How It Works](#how-it-works)
+- [Compatibility](#compatibility)
+  - [AXIS OS Compatibility](#axis-os-compatibility)
+  - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
+- [Quick Setup](#quick-setup)
+- [Configuration](#configuration)
+- [Output format](#output-format)
+
+<!-- tocstop -->
+
+</details>
+
 ### AXIS OS Compatibility
 
 - **Minimum AXIS OS version**: Any version of AXIS OS that supports the FixedIT QR Code Decoder ACAP application and the FixedIT Data Agent.

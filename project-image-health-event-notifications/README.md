@@ -1,4 +1,4 @@
-# Notification Handling for AXIS Image Health Analytics Events
+f# Notification Handling for AXIS Image Health Analytics Events
 
 This project demonstrates how to subscribe to events from [AXIS Image Health Analytics](https://www.axis.com/products/axis-image-health-analytics) with the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/), apply some simple logic to the events, and send push notifications to a phone or computer using the open-source [ntfy](https://ntfy.sh/) service.
 
@@ -50,17 +50,13 @@ This project implements two main features:
 
 ### 1. Real-time notifications are sent when an image health event is detected.
 
-The project uses the [ntfy](https://ntfy.sh/) service to send real-time notifications to a phone or computer when the AXIS Image Health Analytics detects an image health event.
+The project uses the [ntfy](https://ntfy.sh/) service to send real-time notifications to a phone or computer when the AXIS Image Health Analytics triggers an image health event.
 
-If too many activations occur within a short period of time, one higher priority notification is sent and further notifications are muted while the alarm keeps flickering. See the variable table in [Quick Setup](#quick-setup) for `NOTIFY_MAX_BEFORE_PAUSE` and `ALARM_QUIET_PERIOD`.
-
----
+If too many activations occur within a short period of time, one higher priority notification is sent and further notifications are muted while the alarm keeps flickering.
 
 ### 2. A regular summary reports the number of alarms within a period of time.
 
-The notification is sent only when there has been at least one alarm during that period. This could for example be an hourly digest of how many alarms have occurred during the last hour. The reporting period is configured with the `STATS_PERIOD` environment variable.
-
----
+The notification is sent only when there has been at least one alarm during that period. This could for example be an hourly digest of how many alarms have occurred during the last hour. The reporting period is configurable
 
 ### The configuration can be modified to disable or change either feature.
 
@@ -70,12 +66,9 @@ If only one of these two features is needed, the configuration file can easily b
 
 The [ntfy](https://ntfy.sh/) service can easily be used without any registration or installation using their test server. For real deployments, a paid plan or the free self-hosted server are available. The project is fully open source.
 
-
 ![Phone notification that Block alarm notifications are paused due to flickering](.images/rate-limited-image-health-analytics-events.jpg)
 
 The following diagram shows a simplified view of the data flow.
-
----
 
 ```mermaid
 flowchart TD

@@ -1,4 +1,4 @@
-f# Notification Handling for AXIS Image Health Analytics Events
+# Notification Handling for AXIS Image Health Analytics Events
 
 This project demonstrates how to subscribe to events from [AXIS Image Health Analytics](https://www.axis.com/products/axis-image-health-analytics) with the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/), apply some simple logic to the events, and send push notifications to a phone or computer using the open-source [ntfy](https://ntfy.sh/) service.
 

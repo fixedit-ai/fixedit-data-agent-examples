@@ -96,11 +96,11 @@ flowchart TD
 
 3. **Set the ntfy topic URL**
 
-   The configuration also sends notifications to ntfy. On the Configuration tab, open Variables → "Extra Telegraf variables" and add `NTFY_TOPIC_URL` with the value `https://ntfy.sh/<your-topic>`, using a topic name that is hard to guess, for example `axis-image-health-7f3k9q2x`. You can ignore the notifications for now and just watch the Logs tab.
+   The configuration also sends notifications to ntfy. On the `Configuration->Variables` Tab, press `Extra Telegraf variables` and add `NTFY_TOPIC_URL` with the value `https://ntfy.sh/<your-topic>`, using a topic name that is hard to guess, for example `axis-image-health-7f3k9q2x`. Now notifications will be sent through  ntfy and also inside the `Logs->Pipeline Data` tab.
 
 4. **Upload and enable `image-health-to-ntfy.conf`**
 
-   Click Upload Config and upload `image-health-to-ntfy.conf`. Then enable 
+   Click Upload Config and upload `image-health-to-ntfy.conf`. Then press the `Enable` button on the `image-health-to-ntfy.conf` file.
 
 5. **Open the Logs tab**
 

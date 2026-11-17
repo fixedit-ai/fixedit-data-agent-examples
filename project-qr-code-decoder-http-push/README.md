@@ -2,7 +2,7 @@
 
 This example uses the [FixedIT Data Agent](https://fixedit.ai/products-data-agent/) to read QR or barcode detections from the FixedIT QR Code Decoder ACAP application and push them to an HTTP endpoint.
 
-This makes it possible to send every detected code to your own server, for example for access control at a gate or for tracking parcels.
+This makes it possible to send every detected code to your own server, for example to control access at a gate or to track parcels.
 
 For step-by-step instructions, see the [Quickstart guide](./QUICKSTART_GUIDE.md).
 

@@ -108,7 +108,8 @@ TODO
 
 ## Files
 
-TODO
+- `image-health-to-ntfy.conf` Handles event subscriptions, counting,
+  muting, logging, and sending notifications and digests to ntfy.
 
 ## Configuration Details
 

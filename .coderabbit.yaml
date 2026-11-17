@@ -2,6 +2,10 @@ language: en-US
 # Code style and PR review standards for contributors to this repository.
 # Product background, tool explanations, and guidance for forking/cloning with
 # LLM agents live in AGENTS.md (which is automatically found by CodeRabbit).
+knowledge_base:
+  opt_out: true
+  learnings:
+    scope: local
 reviews:
   profile: chill
   poem: false

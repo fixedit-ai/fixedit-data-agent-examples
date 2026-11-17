@@ -13,11 +13,17 @@ The messages are then pushed to an HTTP endpoint using the `outputs.http` plugin
 ### AXIS OS Compatibility
 
 - **Minimum AXIS OS version**: AXIS OS 10.9 or newer.
+- **Required tools**: `sh`, `hostname` and `tr`, which are included in AXIS OS. They are used to read the camera's IP addresses.
 
 ### FixedIT Data Agent Compatibility
 
 - **Minimum Data Agent version**: 1.2.0
-- **Required features**: Requires the `outputs.http` plugin added in v1.2.0.
+- **Required features**:
+  - `inputs.socket_listener` with the `json_v2` parser, to read the detections from the FixedIT QR Code Decoder.
+  - `inputs.exec` and `processors.starlark`, to add the camera's IP addresses to each detection as the `local_ip_addresses` tag.
+  - `outputs.http`, added in v1.2.0, to push the detections to your server.
+  - Custom environment variables, such as `PUSH_URL`, set in the Extra Telegraf Variables section.
+- **Other notes**: requires a version of the FixedIT QR Code Decoder with the socket writer enabled.
 
 ## Quick Setup
 

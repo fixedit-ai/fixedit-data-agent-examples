@@ -110,11 +110,6 @@ fetch_image() {
     return 0
 }
 
-# Function to get current timestamp
-get_timestamp() {
-    date -u +"%Y-%m-%dT%H:%M:%SZ"
-}
-
 # Check if jq is available
 if ! command -v jq >/dev/null 2>&1; then
     echo "ERROR: jq is required but not available" >&2

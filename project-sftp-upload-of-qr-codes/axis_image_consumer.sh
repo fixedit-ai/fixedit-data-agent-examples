@@ -55,6 +55,7 @@ debug_log() {
     if [ "$DEBUG" = "true" ]; then
         echo "DEBUG: $1" >&2
     fi
+    return 0
 }
 
 # Function to log debug messages to a file instead of stderr
@@ -62,6 +63,7 @@ debug_log_file() {
     if [ "$DEBUG" = "true" ]; then
         echo "DEBUG: $1" >> "${HELPER_FILES_DIR}/axis_image_consumer.debug" 2>/dev/null || true
     fi
+    return 0
 }
 
 # Function to fetch image and convert to base64

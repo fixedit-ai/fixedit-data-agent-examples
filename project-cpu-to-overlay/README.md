@@ -23,3 +23,17 @@
 
 ## Configuration Details
 
+The project uses the following components:
+
+1. **Input Configuration**
+   - CPU input: Uses the `cpu` input plugin to collect total active CPU usage as a percentage. Per-CPU measurements are disabled, and iowait is included.
+
+2. **Output Configurations**
+   - Logs output: Uses the `file` output plugin configured to write CPU usage data to `stdout`.
+   - Overlay output: Uses the `exec` output plugin to pass CPU usage data to the `set_overlay_text.sh` helper script.
+   - Both outputs filter metrics using `namepass` to only process the `cpu_sample` measurement.
+
+3. **Data Flow**
+   - The CPU input generates the `cpu_sample` measurement.
+   - The logs output writes the CPU usage percentage to `stdout`.
+   - The overlay output sends the rounded CPU usage value to the helper script, which updates dynamic overlay modifier `#D1`.

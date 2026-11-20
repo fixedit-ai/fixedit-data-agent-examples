@@ -16,6 +16,7 @@ This README explains the high-level overview of the different projects. Each pro
   - [Visualizing a GitHub Workflow Status with an Axis Strobe](#visualizing-a-github-workflow-status-with-an-axis-strobe)
   - [Creating a Timelapse with AWS S3 Upload](#creating-a-timelapse-with-aws-s3-upload)
   - [Time-in-Area Analytics](#time-in-area-analytics)
+  - [Image Health Event Notifications](#image-health-event-notifications)
 - [Developer Tools](#developer-tools)
   - [Combine Configuration Files and Scripts](#combine-configuration-files-and-scripts)
 - [Using LLM agents for development](#using-llm-agents-for-development)
@@ -211,6 +212,14 @@ flowchart TD
     style C2 fill:#ffebee,stroke:#e53935
     style C3 fill:#e3f2fd,stroke:#1565c0
 ```
+
+### Image Health Event Notifications
+
+The [Image Health Event Notifications](./project-image-health-event-notifications) project subscribes to [AXIS Image Health Analytics](https://www.axis.com/products/axis-image-health-analytics) events and sends the ones worth acting on to [ntfy](https://ntfy.sh/) (an open-source push notification service). A blocked, redirected, blurred, or underexposed image is reported when it starts and when it clears. If the same alarm keeps firing for hours, as in heavy rain or snow, further notifications for that cause are paused so operators are not flooded, and an hourly summary still counts what happened.
+
+![Phone notification that Block alarm notifications are paused due to flickering](./project-image-health-event-notifications/.images/rate-limited-image-health-analytics-events.jpg)
+
+For more details see the [README](./project-image-health-event-notifications/README.md) in the `project-image-health-event-notifications` directory.
 
 ## Developer Tools
 

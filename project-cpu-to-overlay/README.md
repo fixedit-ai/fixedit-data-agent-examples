@@ -22,4 +22,3 @@
 ## Files
 
 ## Configuration Details
-

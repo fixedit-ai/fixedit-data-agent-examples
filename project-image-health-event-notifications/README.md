@@ -112,11 +112,11 @@ flowchart TD
 
    If you're using your own self-hosted ntfy server, you can configure authentication and access controls to restrict who can publish and subscribe.
 
-3. **Subscribe on your phone or computer.**
+2. **Subscribe on your phone or computer.**
 
    Install the ntfy app (or open https://ntfy.sh/app in a browser) and subscribe to the topic you are sending to.
 
-4. **Set the variables.**
+3. **Set the variables.**
 
    On the Configuration tab, open the `Variables` tab and then click on "Extra Telegraf variables" and add the following:
 
@@ -127,11 +127,11 @@ flowchart TD
 | `ALARM_QUIET_PERIOD`      | No       | 1h      | How long a cause must stay quiet before its counter resets and notifications resume |
 | `STATS_PERIOD`            | No       | 1h      | Interval for the summary notification |
 
-5. **Upload and enable `image-health-to-ntfy.conf`.**
+4. **Upload and enable `image-health-to-ntfy.conf`.**
 
    If it is not already enabled, upload and enable it as in the simple example.
 
-6. **Trigger a test alarm**, for example by covering the lens, and check that a notification arrives on your phone and that the event shows up in the Logs tab.
+5. **Trigger a test alarm**, for example by covering the lens, and check that a notification arrives on your phone and that the event shows up in the Logs tab.
 
 **text** The notifications look like this:
 

@@ -94,15 +94,11 @@ flowchart TD
 
    The FixedIT Data Agent ships default configs that collect system metrics. Click Disable next to Bundled config files on the Configuration tab so this example is the only pipeline.
 
-3. **Set the ntfy topic URL**
-
-   The configuration also sends notifications to ntfy. On the `Configuration->Variables` Tab, press `Extra Telegraf variables` and add `NTFY_TOPIC_URL` with the value `https://ntfy.sh/<your-topic>`, using a topic name that is hard to guess, for example `axis-image-health-7f3k9q2x`. Now notifications will be sent through ntfy and also inside the `Logs->Pipeline Data` tab.
-
-4. **Upload and enable `image-health-to-ntfy.conf`**
+3. **Upload and enable `image-health-to-ntfy.conf`**
 
    Click Upload Config and upload `image-health-to-ntfy.conf`. Then press the `Enable` button on the `image-health-to-ntfy.conf` file.
 
-5. **Open the Logs tab**
+4. **Open the Logs tab**
 
    Go to the `Logs->Pipeline Data` tab and you should see the first state being reported. Since the event is stateful, the first report will be the current state. The next report will come whenever the state changes.
 

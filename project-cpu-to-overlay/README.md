@@ -18,6 +18,17 @@ This project shows how to get a value from the device into the video itself. Tel
 
 ## Compatibility
 
+### AXIS OS Compatibility
+
+- **Minimum AXIS OS version**: AXIS OS 12.0. (earliest working version tested is AXIS OS 12.11.77, on the platofrm ARTPEC-8. Older versions was also tested but they weren't compatible).
+- **Required hardware**: A camera with the ARTPEC-8 or ARTPEC-9 platform (required for the linegraph overlay widget to work). Tested on multiple ARTPEC-7 and earlier platforms but without sucess.
+- **Required tools**: Uses `curl` to send requests to the VAPIX Dynamic Overlay API with Digest Authentication. Uses standard Unix utilities and POSIX shell (`sh`) to execute the helper script.
+
+### FixedIT Data Agent Compatibility
+
+- **Minimum Data Agent version**: 1.5.0, because of the `serializers.template` serializer.
+- **Required features**: Uses the `inputs.cpu`, `outputs.file` and `outputs.exec` plugins, the `serializers.template` serializer, the `HELPER_FILES_DIR`, `VAPIX_USERNAME` and `VAPIX_PASSWORD` environment variables, and support for uploading and executing helper shell scripts.
+
 ## Quick Setup
 
 1. Disable the bundled configuration files under Configuration->Files.

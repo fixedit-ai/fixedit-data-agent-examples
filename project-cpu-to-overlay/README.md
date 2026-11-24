@@ -19,7 +19,8 @@ This project shows how to get a value from the device into the video itself. Tel
 3. Upload `set_overlay_text.sh` by pressing the "Upload helper file" button and mark it as "Make Executable".
 4. Unselect the "Clear all values" slider under the "VAPIX credentials" section and input the username and password of a VAPIX account that has at least operator access.
 5. Verify that you see blue lines in the "Logs" tab with the current CPU usage.
-6. Go to the camera's Video->Overlays tab and add a new "Linegraph" overlay widget, configure it to use `#D1` as data source.
+6. Go to the camera's Video->Overlays tab and add a new "Linegraph" overlay widget, configure it to use `#D0` as data source.
+   To use another modifier, for example `#D2`, add `OVERLAY_TEMPLATE_ID=2` under "Extra Telegraf variables" in Configuration->Variables, and use `#D2` as the data source. Write the number only, `2`, not `#D2`.
 
 ![Linegraph overlay widget](.images/cpu-overlay.png)
 

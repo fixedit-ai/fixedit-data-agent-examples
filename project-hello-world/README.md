@@ -56,6 +56,9 @@ This simple project demonstrates how to configure different inputs with differen
 
 ## Table of Contents
 
+<details open>
+<summary><strong> Show / Hide Table </strong></summary>
+
 <!-- toc -->
 
 - [Compatibility](#compatibility)
@@ -70,6 +73,8 @@ This simple project demonstrates how to configure different inputs with differen
 - [Integrating with InfluxDB](#integrating-with-influxdb)
 
 <!-- tocstop -->
+
+</details>
 
 ## Compatibility
 

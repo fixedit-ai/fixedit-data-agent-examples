@@ -122,7 +122,7 @@ flowchart TD
 
 | Variable Name             | Required | Default | Description |
 | ------------------------- | -------- | ------- | ----------- |
-| `NTFY_TOPIC_URL`          | Yes      | –       | Full topic URL, e.g. `https://ntfy.sh/axis-image-health-7f3k9q2x`. Already set in the simple example above. |
+| `NTFY_TOPIC_URL`          | Yes      | –       | Full topic URL, e.g. `https://ntfy.sh/axis-image-health-7f3k9q2x`. |
 | `NOTIFY_MAX_BEFORE_PAUSE` | No       | 5       | Number of activation notifications per cause before further ones are muted. A single "paused" notification is sent when this number is exceeded. |
 | `ALARM_QUIET_PERIOD`      | No       | 1h      | How long a cause must stay quiet before its counter resets and notifications resume |
 | `STATS_PERIOD`            | No       | 1h      | Interval for the summary notification |

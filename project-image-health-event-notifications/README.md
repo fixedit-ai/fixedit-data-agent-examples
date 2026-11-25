@@ -114,34 +114,27 @@ TODO
 
 `image-health-to-ntfy.conf` is built from these stages, in the order they appear in the file.
 
-1. **Input** (`inputs.execd`) – Subscribes to the stateful
-   `AXISImageHealthAnalytics` event through `event_handler`.
+1. **Input** (`inputs.execd`) Subscribes to the stateful
+   `AXISImageHealthAnalytics` event through the `event_handler` helper binary.
 
 2. **State-change counter** (`processors.defaults` + `cumulative_sum`) –
    Gives every event `state_change = 1` and a running total
    `state_change_sum`, used to skip the first "clear".
 
-3. **Split** (`processors.override`) – Renames events to
-   `health_event_activated` and `health_event_deactivated`.
+3. **Split** (`processors.override`) Renames events to
+   `health_event_activated` and `health_event_deactivated` to make
+   their purpose immediately clear and simplify downstream processing.
 
-4. **Cause as tag** (`processors.converter`) – Turns the `Cause` field into a
-   tag so each cause gets its own counters.
+4. **Summary** (`processors.converter` + `aggregators.valuecounter`) –
+   Converts the `Cause` field into a tag so activations can be counted
+   separately per cause, then emits `image_health_stats` every
+   `STATS_PERIOD`.
 
-5. **Summary** (`aggregators.valuecounter`) – Counts activations per cause and
-   emits `image_health_stats` every `STATS_PERIOD`.
+5. **Incident counter** (`processors.defaults` + `inputs.mock` + `cumulative_sum`) – Tracks incidents separately per cause. A mock input sends a dummy metric every second to ensure counters expire after `ALARM_QUIET_PERIOD` without activity.
 
-6. **Incident counter** (`processors.defaults` + `inputs.mock` +
-   `cumulative_sum`) – Adds `incident = 1` and a running total
-   `incident_sum` per cause. The mock input sends a dummy metric every second
-   so counters expire as soon as `ALARM_QUIET_PERIOD` has passed.
+6. **Muting** (`processors.clone`) – Prevents notification overload by limiting how many events generate notifications. Creates `*_notify` copies while the count is within `NOTIFY_MAX_BEFORE_PAUSE`, and emits `health_event_notifications_paused` when the limit is exceeded.
 
-7. **Muting** (`processors.clone`) – Creates `*_notify` copies of events at or
-   below `NOTIFY_MAX_BEFORE_PAUSE`, and one
-   `health_event_notifications_paused` metric when the limit is exceeded.
-
-8. **Outputs** – `outputs.file` prints to the Logs tab and `outputs.http`
-   posts to ntfy. Each message type has its own output with its own title and
-   priority.
+7. **Outputs** `outputs.file` writes messages to the Logs tab for debugging, while `outputs.http` sends notifications to ntfy. Separate outputs are configured for each message type, allowing each notification to have its own title and priority.
 
 ---
 

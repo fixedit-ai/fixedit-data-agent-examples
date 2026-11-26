@@ -21,11 +21,11 @@
 
 ## Files
 
-- `config_agent.conf`: Contains the global Telegraf agent configuration, including collection and flush intervals.
-- `config_input_cpu.conf`: Configures the collection of total CPU usage.
-- `config_output_logs.conf`: Configures the output of CPU usage data to the FixedIT Data Agent logs.
-- `config_output_overlay.conf`: Configures the output of CPU usage data to the camera's dynamic overlay.
-- `set_overlay_text.sh`: Helper script that updates the dynamic overlay text using the VAPIX API.
+- `config_agent.conf`: Sets the global Telegraf collection and flush intervals.
+- `config_input_cpu.conf`: Collects total CPU usage as the `cpu_sample` metric.
+- `config_output_logs.conf`: Writes `cpu_sample` metrics to the FixedIT Data Agent logs.
+- `config_output_overlay.conf`: Sends `cpu_sample` metrics to the camera overlay by running `set_overlay_text.sh`.
+- `set_overlay_text.sh`: Helper script run by `config_output_overlay.conf`; it updates the overlay text through the VAPIX API.
 
 ## Configuration Details
 

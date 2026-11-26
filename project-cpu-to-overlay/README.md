@@ -4,10 +4,6 @@
 
 ## Why Choose This Approach?
 
-With the FixedIT Data Agent, you can create your own edge-based workflows and automations that run directly in the Axis devices. You can do this without knowing anything about the Axis [ACAP SDK](https://www.axis.com/for-developers/acap), C and C++ programming. This makes the edge available to a much wider audience of developers, system integrators and IT professionals.
-
-This project shows how to get a value from the device into the video itself. Telegraf reads the CPU usage, and the `exec` output passes it to a small shell script that updates an overlay through the camera's VAPIX API. The same pattern works for any value you can collect with Telegraf, such as memory usage.
-
 ## Table Of Contents
 
 ## Compatibility
@@ -32,3 +28,4 @@ This project shows how to get a value from the device into the video itself. Tel
 - `set_overlay_text.sh`: Helper script run by `config_output_overlay.conf`; it updates the overlay text through the VAPIX API.
 
 ## Configuration Details
+

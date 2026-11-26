@@ -112,29 +112,54 @@ TODO
 
 ## Configuration Details
 
-`image-health-to-ntfy.conf` is built from these stages, in the order they appear in the file.
+The configuration processes image health events in the following stages:
 
-1. **Input** (`inputs.execd`) Subscribes to the stateful
-   `AXISImageHealthAnalytics` event through the `event_handler` helper binary.
+1. **Subscribe to image health events** (`inputs.execd`)
+   Subscribes to the stateful `AXISImageHealthAnalytics` event through the
+   `event_handler` helper binary.
 
-2. **State-change counter** (`processors.defaults` + `cumulative_sum`) –
-   Gives every event `state_change = 1` and a running total
-   `state_change_sum`, used to skip the first "clear".
+2. **Ignore the initial state report** (`processors.defaults` +
+   `processors.cumulative_sum`)
+   Adds `state_change = 1` to each event and maintains a running
+   `state_change_sum`. This distinguishes a later clear event from the first
+   clear report received when the subscription starts.
 
-3. **Split** (`processors.override`) Renames events to
-   `health_event_activated` and `health_event_deactivated` to make
-   their purpose immediately clear and simplify downstream processing.
+3. **Separate activations and clears** (`processors.override`)
+   Renames each event to either `health_event_activated` or
+   `health_event_deactivated`, making the event type explicit for downstream
+   processing.
 
-4. **Summary** (`processors.converter` + `aggregators.valuecounter`) –
-   Converts the `Cause` field into a tag so activations can be counted
-   separately per cause, then emits `image_health_stats` every
-   `STATS_PERIOD`.
+4. **Create a periodic alarm summary** (`processors.converter` +
+   `aggregators.valuecounter`)
+   Keeps the `Cause` field as a separate tag and counts activations by cause.
+   Every `STATS_PERIOD`, it emits `image_health_stats` with the number of
+   activations for each cause during that period.
 
-5. **Incident counter** (`processors.defaults` + `inputs.mock` + `cumulative_sum`) – Tracks incidents separately per cause. A mock input sends a dummy metric every second to ensure counters expire after `ALARM_QUIET_PERIOD` without activity.
+5. **Track incidents since the last quiet period** (`processors.defaults` +
+   `inputs.mock` + `processors.cumulative_sum`)
+   Tracks an increasing activation streak separately for each cause. The streak
+   stored in `incident_sum` resets after `ALARM_QUIET_PERIOD` without another
+   activation of that cause.
 
-6. **Muting** (`processors.clone`) – Prevents notification overload by limiting how many events generate notifications. Creates `*_notify` copies while the count is within `NOTIFY_MAX_BEFORE_PAUSE`, and emits `health_event_notifications_paused` when the limit is exceeded.
+   The mock input creates a metric every second. This gives the cumulative
+   counter a periodic signal that allows it to detect when a streak should
+   expire.
 
-7. **Outputs** `outputs.file` writes messages to the Logs tab for debugging, while `outputs.http` sends notifications to ntfy. Separate outputs are configured for each message type, allowing each notification to have its own title and priority.
+6. **Limit notification volume** (`processors.clone`)
+   Allows a notification copy to be created for activations and clears until
+   the activation count reaches `NOTIFY_MAX_BEFORE_PAUSE`. When a cause exceeds
+   that limit, the configuration creates a
+   `health_event_notifications_paused` event instead.
+
+7. **Send logs and notifications** (`outputs.file` and `outputs.http`)
+   The file outputs show events in the Logs tab for debugging. The HTTP outputs
+   send the corresponding event to ntfy.
+
+   NTfy notifications differ by message type:
+   - Activations use a high priority and the alarm title.
+   - Clears use the default priority and the alarm-cleared title.
+   - Paused notifications use the maximum priority.
+   - Periodic summaries use a digest title.
 
 ---
 

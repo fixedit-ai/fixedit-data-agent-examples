@@ -79,14 +79,12 @@ This shows how to build a system for "digital threads" that is simple to deploy 
   - [AXIS OS Compatibility](#axis-os-compatibility)
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
 - [Quick Setup](#quick-setup)
-- [Troubleshooting](#troubleshooting)
 - [How does it work?](#how-does-it-work)
   - [Reading detections as events](#reading-detections-as-events)
   - [Capture using base64-encoded image](#capture-using-base64-encoded-image)
   - [Sending the image snapshot over HTTP](#sending-the-image-snapshot-over-http)
   - [Obfuscating the FTP password](#obfuscating-the-ftp-password)
 - [Files](#files)
-- [Configuration Details](#configuration-details)
 - [Known Limitations](#known-limitations)
 
 <!-- tocstop -->
@@ -108,7 +106,6 @@ This shows how to build a system for "digital threads" that is simple to deploy 
 1. **Install ACAPs** on the camera: FixedIT QR Code Decoder and FixedIT Data Agent.
 
 2. **Set parameters** in the FixedIT Data Agent UI under Configuration->Variables:
-
    - **VAPIX credentials**: Unselect the "Clear all values" slider and enter the credentials for the script's VAIX access. Operator permission is required since the script changes the overlay templates.
    - **Extra Telegraf variables** used by `config_output_remotefile.conf`:
 
@@ -133,12 +130,10 @@ This shows how to build a system for "digital threads" that is simple to deploy 
      | `SNAPSHOT_HTTP_PORT`        | `18081`    | Localhost port for the snapshot HTTP listener         |
 
 3. **Upload helper files** (mark `.sh` scripts executable in the UI):
-
    - `set_overlay_text.sh`
    - `axis_image_consumer.sh`
 
 4. **Upload and enable these configs:**
-
    1. `config_agent.conf`
    2. `config_input_barcode.conf`
    3. `config_process_dedup.conf`

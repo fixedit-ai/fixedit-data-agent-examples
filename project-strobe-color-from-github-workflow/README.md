@@ -139,7 +139,7 @@ This effectively shows how to transform an Axis strobe to an intelligent device 
 
 - **Minimum AXIS OS version**: Should be compatible with AXIS OS 11 and 12+.
 - **Required tools**: Uses `jq` which was not available in older AXIS OS versions. Uses `curl` which is installed by default, and standard Unix utilities (`cat`, `echo`, `printf`, `tr`).
-- **Other notes**: Uses HTTP Digest authentication for VAPIX API calls which is supported in all AXIS OS versions.
+- **Authentication**: Uses `--anyauth` for VAPIX API calls so curl negotiates Basic or Digest across AXIS OS versions.
 
 ### FixedIT Data Agent Compatibility
 

@@ -145,7 +145,7 @@ add_overlay() {
         }')
 
     debug_log_file "Sending JSON payload: $json_payload"
-    api_response=$(curl --silent --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" \
+    api_response=$(curl --silent --fail --anyauth --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" \
         "http://${VAPIX_IP}/axis-cgi/dynamicoverlay/dynamicoverlay.cgi" \
         -X POST \
         -H "Content-Type: application/json" \
@@ -217,7 +217,7 @@ update_overlay() {
         }')
 
     debug_log_file "Sending JSON payload: $json_payload"
-    api_response=$(curl --silent --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" \
+    api_response=$(curl --silent --fail --anyauth --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" \
         "http://${VAPIX_IP}/axis-cgi/dynamicoverlay/dynamicoverlay.cgi" \
         -X POST \
         -H "Content-Type: application/json" \
@@ -272,7 +272,7 @@ delete_overlay() {
         }')
 
     debug_log_file "Sending JSON payload: $json_payload"
-    api_response=$(curl --silent --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" \
+    api_response=$(curl --silent --fail --anyauth --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" \
         "http://${VAPIX_IP}/axis-cgi/dynamicoverlay/dynamicoverlay.cgi" \
         -X POST \
         -H "Content-Type: application/json" \

@@ -114,7 +114,7 @@ esac
 
 # Function to control strobe light profiles via VAPIX API
 # This function handles both starting and stopping of color profiles
-# Uses HTTP Digest authentication since the Axis devices requires that for HTTP
+# Uses --anyauth so curl negotiates Basic or Digest across AXIS OS versions.
 control_profile() {
     _ctrl_profile="$1"    # Profile name (green, yellow, red)
     _ctrl_action="$2"     # Action to perform (start, stop)
@@ -126,8 +126,8 @@ control_profile() {
     # Make VAPIX API call to control the strobe profile
     # Endpoint: siren_and_light.cgi for controlling light patterns
     # Method: POST with JSON payload specifying action and profile
-    # Auth: HTTP Digest authentication
-    _ctrl_api_response=$(curl --fail --digest --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
+    # Auth: negotiate Basic or Digest (--anyauth)
+    _ctrl_api_response=$(curl --fail --anyauth --user "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "http://${VAPIX_IP}/axis-cgi/siren_and_light.cgi" \
         -X POST \
         -H "Content-Type: application/json" \
         -d "{\"apiVersion\":\"1.0\",\"method\":\"$_ctrl_action\",\"params\":{\"profile\":\"$_ctrl_profile\"}}" 2>&1)

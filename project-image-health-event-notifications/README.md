@@ -131,7 +131,7 @@ This example builds on the simple example above. The same configuration also sen
 
 5. **Trigger a test alarm**, for example by covering the lens, and check that a notification arrives on your phone and that the event shows up in the Logs tab.
 
-<strong> The notifications look like this: </strong>
+**The notifications look like this:**
 
 ![ntfy-Notifications](.images/ntfy-notifications.png)
 

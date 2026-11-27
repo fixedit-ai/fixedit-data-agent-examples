@@ -12,22 +12,19 @@ Turning that alarm off by hand is easy to forget to turn back on. The FixedIT Da
 
 <!-- toc -->
 
-- [How It Works](#how-it-works)
-- [Why Choose This Approach?](#why-choose-this-approach)
 - [Compatibility](#compatibility)
   - [AXIS OS Compatibility](#axis-os-compatibility)
   - [FixedIT Data Agent Compatibility](#fixedit-data-agent-compatibility)
+- [How It Works](#how-it-works)
 - [Quick Setup](#quick-setup)
-  - [Troubleshooting](#troubleshooting)
+  - [Simple Example with Logging Only](#simple-example-with-logging-only)
+  - [Example With Push Notifications](#example-with-push-notifications)
 - [Files](#files)
 - [Configuration Details](#configuration-details)
-  - [The Value Counter Processor](#the-value-counter-processor)
+  - [The Value Counter Aggregator](#the-value-counter-aggregator)
   - [The Cumulative Sum Processor](#the-cumulative-sum-processor)
   - [Ignoring the First Stateful Event](#ignoring-the-first-stateful-event)
-- [Local Testing on Host](#local-testing-on-host)
-  - [Prerequisites](#prerequisites)
-  - [Host Testing Limitations](#host-testing-limitations)
-  - [Test Commands](#test-commands)
+  - [Limitations With This Approach](#limitations-with-this-approach)
 
 <!-- tocstop -->
 

@@ -108,7 +108,7 @@ This approach makes timelapse functionality accessible to system integrators and
 
 - **Minimum AXIS OS version**: Should be compatible with AXIS OS 11 and 12+.
 - **Required tools**: Uses `jq` which was not available in older AXIS OS versions, but could easily be changed to not depend on it. Uses `curl` and `openssl` which are installed by default.
-- **Authentication**: Uses HTTP to localhost with DIGEST authentication which is supported by all AXIS OS versions.
+- **Authentication**: Uses `--anyauth` for VAPIX API calls so curl negotiates Basic or Digest across AXIS OS versions.
 
 ### FixedIT Data Agent Compatibility
 

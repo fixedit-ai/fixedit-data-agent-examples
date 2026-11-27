@@ -42,6 +42,7 @@ Human-oriented overview and example links: [README.md](./README.md).
   - [Adding metadata to metrics with [global_tags]](#adding-metadata-to-metrics-with-global_tags)
   - [Working with raw binary data in metrics by base64 encoding](#working-with-raw-binary-data-in-metrics-by-base64-encoding)
   - [Viewing pipeline data in the Logs tab](#viewing-pipeline-data-in-the-logs-tab)
+  - [VAPIX auth on localhost (Basic vs Digest)](#vapix-auth-on-localhost-basic-vs-digest)
 - [Example projects in this repo](#example-projects-in-this-repo)
   - [Deploying a project in the Data Agent UI](#deploying-a-project-in-the-data-agent-ui)
 - [Official learning resources](#official-learning-resources)
@@ -638,6 +639,10 @@ Even a simple field becomes a full JSON line with metric name, tags, and timesta
 ```
 
 Use `metric_batch_size = 1` here if each line should appear in the Logs tab as soon as the metric is processed (same idea as [Immediate output](#immediate-output-no-batching-delay)).
+
+### VAPIX auth on localhost (Basic vs Digest)
+
+When helper scripts call VAPIX on the device (`http://127.0.0.1/...`), use `curl --anyauth -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}"` rather than forcing `--digest` or `--basic`. Older AXIS OS versions typically negotiate Digest over HTTP; AXIS OS 13 may not accept Digest on localhost HTTP and instead requires Basic. `--anyauth` lets curl pick whichever the device offers. Prefer plain HTTP to localhost (no TLS overhead). For a remote camera over the network, prefer HTTPS (with `--insecure` if the device uses a self-signed cert), still with `--anyauth`. Example: [project-timelapse-s3/axis_image_consumer.sh](./project-timelapse-s3/axis_image_consumer.sh).
 
 ## Example projects in this repo
 

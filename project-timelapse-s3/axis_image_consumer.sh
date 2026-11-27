@@ -32,10 +32,8 @@ CAMERA_IP="${CAMERA_IP:-127.0.0.1}"
 # We use HTTP for the image fetch. Since the request is to localhost, this is quite safe.
 # If using this to fetch images from an external camera in a non-private network,
 # then it is recommended to use HTTPS instead. That can be used together with --insecure
-# to handle self-signed certificates, and --anyauth to handle compatibility with both
-# AXIS OS 12 and previous versions.
-# Using HTTP will remove the overhead of TLS. All Axis devices accept DIGEST authentication
-# when using HTTP.
+# to handle self-signed certificates.
+# Use --anyauth so curl negotiates Basic or Digest authentication across AXIS OS versions.
 IMAGE_URL="http://${CAMERA_IP}/axis-cgi/jpg/image.cgi"
 
 # Debug mode - use TELEGRAF_DEBUG environment variable
@@ -68,7 +66,7 @@ fetch_image() {
     debug_log_file "Using credentials: $VAPIX_USERNAME:****"
 
     # Test connectivity first
-    test_response=$(curl -s --digest -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" --head 2>&1)
+    test_response=$(curl -s --anyauth -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" --head 2>&1)
     test_exit=$?
 
     if [ $test_exit -ne 0 ]; then
@@ -78,7 +76,7 @@ fetch_image() {
 
     # Fetch image with authentication and pipe directly to base64 encoding
     # This avoids storing binary data in shell variables which can corrupt it
-    encoded_data=$(curl -s --digest -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" 2>/dev/null | openssl base64 -A)
+    encoded_data=$(curl -s --anyauth -u "${VAPIX_USERNAME}:${VAPIX_PASSWORD}" "$url" 2>/dev/null | openssl base64 -A)
     curl_exit=$?
 
     if [ $curl_exit -ne 0 ]; then

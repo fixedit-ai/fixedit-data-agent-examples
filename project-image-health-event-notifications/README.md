@@ -104,28 +104,26 @@ flowchart TD
 
 ### Example With Push Notifications
 
-  This example builds on the simple example above. The same configuration also sends notifications, so here you subscribe to the topic and adjust the optional variables, either on your phone or in your browser.
+This example builds on the simple example above. The same configuration also sends notifications, so here you subscribe to the topic on your phone and adjust the optional variables.
 
 1. **Pick a topic name.**
 
-   On the public server, ntfy topics work like public channels without passwords, so choose something hard to guess, for example `axis-image-health-7f3k9q2x`. If you already chose a topic in the simple example, you can keep using it.
-
-   If you're using your own self-hosted ntfy server, you can configure authentication and access controls to restrict who can publish and subscribe.
+   ntfy topics work like public channels without passwords, so choose something hard to guess, for example `axis-image-health-7f3k9q2x`. If you already chose a topic in the simple example, you can keep using it.
 
 2. **Subscribe on your phone or computer.**
 
-   Install the ntfy app (or open https://ntfy.sh/app in a browser) and subscribe to the topic you are sending to.
+   Install the ntfy app (or open https://ntfy.sh/app in a browser) and subscribe to your topic.
 
 3. **Set the variables.**
 
-   On the Configuration tab, open the `Variables` tab and then click on "Extra Telegraf variables" and add the following:
+   On the Configuration tab, open Variables → "Extra Telegraf variables" and add:
 
-| Variable Name             | Required | Default | Description |
-| ------------------------- | -------- | ------- | ----------- |
-| `NTFY_TOPIC_URL`          | Yes      | –       | Full topic URL, e.g. `https://ntfy.sh/axis-image-health-7f3k9q2x`. |
-| `NOTIFY_MAX_BEFORE_PAUSE` | No       | 5       | Number of activation notifications per cause before further ones are muted. A single "paused" notification is sent when this number is exceeded. |
-| `ALARM_QUIET_PERIOD`      | No       | 1h      | How long a cause must stay quiet before its counter resets and notifications resume |
-| `STATS_PERIOD`            | No       | 1h      | Interval for the summary notification |
+   | Variable Name             | Required | Default | Description                                                                                                                                      |
+   | ------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+   | `NTFY_TOPIC_URL`          | Yes      | –       | Full topic URL, e.g. `https://ntfy.sh/axis-image-health-7f3k9q2x`. Already set in the simple example above.                                      |
+   | `NOTIFY_MAX_BEFORE_PAUSE` | No       | 5       | Number of activation notifications per cause before further ones are muted. A single "paused" notification is sent when this number is exceeded. |
+   | `ALARM_QUIET_PERIOD`      | No       | 1h      | How long a cause must stay quiet before its counter resets and notifications resume                                                              |
+   | `STATS_PERIOD`            | No       | 1h      | Interval for the summary notification                                                                                                            |
 
 4. **Upload and enable `image-health-to-ntfy.conf`.**
 
@@ -133,7 +131,7 @@ flowchart TD
 
 5. **Trigger a test alarm**, for example by covering the lens, and check that a notification arrives on your phone and that the event shows up in the Logs tab.
 
-**text** The notifications look like this:
+<strong> The notifications look like this: </strong>
 
 ![ntfy-Notifications](.images/ntfy-notifications.png)
 

@@ -34,4 +34,3 @@ The solution provides a simple way to monitor CPU usage directly on the camera w
 - `set_overlay_text.sh`: Helper script run by `config_output_overlay.conf`; it updates the overlay text through the VAPIX API.
 
 ## Configuration Details
-
